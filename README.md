@@ -29,6 +29,7 @@ A Docusaurus plugin for generating LLM-friendly documentation following the [llm
 - [Testing](#testing)
 - [Future Enhancements](#future-enhancements)
 - [License](#license)
+
 ## Installation
 
 ```bash

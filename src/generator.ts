@@ -79,7 +79,7 @@ ${fullContentSections.join('\n\n---\n\n')}
 
 > ${fileDescription}${versionInfo}
 
-This file contains links to documentation sections following the llmtxt.org standard.
+This file contains links to documentation sections following the llmstxt.org standard.
 
 ## Table of Contents
 
