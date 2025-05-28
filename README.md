@@ -2,6 +2,33 @@
 
 A Docusaurus plugin for generating LLM-friendly documentation following the [llmstxt standard](https://llmstxt.org/).
 
+## Features
+
+- ⚡️ Easy integration with Docusaurus
+- ✅ Zero config required, works out of the box
+- ⚙️ Highly customizable with multiple options
+- 📝 Creates `llms.txt` with section links
+- 📖 Produces `llms-full.txt` with all content in one file
+- 📋 Document ordering control for custom sequence
+- 🔄 Path transformation to customize URL construction
+- 📚 Option to include blog posts
+- 🧩 Custom LLM files for specific documentation sections
+- 🧹 Cleans HTML and normalizes content for optimal LLM consumption
+- 📊 Provides statistics about generated documentation
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Configuration Options](#configuration-options)
+- [Available Options](#available-options)
+- [Path Transformation Examples](#path-transformation-examples)
+- [Document Ordering Examples](#document-ordering-examples)
+- [Custom LLM Files](#custom-llm-files)
+- [How It Works](#how-it-works)
+- [Implementation Details](#implementation-details)
+- [Testing](#testing)
+- [Future Enhancements](#future-enhancements)
+- [License](#license)
 ## Installation
 
 ```bash
@@ -330,19 +357,6 @@ This plugin automatically generates the following files during the build process
 
 These files follow the [llmstxt standard](https://llmstxt.org/), making your documentation optimized for use with Large Language Models (LLMs).
 
-## Features
-
-- ⚡️ Easy integration with Docusaurus
-- ✅ Zero config required, works out of the box
-- ⚙️ Highly customizable with multiple options
-- 📝 Creates `llms.txt` with section links
-- 📖 Produces `llms-full.txt` with all content in one file
-- 📋 Document ordering control for custom sequence
-- 🔄 Path transformation to customize URL construction
-- 📚 Option to include blog posts
-- 🧩 Custom LLM files for specific documentation sections
-- 🧹 Cleans HTML and normalizes content for optimal LLM consumption
-- 📊 Provides statistics about generated documentation
 
 ## Implementation Details
 
@@ -390,5 +404,5 @@ Planned features for future versions:
 - Specific content tags for LLM-only sections
 
 ## License
+This project is licensed under the MIT License.
 
-MIT 
