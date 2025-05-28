@@ -9,8 +9,8 @@ const path = require('path');
 
 // Files and directories to remove from lib
 const toRemove = [
-  'types.js',
-  'types.d.ts',
+  // 'types.js',
+  // 'types.d.ts',
   'constants.js',
   'constants.d.ts',
   'helpers',

@@ -17,7 +17,8 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
   plugins: [
     [
       'docusaurus-plugin-llms',
-      {
+      /** @type {import("docusaurus-plugin-llms").PluginOptions} */
+      ({
         // Basic plugin options
         siteTitle: 'Enhanced Test Documentation',
         siteDescription: 'A comprehensive test suite for docusaurus-plugin-llms',
@@ -80,7 +81,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
             version: '1.1.0'
           }
         ]
-      }
+      })
     ],
   ],
 

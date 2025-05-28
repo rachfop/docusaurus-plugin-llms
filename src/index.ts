@@ -112,4 +112,6 @@ export default function docusaurusPluginLLMs(
       }
     },
   };
-} 
+}
+
+export type { PluginOptions };
