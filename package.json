@@ -1,7 +1,7 @@
 {
   "name": "docusaurus-plugin-llms",
-  "version": "0.1.3",
-  "description": "Docusaurus plugin for generating LLM-friendly documentation following the llmtxt.org standard",
+  "version": "0.1.4",
+  "description": "Docusaurus plugin for generating LLM-friendly documentation following the llmstxt.org standard",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
