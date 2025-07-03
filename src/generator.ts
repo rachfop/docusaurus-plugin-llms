@@ -60,7 +60,7 @@ ${doc.content}`;
 
 > ${fileDescription}${versionInfo}
 
-This file contains all documentation content in a single document following the llmtxt.org standard.
+This file contains all documentation content in a single document following the llmstxt.org standard.
 
 ${fullContentSections.join('\n\n---\n\n')}
 `;

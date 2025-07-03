@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Global version setting for all generated files
   - Individual version settings for custom LLM files
   - "Version: X.Y.Z" displayed under description in all generated files
-- Version information follows llmtxt.org standards for LLM-friendly documentation
+- Version information follows llmstxt.org standards for LLM-friendly documentation
 
 ### Benefits
 - Provides clear versioning for LLM documentation files

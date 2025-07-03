@@ -31,9 +31,14 @@ export async function processMarkdownFile(
     ignorePaths?: string[];
     addPaths?: string[];
   }
-): Promise<DocInfo> {
+): Promise<DocInfo | null> {
   const content = await readFile(filePath);
   const { data, content: markdownContent } = matter(content);
+  
+  // Skip draft files
+  if (data.draft === true) {
+    return null;
+  }
   
   const relativePath = path.relative(baseDir, filePath);
   // Convert to URL path format (replace backslashes with forward slashes on Windows)
@@ -226,7 +231,9 @@ export async function processFilesWithPatterns(
         pathPrefix,
         context.options.pathTransformation
       );
-      processedDocs.push(docInfo);
+      if (docInfo !== null) {
+        processedDocs.push(docInfo);
+      }
     } catch (err: any) {
       console.warn(`Error processing ${filePath}: ${err.message}`);
     }

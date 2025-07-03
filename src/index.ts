@@ -1,5 +1,5 @@
 /**
- * @fileoverview Docusaurus plugin that generates LLM-friendly documentation following the llmtxt.org standard.
+ * @fileoverview Docusaurus plugin that generates LLM-friendly documentation following the llmstxt.org standard.
  * 
  * This plugin creates two files:
  * - llms.txt: Contains links to all sections of documentation
@@ -15,7 +15,7 @@ import { collectDocFiles, generateStandardLLMFiles, generateCustomLLMFiles } fro
 
 /**
  * A Docusaurus plugin to generate LLM-friendly documentation following
- * the llmtxt.org standard
+ * the llmstxt.org standard
  * 
  * @param context - Docusaurus context
  * @param options - Plugin options

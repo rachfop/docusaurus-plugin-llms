@@ -345,7 +345,7 @@ The generated files will include the version information under the description:
 
 Version: 1.0.0
 
-This file contains all documentation content in a single document following the llmtxt.org standard.
+This file contains all documentation content in a single document following the llmstxt.org standard.
 ```
 
 ## How It Works

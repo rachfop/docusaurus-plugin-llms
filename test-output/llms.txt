@@ -2,7 +2,7 @@
 
 > Testing docusaurus-plugin-llms
 
-This file contains links to all documentation sections following the llmtxt.org standard.
+This file contains links to all documentation sections following the llmstxt.org standard.
 
 ## Table of Contents
 
