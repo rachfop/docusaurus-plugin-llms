@@ -14,6 +14,8 @@ A Docusaurus plugin for generating LLM-friendly documentation following the [llm
 - 📚 Option to include blog posts
 - 🧩 Custom LLM files for specific documentation sections
 - 🧹 Cleans HTML and normalizes content for optimal LLM consumption
+- 🚫 Optional import statement removal for cleaner MDX content
+- 🔄 Optional duplicate heading removal for concise output
 - 📊 Provides statistics about generated documentation
 
 ## Table of Contents
@@ -24,6 +26,8 @@ A Docusaurus plugin for generating LLM-friendly documentation following the [llm
 - [Path Transformation Examples](#path-transformation-examples)
 - [Document Ordering Examples](#document-ordering-examples)
 - [Custom LLM Files](#custom-llm-files)
+- [Content Cleaning Options](#content-cleaning-options)
+- [Best Practices](#best-practices)
 - [How It Works](#how-it-works)
 - [Implementation Details](#implementation-details)
 - [Testing](#testing)
@@ -67,6 +71,9 @@ module.exports = {
         title: 'My Project Documentation',
         description: 'Complete reference documentation for My Project',
         includeBlog: true,
+        // Content cleaning options
+        excludeImports: true,
+        removeDuplicateHeadings: true,
         // Control documentation order
         includeOrder: [
           'getting-started/*',
@@ -111,6 +118,7 @@ module.exports = {
 |----------------------------------|----------|-------------------|---------------------------------------------------------------|
 | `description`                    | string   | Site tagline      | Custom description to use in generated files                  |
 | `docsDir`                        | string   | `'docs'`          | Base directory for documentation files                        |
+| `excludeImports`                 | boolean  | `false`           | Remove import statements from generated content                |
 | `generateLLMsFullTxt`            | boolean  | `true`            | Whether to generate the full content file                     |
 | `generateLLMsTxt`                | boolean  | `true`            | Whether to generate the links file                            |
 | `ignoreFiles`                    | string[] | `[]`              | Array of glob patterns for files to ignore                    |
@@ -122,6 +130,7 @@ module.exports = {
 | `pathTransformation.addPaths`    | string[] | `[]`              | Path segments to add when constructing URLs                   |
 | `pathTransformation.ignorePaths` | string[] | `[]`              | Path segments to ignore when constructing URLs                |
 | `pathTransformation`             | object   | `undefined`       | Path transformation options for URL construction              |
+| `removeDuplicateHeadings`        | boolean  | `false`           | Remove redundant content that duplicates heading text         |
 | `title`                          | string   | Site title        | Custom title to use in generated files                        |
 | `version`                        | string   | `undefined`       | Global version to include in all generated files              |
 | `customLLMFiles`                 | array    | `[]`              | Array of custom LLM file configurations                       |
@@ -347,6 +356,214 @@ Version: 1.0.0
 
 This file contains all documentation content in a single document following the llmstxt.org standard.
 ```
+
+## Content Cleaning Options
+
+The plugin provides advanced content cleaning options to optimize your documentation for LLM consumption by removing unnecessary elements that can clutter the output.
+
+### Import Statement Removal (`excludeImports`)
+
+The `excludeImports` option removes JavaScript/TypeScript import statements from your MDX files, which are typically not useful for LLMs and can create noise in the generated documentation.
+
+#### When to Use
+- Your documentation uses MDX files with React components
+- You have many import statements for UI components
+- You want cleaner, more readable output for LLMs
+
+#### Example
+
+**Before** (with `excludeImports: false`):
+```markdown
+import ApiTabs from "@theme/ApiTabs";
+import DiscriminatorTabs from "@theme/DiscriminatorTabs";
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import SecuritySchemes from "@theme/ApiExplorer/SecuritySchemes";
+import MimeTabs from "@theme/MimeTabs";
+import ParamsItem from "@theme/ParamsItem";
+
+# Create User Account
+
+This endpoint creates a new user account...
+```
+
+**After** (with `excludeImports: true`):
+```markdown
+# Create User Account
+
+This endpoint creates a new user account...
+```
+
+#### Configuration
+```js
+{
+  excludeImports: true, // Remove all import statements
+}
+```
+
+### Duplicate Heading Removal (`removeDuplicateHeadings`)
+
+The `removeDuplicateHeadings` option removes redundant content that simply repeats the heading text immediately after the heading, which is common in auto-generated API documentation.
+
+#### When to Use
+- Your documentation has redundant content that repeats heading text
+- You have auto-generated API docs with minimal content
+- You want to eliminate repetitive patterns for cleaner LLM consumption
+
+#### Example
+
+**Before** (with `removeDuplicateHeadings: false`):
+```markdown
+# Create Deliverable
+
+Create Deliverable
+
+---
+
+# Update User Profile
+
+Update User Profile
+
+---
+```
+
+**After** (with `removeDuplicateHeadings: true`):
+```markdown
+# Create Deliverable
+
+---
+
+# Update User Profile
+
+---
+```
+
+#### Configuration
+```js
+{
+  removeDuplicateHeadings: true, // Remove redundant heading text
+}
+```
+
+### Combined Content Cleaning
+
+For optimal LLM-friendly output, you can combine both options:
+
+```js
+module.exports = {
+  plugins: [
+    [
+      'docusaurus-plugin-llms',
+      {
+        // Enable both content cleaning options for optimal LLM output
+        excludeImports: true,
+        removeDuplicateHeadings: true,
+        
+        // Other configuration options...
+        generateLLMsTxt: true,
+        generateLLMsFullTxt: true,
+        docsDir: 'docs',
+      },
+    ],
+  ],
+};
+```
+
+### Content Cleaning by Use Case
+
+#### Minimal Cleanup (Default Behavior)
+```js
+{
+  excludeImports: false,
+  removeDuplicateHeadings: false
+}
+```
+- Preserves all original content
+- Suitable when you want to keep import statements for reference
+- Good for documentation that doesn't have redundant patterns
+
+#### Import Cleanup Only
+```js
+{
+  excludeImports: true,
+  removeDuplicateHeadings: false
+}
+```
+- Removes import statements but keeps all content
+- Good for MDX-heavy documentation sites
+- Maintains content structure while removing technical imports
+
+#### Full Cleanup (Recommended for LLMs)
+```js
+{
+  excludeImports: true,
+  removeDuplicateHeadings: true
+}
+```
+- Maximum cleanup for LLM consumption
+- Removes both imports and redundant content
+- Recommended for API documentation and auto-generated content
+- Produces the cleanest, most concise output
+
+## Best Practices
+
+### For API Documentation
+If you have auto-generated API documentation (like OpenAPI docs), enable both cleaning options:
+
+```js
+{
+  excludeImports: true,           // Remove React component imports
+  removeDuplicateHeadings: true,  // Remove redundant API endpoint descriptions
+  generateLLMsFullTxt: true,      // Create comprehensive single file
+}
+```
+
+### For Tutorial Content
+For hand-written tutorials and guides, you might want selective cleaning:
+
+```js
+{
+  excludeImports: true,           // Remove any MDX imports
+  removeDuplicateHeadings: false, // Keep all content as written
+  includeOrder: [                // Organize content logically
+    'getting-started/*',
+    'tutorials/*',
+    'advanced/*'
+  ]
+}
+```
+
+### For Multi-Language Documentation
+Create separate clean files for different programming languages:
+
+```js
+{
+  excludeImports: true,
+  removeDuplicateHeadings: true,
+  customLLMFiles: [
+    {
+      filename: 'llms-python.txt',
+      includePatterns: ['**/python/**/*.md'],
+      fullContent: true,
+      title: 'Python Documentation'
+    },
+    {
+      filename: 'llms-javascript.txt', 
+      includePatterns: ['**/javascript/**/*.md'],
+      fullContent: true,
+      title: 'JavaScript Documentation'
+    }
+  ]
+}
+```
+
+### Performance Considerations
+- Content cleaning adds minimal processing overhead
+- Both options work on the content after HTML tag removal
+- No impact on your site's build performance
+- Cleaning happens only during the LLM file generation phase
+
+### Backward Compatibility
+Both options default to `false`, ensuring existing configurations continue to work without changes. Only users who explicitly enable these features will see the cleaned output.
 
 ## How It Works
 
