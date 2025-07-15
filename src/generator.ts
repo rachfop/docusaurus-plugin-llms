@@ -51,9 +51,23 @@ export async function generateLLMFile(
   if (includeFullContent) {
     // Generate full content file
     const fullContentSections = docs.map(doc => {
-      return `## ${doc.title}
+      // Check if content already starts with the same heading to avoid duplication
+      const trimmedContent = doc.content.trim();
+      const firstLine = trimmedContent.split('\n')[0];
+      
+      // Check if the first line is a heading that matches our title
+      const headingMatch = firstLine.match(/^#+\s+(.+)$/);
+      const firstHeadingText = headingMatch ? headingMatch[1].trim() : null;
+      
+      if (firstHeadingText === doc.title) {
+        // Content already has the same heading, don't add another one
+        return doc.content;
+      } else {
+        // Content doesn't have the same heading, add one
+        return `## ${doc.title}
 
 ${doc.content}`;
+      }
     });
 
     const llmFileContent = `# ${fileTitle}

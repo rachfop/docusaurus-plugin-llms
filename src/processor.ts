@@ -30,7 +30,9 @@ export async function processMarkdownFile(
   pathTransformation?: {
     ignorePaths?: string[];
     addPaths?: string[];
-  }
+  },
+  excludeImports: boolean = false,
+  removeDuplicateHeadings: boolean = false
 ): Promise<DocInfo | null> {
   const content = await readFile(filePath);
   const { data, content: markdownContent } = matter(content);
@@ -133,7 +135,7 @@ export async function processMarkdownFile(
   }
   
   // Clean and process content
-  const cleanedContent = cleanMarkdownContent(markdownContent);
+  const cleanedContent = cleanMarkdownContent(markdownContent, excludeImports, removeDuplicateHeadings);
   
   return {
     title,
@@ -229,7 +231,9 @@ export async function processFilesWithPatterns(
         baseDir, 
         siteUrl,
         pathPrefix,
-        context.options.pathTransformation
+        context.options.pathTransformation,
+        context.options.excludeImports || false,
+        context.options.removeDuplicateHeadings || false
       );
       if (docInfo !== null) {
         processedDocs.push(docInfo);
