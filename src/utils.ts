@@ -150,9 +150,16 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
         }
         
         // Check if the next non-empty line just repeats the heading text
-        if (i < lines.length && lines[i].trim() === headingText) {
-          // Skip this redundant line
-          i++;
+        // but is NOT itself a heading (to avoid removing valid headings of different levels)
+        if (i < lines.length) {
+          const nextLine = lines[i].trim();
+          const nextLineIsHeading = /^\s*#+\s+/.test(nextLine);
+          
+          // Only remove if it exactly matches the heading text AND is not a heading itself
+          if (nextLine === headingText && !nextLineIsHeading) {
+            // Skip this redundant line
+            i++;
+          }
         }
       } else {
         processedLines.push(currentLine);
