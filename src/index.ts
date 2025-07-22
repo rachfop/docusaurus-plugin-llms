@@ -40,6 +40,8 @@ export default function docusaurusPluginLLMs(
     includeOrder = [],
     includeUnmatchedLast = true,
     customLLMFiles = [],
+    excludeImports = false,
+    removeDuplicateHeadings = false,
   } = options;
 
   const {
@@ -77,6 +79,8 @@ export default function docusaurusPluginLLMs(
       includeOrder,
       includeUnmatchedLast,
       customLLMFiles,
+      excludeImports,
+      removeDuplicateHeadings,
     }
   };
 

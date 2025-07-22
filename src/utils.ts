@@ -101,11 +101,74 @@ export function extractTitle(data: any, content: string, filePath: string): stri
 /**
  * Clean markdown content for LLM consumption
  * @param content - Raw markdown content
+ * @param excludeImports - Whether to exclude import statements
+ * @param removeDuplicateHeadings - Whether to remove redundant content that duplicates heading text
  * @returns Cleaned content
  */
-export function cleanMarkdownContent(content: string): string {
+export function cleanMarkdownContent(content: string, excludeImports: boolean = false, removeDuplicateHeadings: boolean = false): string {
+  let cleaned = content;
+  
+  // Remove import statements if requested
+  if (excludeImports) {
+    // Remove ES6/React import statements
+    // This regex matches:
+    // - import ... from "...";
+    // - import ... from '...';
+    // - import { ... } from "...";
+    // - import * as ... from "...";
+    // - import "..."; (side-effect imports)
+    cleaned = cleaned.replace(/^\s*import\s+.*?;?\s*$/gm, '');
+  }
+  
   // Remove HTML tags
-  let cleaned = content.replace(/<[^>]*>/g, '');
+  cleaned = cleaned.replace(/<[^>]*>/g, '');
+  
+  // Remove redundant content that just repeats the heading (if requested)
+  if (removeDuplicateHeadings) {
+    // Split content into lines and process line by line
+    const lines = cleaned.split('\n');
+    const processedLines: string[] = [];
+    let i = 0;
+    
+    while (i < lines.length) {
+      const currentLine = lines[i];
+      
+      // Check if current line is a heading (accounting for leading whitespace)
+      const headingMatch = currentLine.match(/^\s*(#+)\s+(.+)$/);
+      if (headingMatch) {
+        const headingLevel = headingMatch[1];
+        const headingText = headingMatch[2].trim();
+        
+        processedLines.push(currentLine);
+        i++;
+        
+        // Look ahead for potential redundant content
+        // Skip empty lines
+        while (i < lines.length && lines[i].trim() === '') {
+          processedLines.push(lines[i]);
+          i++;
+        }
+        
+        // Check if the next non-empty line just repeats the heading text
+        // but is NOT itself a heading (to avoid removing valid headings of different levels)
+        if (i < lines.length) {
+          const nextLine = lines[i].trim();
+          const nextLineIsHeading = /^\s*#+\s+/.test(nextLine);
+          
+          // Only remove if it exactly matches the heading text AND is not a heading itself
+          if (nextLine === headingText && !nextLineIsHeading) {
+            // Skip this redundant line
+            i++;
+          }
+        }
+      } else {
+        processedLines.push(currentLine);
+        i++;
+      }
+    }
+    
+    cleaned = processedLines.join('\n');
+  }
   
   // Normalize whitespace
   cleaned = cleaned.replace(/\r\n/g, '\n')

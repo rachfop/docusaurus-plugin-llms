@@ -97,6 +97,12 @@ export interface PluginOptions {
   
   /** Global version for all generated LLM files */
   version?: string;
+  
+  /** Whether to exclude import statements from the generated content (default: false) */
+  excludeImports?: boolean;
+  
+  /** Whether to remove redundant content that duplicates heading text (default: false) */
+  removeDuplicateHeadings?: boolean;
 }
 
 /**
