@@ -103,6 +103,9 @@ export interface PluginOptions {
   
   /** Whether to remove redundant content that duplicates heading text (default: false) */
   removeDuplicateHeadings?: boolean;
+  
+  /** Whether to generate individual markdown files and link to them from llms.txt instead of original docs (default: false) */
+  generateMarkdownFiles?: boolean;
 }
 
 /**

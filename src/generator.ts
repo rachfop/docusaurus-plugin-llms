@@ -107,6 +107,75 @@ ${tocItems.join('\n')}
 }
 
 /**
+ * Generate individual markdown files for each document
+ * @param docs - Processed document information  
+ * @param outputDir - Directory to write the markdown files
+ * @param siteUrl - Base site URL
+ * @returns Updated docs with new URLs pointing to generated markdown files
+ */
+export async function generateIndividualMarkdownFiles(
+  docs: DocInfo[],
+  outputDir: string,
+  siteUrl: string
+): Promise<DocInfo[]> {
+  const updatedDocs: DocInfo[] = [];
+  
+  // Create a map to ensure unique filenames
+  const usedFilenames = new Set<string>();
+  
+  for (const doc of docs) {
+    // Generate a filename from the document title or URL path
+    let baseFilename = doc.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    
+    // Fallback to URL path if title generates empty filename
+    if (!baseFilename) {
+      baseFilename = doc.path
+        .replace(/^\/+|\/+$/g, '') // Remove leading/trailing slashes
+        .replace(/\//g, '-')
+        .replace(/[^a-z0-9-]/gi, '-')
+        .toLowerCase();
+    }
+    
+    // Ensure filename uniqueness
+    let filename = `${baseFilename}.md`;
+    let counter = 1;
+    while (usedFilenames.has(filename)) {
+      filename = `${baseFilename}-${counter}.md`;
+      counter++;
+    }
+    usedFilenames.add(filename);
+    
+    // Create markdown content following llmstxt.org standard
+    const markdownContent = `# ${doc.title}
+
+> ${doc.description}
+
+${doc.content}
+`;
+    
+    // Write the markdown file
+    const markdownPath = path.join(outputDir, filename);
+    await writeFile(markdownPath, markdownContent);
+    
+    // Create updated DocInfo with new URL pointing to the generated markdown file
+    const newUrl = `${siteUrl}/${filename}`;
+    
+    updatedDocs.push({
+      ...doc,
+      url: newUrl,
+      path: `/${filename}` // Update path to the new markdown file
+    });
+    
+    console.log(`Generated markdown file: ${filename}`);
+  }
+  
+  return updatedDocs;
+}
+
+/**
  * Generate standard LLM files (llms.txt and llms-full.txt)
  * @param context - Plugin context
  * @param allDocFiles - Array of all document files
@@ -117,6 +186,7 @@ export async function generateStandardLLMFiles(
 ): Promise<void> {
   const { 
     outDir, 
+    siteUrl,
     docTitle, 
     docDescription, 
     options 
@@ -129,7 +199,8 @@ export async function generateStandardLLMFiles(
     llmsFullTxtFilename = 'llms-full.txt',
     includeOrder = [],
     includeUnmatchedLast = true,
-    version
+    version,
+    generateMarkdownFiles = false
   } = options;
   
   if (!generateLLMsTxt && !generateLLMsFullTxt) {
@@ -137,7 +208,7 @@ export async function generateStandardLLMFiles(
   }
   
   // Process files for the standard outputs
-  const processedDocs = await processFilesWithPatterns(
+  let processedDocs = await processFilesWithPatterns(
     context,
     allDocFiles,
     [], // No specific include patterns - include all
@@ -147,6 +218,16 @@ export async function generateStandardLLMFiles(
   );
   
   console.log(`Processed ${processedDocs.length} documentation files for standard LLM files`);
+  
+  // Generate individual markdown files if requested
+  if (generateMarkdownFiles && processedDocs.length > 0) {
+    console.log('Generating individual markdown files...');
+    processedDocs = await generateIndividualMarkdownFiles(
+      processedDocs,
+      outDir,
+      siteUrl
+    );
+  }
   
   // Generate llms.txt
   if (generateLLMsTxt) {
@@ -184,8 +265,8 @@ export async function generateCustomLLMFiles(
   context: PluginContext,
   allDocFiles: string[]
 ): Promise<void> {
-  const { outDir, docTitle, docDescription, options } = context;
-  const { customLLMFiles = [], ignoreFiles = [] } = options;
+  const { outDir, siteUrl, docTitle, docDescription, options } = context;
+  const { customLLMFiles = [], ignoreFiles = [], generateMarkdownFiles = false } = options;
   
   if (customLLMFiles.length === 0) {
     return;
@@ -203,7 +284,7 @@ export async function generateCustomLLMFiles(
     }
     
     // Process files according to the custom configuration
-    const customDocs = await processFilesWithPatterns(
+    let customDocs = await processFilesWithPatterns(
       context,
       allDocFiles,
       customFile.includePatterns,
@@ -213,6 +294,16 @@ export async function generateCustomLLMFiles(
     );
     
     if (customDocs.length > 0) {
+      // Generate individual markdown files if requested
+      if (generateMarkdownFiles) {
+        console.log(`Generating individual markdown files for custom file: ${customFile.filename}...`);
+        customDocs = await generateIndividualMarkdownFiles(
+          customDocs,
+          outDir,
+          siteUrl
+        );
+      }
+      
       // Use custom title/description or fall back to defaults
       const customTitle = customFile.title || docTitle;
       const customDescription = customFile.description || docDescription;

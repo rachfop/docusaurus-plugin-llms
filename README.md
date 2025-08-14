@@ -74,6 +74,8 @@ module.exports = {
         // Content cleaning options
         excludeImports: true,
         removeDuplicateHeadings: true,
+        // Generate individual markdown files following llmstxt.org specification
+        generateMarkdownFiles: true,
         // Control documentation order
         includeOrder: [
           'getting-started/*',
@@ -134,6 +136,7 @@ module.exports = {
 | `title`                          | string   | Site title        | Custom title to use in generated files                        |
 | `version`                        | string   | `undefined`       | Global version to include in all generated files              |
 | `customLLMFiles`                 | array    | `[]`              | Array of custom LLM file configurations                       |
+| `generateMarkdownFiles`          | boolean  | `false`           | Generate individual markdown files and link to them from llms.txt |
 
 ### Path Transformation Examples
 
@@ -564,6 +567,155 @@ Create separate clean files for different programming languages:
 
 ### Backward Compatibility
 Both options default to `false`, ensuring existing configurations continue to work without changes. Only users who explicitly enable these features will see the cleaned output.
+
+## Markdown File Generation (`generateMarkdownFiles`)
+
+The `generateMarkdownFiles` option enables the plugin to generate individual markdown files for each documentation page, following the [llmstxt.org specification](https://llmstxt.org/) more closely. When enabled, this creates separate `.md` files for LLM consumption instead of linking to your original documentation pages.
+
+### How It Works
+
+**Default Behavior (generateMarkdownFiles: false)**:
+- Generates `llms.txt` with links to your original documentation pages
+- Example: `[Getting Started](https://yoursite.com/docs/getting-started)`
+
+**With generateMarkdownFiles: true**:
+- Generates individual markdown files (e.g., `getting-started.md`, `api-reference.md`)
+- Generates `llms.txt` with links to these generated markdown files  
+- Example: `[Getting Started](https://yoursite.com/getting-started.md)`
+
+### Key Benefits
+
+1. **Standards Compliance**: Follows the llmstxt.org specification by providing individual markdown files rather than linking to HTML pages
+2. **LLM Optimization**: Generated files contain clean, processed markdown optimized for LLM consumption
+3. **Self-Contained**: All necessary content is available in markdown format without requiring HTML parsing
+4. **Flexible Naming**: Automatically generates readable filenames based on document titles
+
+### Configuration Example
+
+```js
+module.exports = {
+  plugins: [
+    [
+      'docusaurus-plugin-llms',
+      {
+        generateMarkdownFiles: true,  // Enable individual markdown file generation
+        generateLLMsTxt: true,        // Generate index file linking to markdown files
+        excludeImports: true,         // Clean up import statements  
+        removeDuplicateHeadings: true, // Remove redundant content
+        
+        // Other options work normally
+        includeOrder: ['getting-started/*', 'guides/*', 'api/*'],
+        pathTransformation: {
+          ignorePaths: ['docs']
+        }
+      }
+    ]
+  ]
+}
+```
+
+### Generated File Structure
+
+With `generateMarkdownFiles: true`, your output directory will contain:
+
+```
+build/
+├── llms.txt              # Index file with links to generated markdown files
+├── llms-full.txt         # Full content file (if enabled)
+├── getting-started.md    # Generated from your getting started docs
+├── api-reference.md      # Generated from your API documentation  
+├── user-guide.md         # Generated from your user guides
+└── ...                   # Other generated markdown files
+```
+
+### Filename Generation
+
+The plugin generates readable filenames using this priority:
+
+1. **Document Title**: Converted to kebab-case (e.g., "Getting Started" → `getting-started.md`)
+2. **URL Path**: If title is unavailable, uses the document's URL path
+3. **Uniqueness**: Automatically appends numbers for duplicate names (e.g., `getting-started-1.md`)
+
+### Content Processing
+
+Generated markdown files include:
+
+- **Document title** as H1 heading
+- **Document description** as blockquote (following llmstxt.org format)
+- **Processed content** with optional cleaning (import removal, duplicate heading removal)
+- **Proper markdown formatting** optimized for LLM consumption
+
+### Example Generated File
+
+Input documentation about "API Authentication" would generate `api-authentication.md`:
+
+```markdown
+# API Authentication
+
+> Learn how to authenticate with our API using various methods
+
+## Overview
+
+This guide covers all authentication methods supported by our API...
+
+## API Key Authentication
+
+Use your API key to authenticate requests:
+
+```javascript
+const client = new Client({ apiKey: 'your-key' });
+```
+```
+
+### Use Cases
+
+#### Standards-Compliant Documentation
+Perfect for projects that want to follow the llmstxt.org specification exactly:
+
+```js
+{
+  generateMarkdownFiles: true,
+  generateLLMsTxt: true,
+  generateLLMsFullTxt: false  // Optional: disable if only individual files are needed
+}
+```
+
+#### LLM Training Data
+Generate clean markdown files for LLM training or fine-tuning:
+
+```js
+{
+  generateMarkdownFiles: true,
+  excludeImports: true,
+  removeDuplicateHeadings: true,
+  customLLMFiles: [
+    {
+      filename: 'training-data.txt',
+      includePatterns: ['**/*.md'],
+      fullContent: true
+    }
+  ]
+}
+```
+
+#### Multi-Format Output
+Generate both original links and markdown files for different use cases:
+
+```js
+{
+  generateLLMsTxt: true,      // Links to original pages  
+  generateMarkdownFiles: true, // Also generate individual markdown files
+  llmsTxtFilename: 'llms-original.txt',  // Original links file
+  // The markdown-linked version will be in llms.txt
+}
+```
+
+### Compatibility
+
+- **Fully backward compatible**: Defaults to `false`, existing configurations unchanged
+- **Works with all existing options**: Path transformations, custom LLM files, content cleaning
+- **Respects ordering**: Generated files maintain the same order as configured with `includeOrder`
+- **Custom LLM files**: Also support markdown file generation when the global option is enabled
 
 ## How It Works
 
