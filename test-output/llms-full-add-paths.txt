@@ -4,7 +4,8 @@
 
 This file contains all documentation content in a single document following the llmstxt.org standard.
 
-# Core API Reference
+## Core API Reference
+
 
 This document provides detailed information about all core API methods and their parameters.
 
@@ -71,13 +72,15 @@ const data = await api.fetchData('users', { limit: 10 });
 
 ---
 
-# API Overview
+## API Overview
+
 
 This is the API overview.
 
 ---
 
-# Plugins System
+## Plugins System
+
 
 The plugin architecture allows you to extend the core functionality with custom modules.
 
@@ -343,7 +346,8 @@ Common issues and solutions:
 
 ---
 
-# Changelog
+## Changelog
+
 
 All notable changes to this project will be documented in this file.
 
@@ -547,7 +551,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-# Authentication Examples
+## Authentication Examples
+
 
 This page provides examples of how to authenticate with our API in various programming languages.
 
@@ -897,7 +902,8 @@ fetchWithErrorHandling();
 
 ---
 
-# Frequently Asked Questions
+## Frequently Asked Questions
+
 
 Find answers to commonly asked questions about our product.
 
@@ -1044,13 +1050,15 @@ To report a bug:
 
 ---
 
-# Getting Started
+## Getting Started
+
 
 This is a getting started guide.
 
 ---
 
-# Advanced Usage Guide
+## Advanced Usage Guide
+
 
 This guide covers advanced usage scenarios and configuration options for experienced users.
 
@@ -1249,7 +1257,8 @@ Welcome to the test docs.
 
 ---
 
-# Quick Start Guide
+## Quick Start Guide
+
 
 This guide will help you set up and run your first application in less than 5 minutes.
 
