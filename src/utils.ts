@@ -120,8 +120,10 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
     cleaned = cleaned.replace(/^\s*import\s+.*?;?\s*$/gm, '');
   }
   
-  // Remove HTML tags
-  cleaned = cleaned.replace(/<[^>]*>/g, '');
+  // Remove HTML tags, but preserve XML content in code blocks
+  // We need to be selective to avoid removing XML content from code blocks
+  // This regex targets common HTML tags while being more conservative about XML
+  cleaned = cleaned.replace(/<\/?(?:div|span|p|br|hr|img|a|strong|em|b|i|u|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\b[^>]*>/gi, '');
   
   // Remove redundant content that just repeats the heading (if requested)
   if (removeDuplicateHeadings) {

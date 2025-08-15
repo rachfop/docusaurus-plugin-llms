@@ -7,6 +7,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const matter = require('gray-matter');
+const { cleanMarkdownContent } = require('../lib/utils');
 
 // Simplified version of the processor's description extraction logic for testing
 function extractAndCleanDescription(content) {
@@ -335,4 +336,41 @@ function runTests() {
   }
 }
 
-runTests(); 
+// XML Preservation Tests
+function runXmlPreservationTests() {
+  console.log('\n=== XML Preservation Tests ===\n');
+  
+  const xmlTests = [
+    {
+      name: 'Preserve XML plist tags',
+      input: '```xml\n<dict><key>test</key><string>value</string></dict>\n```',
+      shouldHave: ['<dict>', '<key>test</key>', '<string>value</string>'],
+      shouldNotHave: []
+    },
+    {
+      name: 'Remove HTML but keep XML',
+      input: 'Text with <strong>bold</strong>\n```xml\n<plist><dict></dict></plist>\n```',
+      shouldHave: ['<plist>', '<dict>'],
+      shouldNotHave: ['<strong>']
+    }
+  ];
+  
+  let xmlPassCount = 0;
+  xmlTests.forEach((test, i) => {
+    const cleaned = cleanMarkdownContent(test.input);
+    const hasAll = test.shouldHave.every(tag => cleaned.includes(tag));
+    const hasNone = test.shouldNotHave.every(tag => !cleaned.includes(tag));
+    
+    if (hasAll && hasNone) {
+      console.log(`✅ XML Test ${i + 1}: ${test.name}`);
+      xmlPassCount++;
+    } else {
+      console.log(`❌ XML Test ${i + 1}: ${test.name}`);
+    }
+  });
+  
+  console.log(`\nXML Tests: ${xmlPassCount}/${xmlTests.length} passed\n`);
+}
+
+runTests();
+runXmlPreservationTests(); 
