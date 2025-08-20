@@ -49,7 +49,8 @@ export async function generateLLMFile(
   const versionInfo = version ? `\n\nVersion: ${version}` : '';
   
   if (includeFullContent) {
-    // Generate full content file
+    // Generate full content file with header deduplication
+    const usedHeaders = new Set<string>();
     const fullContentSections = docs.map(doc => {
       // Check if content already starts with the same heading to avoid duplication
       const trimmedContent = doc.content.trim();
@@ -59,12 +60,47 @@ export async function generateLLMFile(
       const headingMatch = firstLine.match(/^#+\s+(.+)$/);
       const firstHeadingText = headingMatch ? headingMatch[1].trim() : null;
       
+      // Determine the header text to use (original title or make it unique)
+      let headerText = doc.title;
+      let uniqueHeader = headerText;
+      let counter = 1;
+      
+      // If this header has been used before, make it unique by adding a suffix
+      while (usedHeaders.has(uniqueHeader.toLowerCase())) {
+        counter++;
+        // Try to make it more descriptive by adding the file path info if available
+        if (doc.path && counter === 2) {
+          const pathParts = doc.path.split('/');
+          const folderName = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
+          if (folderName) {
+            uniqueHeader = `${headerText} (${folderName.charAt(0).toUpperCase() + folderName.slice(1)})`;
+          } else {
+            uniqueHeader = `${headerText} (${counter})`;
+          }
+        } else {
+          uniqueHeader = `${headerText} (${counter})`;
+        }
+      }
+      
+      usedHeaders.add(uniqueHeader.toLowerCase());
+      
       if (firstHeadingText === doc.title) {
-        // Content already has the same heading, don't add another one
-        return doc.content;
+        // Content already has the same heading, replace it with our unique header if needed
+        if (uniqueHeader !== doc.title) {
+          const restOfContent = trimmedContent.split('\n').slice(1).join('\n');
+          return `## ${uniqueHeader}
+
+${restOfContent}`;
+        } else {
+          // Replace the existing H1 with H2 to comply with llmstxt.org standard
+          const restOfContent = trimmedContent.split('\n').slice(1).join('\n');
+          return `## ${uniqueHeader}
+
+${restOfContent}`;
+        }
       } else {
-        // Content doesn't have the same heading, add one
-        return `## ${doc.title}
+        // Content doesn't have the same heading, add our unique H2 header
+        return `## ${uniqueHeader}
 
 ${doc.content}`;
       }
