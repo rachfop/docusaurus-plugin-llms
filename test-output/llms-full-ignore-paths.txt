@@ -120,7 +120,7 @@ This file contains essential metadata:
   "displayName": "My Awesome Plugin",
   "description": "Adds awesome features to the platform",
   "main": "index.js",
-  "author": "Your Name ",
+  "author": "Your Name <your.email@example.com>",
   "license": "MIT",
   "compatibleWith": ">=2.5.0",
   "dependencies": {
@@ -999,7 +999,7 @@ Yes, the SDK can be used in both Node.js and browser environments. However, for 
 2. Set up a proxy service for secure API communication
 3. Use our specific browser bundle:
    ```html
-   
+   <script src="https://cdn.example.com/sdk/browser.min.js"></script>
    ```
 
 ### How do I handle webhook events?
@@ -1076,7 +1076,7 @@ import { AuthProvider, AuthResponse } from '@example/sdk';
 export class CustomAuthProvider implements AuthProvider {
   constructor(private readonly options: CustomAuthOptions) {}
   
-  async getAuthToken(): Promise {
+  async getAuthToken(): Promise<AuthResponse> {
     // Implement your custom authentication logic
     // For example, integrating with your SSO solution
     
@@ -1086,7 +1086,7 @@ export class CustomAuthProvider implements AuthProvider {
     };
   }
   
-  async refreshToken(expiredToken: string): Promise {
+  async refreshToken(expiredToken: string): Promise<AuthResponse> {
     // Implement your token refresh logic
     
     return {
@@ -1167,7 +1167,7 @@ For scenarios where you need to handle rate limiting gracefully, implement a cus
 import { RetryStrategy, RetryContext } from '@example/sdk';
 
 export class CustomRetryStrategy implements RetryStrategy {
-  async shouldRetry(context: RetryContext): Promise {
+  async shouldRetry(context: RetryContext): Promise<boolean> {
     // Only retry rate limit errors (429)
     if (context.error.status !== 429) {
       return false;

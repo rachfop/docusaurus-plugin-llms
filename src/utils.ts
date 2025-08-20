@@ -5,6 +5,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { minimatch } from 'minimatch';
+import matter from 'gray-matter';
 import { PluginOptions } from './types';
 
 /**
@@ -66,7 +67,10 @@ export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatt
       const subDirFiles = await readMarkdownFiles(fullPath, baseDir, ignorePatterns);
       files.push(...subDirFiles);
     } else if (entry.name.endsWith('.md') || entry.name.endsWith('.mdx')) {
-      files.push(fullPath);
+      // Skip partial files (those starting with underscore)
+      if (!entry.name.startsWith('_')) {
+        files.push(fullPath);
+      }
     }
   }
 
@@ -96,6 +100,65 @@ export function extractTitle(data: any, content: string, filePath: string): stri
   return path.basename(filePath, path.extname(filePath))
     .replace(/-/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Resolve and inline partial imports in markdown content
+ * @param content - The markdown content with import statements
+ * @param filePath - The path of the file containing the imports
+ * @returns Content with partials resolved
+ */
+export async function resolvePartialImports(content: string, filePath: string): Promise<string> {
+  let resolved = content;
+  
+  // Match import statements for partials and JSX usage
+  // Pattern 1: import PartialName from './_partial.mdx'
+  // Pattern 2: import { PartialName } from './_partial.mdx'
+  const importRegex = /^\s*import\s+(?:(\w+)|{\s*(\w+)\s*})\s+from\s+['"]([^'"]+_[^'"]+\.mdx?)['"];?\s*$/gm;
+  const imports = new Map<string, string>();
+  
+  // First pass: collect all imports
+  let match;
+  while ((match = importRegex.exec(content)) !== null) {
+    const componentName = match[1] || match[2];
+    const importPath = match[3];
+    
+    // Only process imports for partial files (containing underscore)
+    if (importPath.includes('_')) {
+      imports.set(componentName, importPath);
+    }
+  }
+  
+  // Resolve each partial import
+  for (const [componentName, importPath] of imports) {
+    try {
+      // Resolve the partial file path relative to the current file
+      const dir = path.dirname(filePath);
+      const partialPath = path.resolve(dir, importPath);
+      
+      // Read the partial file
+      const partialContent = await readFile(partialPath);
+      const { content: partialMarkdown } = matter(partialContent);
+      
+      // Remove the import statement
+      resolved = resolved.replace(
+        new RegExp(`^\\s*import\\s+(?:${componentName}|{\\s*${componentName}\\s*})\\s+from\\s+['"]${importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"];?\\s*$`, 'gm'),
+        ''
+      );
+      
+      // Replace JSX usage with the partial content
+      // Handle both self-closing tags and tags with content
+      // <PartialName /> or <PartialName></PartialName> or <PartialName>...</PartialName>
+      const jsxRegex = new RegExp(`<${componentName}\\s*(?:[^>]*?)(?:/>|>[^<]*</${componentName}>)`, 'g');
+      resolved = resolved.replace(jsxRegex, partialMarkdown.trim());
+      
+    } catch (error) {
+      console.warn(`Failed to resolve partial import "${importPath}" in ${filePath}: ${error}`);
+      // Leave the import and usage as-is if we can't resolve it
+    }
+  }
+  
+  return resolved;
 }
 
 /**

@@ -36,6 +36,7 @@ function cleanDescriptionForToc(description: string): string {
  * @param fileDescription - Description for the file
  * @param includeFullContent - Whether to include full content or just links
  * @param version - Version of the file
+ * @param customRootContent - Optional custom content to include at the root level
  */
 export async function generateLLMFile(
   docs: DocInfo[],
@@ -43,7 +44,8 @@ export async function generateLLMFile(
   fileTitle: string,
   fileDescription: string,
   includeFullContent: boolean,
-  version?: string
+  version?: string,
+  customRootContent?: string
 ): Promise<void> {
   console.log(`Generating file: ${outputPath}, version: ${version || 'undefined'}`);
   const versionInfo = version ? `\n\nVersion: ${version}` : '';
@@ -106,11 +108,14 @@ ${doc.content}`;
       }
     });
 
+    // Use custom root content or default message
+    const rootContent = customRootContent || 'This file contains all documentation content in a single document following the llmstxt.org standard.';
+    
     const llmFileContent = `# ${fileTitle}
 
 > ${fileDescription}${versionInfo}
 
-This file contains all documentation content in a single document following the llmstxt.org standard.
+${rootContent}
 
 ${fullContentSections.join('\n\n---\n\n')}
 `;
@@ -125,11 +130,14 @@ ${fullContentSections.join('\n\n---\n\n')}
       return `- [${doc.title}](${doc.url})${cleanedDescription ? `: ${cleanedDescription}` : ''}`;
     });
 
+    // Use custom root content or default message
+    const rootContent = customRootContent || 'This file contains links to documentation sections following the llmstxt.org standard.';
+    
     const llmFileContent = `# ${fileTitle}
 
 > ${fileDescription}${versionInfo}
 
-This file contains links to documentation sections following the llmstxt.org standard.
+${rootContent}
 
 ## Table of Contents
 
@@ -236,7 +244,9 @@ export async function generateStandardLLMFiles(
     includeOrder = [],
     includeUnmatchedLast = true,
     version,
-    generateMarkdownFiles = false
+    generateMarkdownFiles = false,
+    rootContent,
+    fullRootContent
   } = options;
   
   if (!generateLLMsTxt && !generateLLMsFullTxt) {
@@ -274,7 +284,8 @@ export async function generateStandardLLMFiles(
       docTitle,
       docDescription,
       false, // links only
-      version
+      version,
+      rootContent
     );
   }
 
@@ -287,7 +298,8 @@ export async function generateStandardLLMFiles(
       docTitle,
       docDescription,
       true, // full content
-      version
+      version,
+      fullRootContent
     );
   }
 }
@@ -352,7 +364,8 @@ export async function generateCustomLLMFiles(
         customTitle,
         customDescription,
         customFile.fullContent,
-        customFile.version
+        customFile.version,
+        customFile.rootContent
       );
       
       console.log(`Generated custom LLM file: ${customFile.filename} with ${customDocs.length} documents`);

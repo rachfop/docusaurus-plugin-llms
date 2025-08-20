@@ -137,6 +137,76 @@ module.exports = {
 | `version`                        | string   | `undefined`       | Global version to include in all generated files              |
 | `customLLMFiles`                 | array    | `[]`              | Array of custom LLM file configurations                       |
 | `generateMarkdownFiles`          | boolean  | `false`           | Generate individual markdown files and link to them from llms.txt |
+| `rootContent`                    | string   | (see below)       | Custom content to include at the root level of llms.txt       |
+| `fullRootContent`                | string   | (see below)       | Custom content to include at the root level of llms-full.txt  |
+
+### Custom Root Content
+
+The `rootContent` and `fullRootContent` options allow you to customize the introductory content that appears in your generated files, following the llmstxt.org standard which allows "zero or more markdown sections (e.g. paragraphs, lists, etc) of any type except headings" after the title and description.
+
+#### Default Content
+
+If not specified, the plugin uses these defaults:
+- **llms.txt**: "This file contains links to documentation sections following the llmstxt.org standard."
+- **llms-full.txt**: "This file contains all documentation content in a single document following the llmstxt.org standard."
+
+#### Custom Content Examples
+
+**Example 1**: Add project-specific context
+```js
+rootContent: `Welcome to the MyProject documentation.
+
+This documentation covers:
+- Installation and setup
+- API reference
+- Advanced usage guides
+- Troubleshooting
+
+For the latest updates, visit https://myproject.dev/changelog`
+```
+
+**Example 2**: Add technical specifications
+```js
+fullRootContent: `Complete offline documentation bundle for MyProject v2.0.
+
+**Format**: Markdown with code examples
+**Languages**: JavaScript, TypeScript, Python
+**Last Generated**: ${new Date().toISOString()}
+
+> Note: Some features require authentication tokens.
+> See the Authentication section for details.`
+```
+
+**Example 3**: Add navigation hints for AI assistants
+```js
+rootContent: `This documentation is optimized for AI assistants and LLMs.
+
+Quick navigation:
+- For API endpoints, search for "API:"
+- For code examples, search for "Example:"
+- For configuration, search for "Config:"
+
+All code examples are MIT licensed unless otherwise noted.`
+```
+
+#### Custom Root Content for Custom LLM Files
+
+You can also specify root content for each custom LLM file:
+
+```js
+customLLMFiles: [
+  {
+    filename: 'llms-api.txt',
+    includePatterns: ['api/**/*.md'],
+    fullContent: true,
+    title: 'API Documentation',
+    rootContent: `Complete API reference for all REST endpoints.
+    
+Authentication required for all endpoints except /health.
+Base URL: https://api.example.com/v2`
+  }
+]
+```
 
 ### Path Transformation Examples
 
@@ -205,6 +275,46 @@ includeOrder: [
 ]
 ```
 Result: Installation and quick-start guides appear first, followed by other getting-started files, then API documentation in a specific order.
+
+### Docusaurus Partials Support
+
+The plugin fully supports [Docusaurus partials](https://docusaurus.io/docs/markdown-features/react#importing-markdown) - reusable MDX content files that can be imported into other documents.
+
+#### How It Works
+
+1. **Partial files** (MDX files starting with underscore, e.g., `_shared-config.mdx`) are automatically excluded from the generated `llms*.txt` files
+2. **Import statements** for partials are resolved and the content is inlined when processing documents
+
+#### Example
+
+Given a partial file `_api-config.mdx`:
+```mdx
+## API Configuration
+
+Set your API endpoint:
+```javascript
+const API_URL = 'https://api.example.com';
+```
+```
+
+And a document that imports it:
+```mdx
+---
+title: Getting Started
+---
+
+# Getting Started Guide
+
+import ApiConfig from './_api-config.mdx';
+
+<ApiConfig />
+
+Now you can make API calls...
+```
+
+The plugin will:
+- Exclude `_api-config.mdx` from `llms.txt`
+- Replace the import and `<ApiConfig />` with the actual content in the processed document
 
 ### Custom LLM Files
 

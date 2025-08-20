@@ -2,7 +2,7 @@
  * Type definitions for the docusaurus-plugin-llms plugin
  */
 
-import type { LoadContext } from '@docusaurus/types';
+import type { LoadContext, RouteConfig } from '@docusaurus/types';
 
 /**
  * Interface for processed document information
@@ -45,6 +45,9 @@ export interface CustomLLMFile {
   
   /** Version information for this LLM file */
   version?: string;
+  
+  /** Custom content to include at the root level (after title/description) */
+  rootContent?: string;
 }
 
 /**
@@ -106,6 +109,12 @@ export interface PluginOptions {
   
   /** Whether to generate individual markdown files and link to them from llms.txt instead of original docs (default: false) */
   generateMarkdownFiles?: boolean;
+  
+  /** Custom content to include at the root level of llms.txt (after title/description, before TOC) */
+  rootContent?: string;
+  
+  /** Custom content to include at the root level of llms-full.txt (after title/description, before content sections) */
+  fullRootContent?: string;
 }
 
 /**
@@ -119,4 +128,7 @@ export interface PluginContext {
   docTitle: string;
   docDescription: string;
   options: PluginOptions;
+  routesPaths?: string[];
+  routes?: RouteConfig[];
+  routeMap?: Map<string, string>;
 } 

@@ -10,7 +10,8 @@ import {
   readFile, 
   extractTitle, 
   cleanMarkdownContent, 
-  applyPathTransformations 
+  applyPathTransformations,
+  resolvePartialImports
 } from './utils';
 
 /**
@@ -32,7 +33,8 @@ export async function processMarkdownFile(
     addPaths?: string[];
   },
   excludeImports: boolean = false,
-  removeDuplicateHeadings: boolean = false
+  removeDuplicateHeadings: boolean = false,
+  resolvedUrl?: string
 ): Promise<DocInfo | null> {
   const content = await readFile(filePath);
   const { data, content: markdownContent } = matter(content);
@@ -42,36 +44,47 @@ export async function processMarkdownFile(
     return null;
   }
   
+  // Resolve partial imports before processing
+  const resolvedContent = await resolvePartialImports(markdownContent, filePath);
+  
   const relativePath = path.relative(baseDir, filePath);
   // Convert to URL path format (replace backslashes with forward slashes on Windows)
   const normalizedPath = relativePath.replace(/\\/g, '/');
   
-  // Convert .md extension to appropriate path
-  const linkPathBase = normalizedPath.replace(/\.mdx?$/, '');
+  let fullUrl: string;
   
-  // Handle index files specially
-  const linkPath = linkPathBase.endsWith('index') 
-    ? linkPathBase.replace(/\/index$/, '') 
-    : linkPathBase;
-  
-  // Apply path transformations to the link path
-  const transformedLinkPath = applyPathTransformations(linkPath, pathTransformation);
-  
-  // Also apply path transformations to the pathPrefix if it's not empty
-  // This allows removing 'docs' from the path when specified in ignorePaths
-  let transformedPathPrefix = pathPrefix;
-  if (pathPrefix && pathTransformation?.ignorePaths?.includes(pathPrefix)) {
-    transformedPathPrefix = '';
+  if (resolvedUrl) {
+    // Use the actual resolved URL from Docusaurus if provided
+    fullUrl = new URL(resolvedUrl, siteUrl).toString();
+  } else {
+    // Fallback to the old path construction method
+    // Convert .md extension to appropriate path
+    const linkPathBase = normalizedPath.replace(/\.mdx?$/, '');
+    
+    // Handle index files specially
+    const linkPath = linkPathBase.endsWith('index') 
+      ? linkPathBase.replace(/\/index$/, '') 
+      : linkPathBase;
+    
+    // Apply path transformations to the link path
+    const transformedLinkPath = applyPathTransformations(linkPath, pathTransformation);
+    
+    // Also apply path transformations to the pathPrefix if it's not empty
+    // This allows removing 'docs' from the path when specified in ignorePaths
+    let transformedPathPrefix = pathPrefix;
+    if (pathPrefix && pathTransformation?.ignorePaths?.includes(pathPrefix)) {
+      transformedPathPrefix = '';
+    }
+    
+    // Generate full URL with transformed path and path prefix
+    fullUrl = new URL(
+      `${transformedPathPrefix ? `${transformedPathPrefix}/` : ''}${transformedLinkPath}`, 
+      siteUrl
+    ).toString();
   }
   
-  // Generate full URL with transformed path and path prefix
-  const fullUrl = new URL(
-    `${transformedPathPrefix ? `${transformedPathPrefix}/` : ''}${transformedLinkPath}`, 
-    siteUrl
-  ).toString();
-  
   // Extract title
-  const title = extractTitle(data, markdownContent, filePath);
+  const title = extractTitle(data, resolvedContent, filePath);
   
   // Get description from frontmatter or first paragraph
   let description = '';
@@ -81,7 +94,7 @@ export async function processMarkdownFile(
     description = data.description;
   } else {
     // Second priority: Find the first non-heading paragraph
-    const paragraphs = markdownContent.split('\n\n');
+    const paragraphs = resolvedContent.split('\n\n');
     for (const para of paragraphs) {
       const trimmedPara = para.trim();
       // Skip empty paragraphs and headings
@@ -93,7 +106,7 @@ export async function processMarkdownFile(
     
     // Third priority: If still no description, use the first heading's content
     if (!description) {
-      const firstHeadingMatch = markdownContent.match(/^#\s+(.*?)$/m);
+      const firstHeadingMatch = resolvedContent.match(/^#\s+(.*?)$/m);
       if (firstHeadingMatch && firstHeadingMatch[1]) {
         description = firstHeadingMatch[1].trim();
       }
@@ -134,8 +147,8 @@ export async function processMarkdownFile(
     }
   }
   
-  // Clean and process content
-  const cleanedContent = cleanMarkdownContent(markdownContent, excludeImports, removeDuplicateHeadings);
+  // Clean and process content (now with partials already resolved)
+  const cleanedContent = cleanMarkdownContent(resolvedContent, excludeImports, removeDuplicateHeadings);
   
   return {
     title,
@@ -226,6 +239,73 @@ export async function processFilesWithPatterns(
       const baseDir = isBlogFile ? path.join(siteDir, 'blog') : path.join(siteDir, docsDir);
       const pathPrefix = isBlogFile ? 'blog' : 'docs';
       
+      // Try to find the resolved URL for this file from the route map
+      let resolvedUrl: string | undefined;
+      if (context.routeMap) {
+        // Convert file path to a potential route path
+        const relativePath = path.relative(baseDir, filePath)
+          .replace(/\\/g, '/')
+          .replace(/\.mdx?$/, '')
+          .replace(/\/index$/, '');
+        
+        // Function to remove numbered prefixes from path segments
+        const removeNumberedPrefixes = (path: string): string => {
+          return path.split('/').map(segment => {
+            // Remove numbered prefixes like "01-", "1-", "001-" from each segment
+            return segment.replace(/^\d+-/, '');
+          }).join('/');
+        };
+        
+        // Check various possible route patterns
+        const cleanPath = removeNumberedPrefixes(relativePath);
+        const possiblePaths = [
+          `/${pathPrefix}/${cleanPath}`,
+          `/${cleanPath}`,
+          `/${pathPrefix}/${relativePath}`, // Try with original path
+          `/${relativePath}`, // Try without prefix
+        ];
+        
+        // Also handle nested folder structures with numbered prefixes
+        const segments = relativePath.split('/');
+        if (segments.length > 1) {
+          // Try removing numbered prefixes from different levels
+          for (let i = 0; i < segments.length; i++) {
+            const modifiedSegments = [...segments];
+            modifiedSegments[i] = modifiedSegments[i].replace(/^\d+-/, '');
+            const modifiedPath = modifiedSegments.join('/');
+            possiblePaths.push(`/${pathPrefix}/${modifiedPath}`);
+            possiblePaths.push(`/${modifiedPath}`);
+          }
+        }
+        
+        // Try to find a match in the route map
+        for (const possiblePath of possiblePaths) {
+          if (context.routeMap.has(possiblePath)) {
+            resolvedUrl = context.routeMap.get(possiblePath);
+            break;
+          }
+        }
+        
+        // If still not found, try to find the best match using the routesPaths array
+        if (!resolvedUrl && context.routesPaths) {
+          const normalizedCleanPath = cleanPath.toLowerCase();
+          const matchingRoute = context.routesPaths.find(routePath => {
+            const normalizedRoute = routePath.toLowerCase();
+            return normalizedRoute.endsWith(`/${normalizedCleanPath}`) || 
+                   normalizedRoute === `/${pathPrefix}/${normalizedCleanPath}` ||
+                   normalizedRoute === `/${normalizedCleanPath}`;
+          });
+          if (matchingRoute) {
+            resolvedUrl = matchingRoute;
+          }
+        }
+        
+        // Log when we successfully resolve a URL using Docusaurus routes
+        if (resolvedUrl && resolvedUrl !== `/${pathPrefix}/${relativePath}`) {
+          console.log(`Resolved URL for ${path.basename(filePath)}: ${resolvedUrl} (was: /${pathPrefix}/${relativePath})`);
+        }
+      }
+      
       const docInfo = await processMarkdownFile(
         filePath, 
         baseDir, 
@@ -233,7 +313,8 @@ export async function processFilesWithPatterns(
         pathPrefix,
         context.options.pathTransformation,
         context.options.excludeImports || false,
-        context.options.removeDuplicateHeadings || false
+        context.options.removeDuplicateHeadings || false,
+        resolvedUrl
       );
       if (docInfo !== null) {
         processedDocs.push(docInfo);

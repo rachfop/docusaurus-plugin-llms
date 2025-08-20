@@ -9,7 +9,7 @@
  */
 
 import * as path from 'path';
-import type { LoadContext, Plugin } from '@docusaurus/types';
+import type { LoadContext, Plugin, Props, RouteConfig } from '@docusaurus/types';
 import { PluginOptions, PluginContext } from './types';
 import { collectDocFiles, generateStandardLLMFiles, generateCustomLLMFiles } from './generator';
 
@@ -43,6 +43,8 @@ export default function docusaurusPluginLLMs(
     excludeImports = false,
     removeDuplicateHeadings = false,
     generateMarkdownFiles = false,
+    rootContent,
+    fullRootContent,
   } = options;
 
   const {
@@ -83,6 +85,8 @@ export default function docusaurusPluginLLMs(
       excludeImports,
       removeDuplicateHeadings,
       generateMarkdownFiles,
+      rootContent,
+      fullRootContent,
     }
   };
 
@@ -92,12 +96,46 @@ export default function docusaurusPluginLLMs(
     /**
      * Generates LLM-friendly documentation files after the build is complete
      */
-    async postBuild(): Promise<void> {
+    async postBuild(props?: Props & { content: unknown }): Promise<void> {
       console.log('Generating LLM-friendly documentation...');
      
       try {
+        let enhancedContext = pluginContext;
+        
+        // If props are provided (Docusaurus 3.x+), use the resolved routes
+        if (props?.routes) {
+          // Create a map of file paths to their resolved URLs
+          const routeMap = new Map<string, string>();
+          
+          // Helper function to recursively process routes
+          const processRoutes = (routes: RouteConfig[]) => {
+            routes.forEach(route => {
+              if (route.path) {
+                // Store the actual resolved path
+                routeMap.set(route.path, route.path);
+              }
+              
+              // Process nested routes recursively
+              if (route.routes) {
+                processRoutes(route.routes);
+              }
+            });
+          };
+          
+          // Process all routes (cast to RouteConfig[] for recursive processing)
+          processRoutes(props.routes as RouteConfig[]);
+          
+          // Pass the resolved routes to the plugin context
+          enhancedContext = {
+            ...pluginContext,
+            routesPaths: props.routesPaths,
+            routes: props.routes,
+            routeMap,
+          };
+        }
+        
         // Collect all document files
-        const allDocFiles = await collectDocFiles(pluginContext);
+        const allDocFiles = await collectDocFiles(enhancedContext);
         
         // Skip further processing if no documents were found
         if (allDocFiles.length === 0) {
@@ -106,10 +144,10 @@ export default function docusaurusPluginLLMs(
         }
         
         // Process standard LLM files (llms.txt and llms-full.txt)
-        await generateStandardLLMFiles(pluginContext, allDocFiles);
+        await generateStandardLLMFiles(enhancedContext, allDocFiles);
         
         // Process custom LLM files
-        await generateCustomLLMFiles(pluginContext, allDocFiles);
+        await generateCustomLLMFiles(enhancedContext, allDocFiles);
         
         // Output overall statistics
         console.log(`Stats: ${allDocFiles.length} total available documents processed`);
