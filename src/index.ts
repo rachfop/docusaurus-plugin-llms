@@ -42,6 +42,7 @@ export default function docusaurusPluginLLMs(
     customLLMFiles = [],
     excludeImports = false,
     removeDuplicateHeadings = false,
+    generateMarkdownFiles = false,
   } = options;
 
   const {
@@ -81,6 +82,7 @@ export default function docusaurusPluginLLMs(
       customLLMFiles,
       excludeImports,
       removeDuplicateHeadings,
+      generateMarkdownFiles,
     }
   };
 
