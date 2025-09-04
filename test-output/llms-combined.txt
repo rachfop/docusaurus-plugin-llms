@@ -14,5 +14,5 @@ This file contains links to documentation sections following the llmstxt.org sta
 - [Frequently Asked Questions](https://example.com/reference/faq): Answers to common questions about installation, usage, and troubleshooting.
 - [Getting Started](https://example.com/reference/getting-started): This is a getting started guide.
 - [Advanced Usage Guide](https://example.com/reference/guides/advanced-usage): Comprehensive guide for advanced users with complex integration scenarios.
-- [Home](https://example.com/reference/index): Welcome to the test docs.
+- [Home](https://example.com/reference/): Welcome to the test docs.
 - [Quick Start Guide](https://example.com/reference/tutorials/quick-start): Get up and running with our product in less than 5 minutes.

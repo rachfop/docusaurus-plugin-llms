@@ -137,6 +137,7 @@ module.exports = {
 | `version`                        | string   | `undefined`       | Global version to include in all generated files              |
 | `customLLMFiles`                 | array    | `[]`              | Array of custom LLM file configurations                       |
 | `generateMarkdownFiles`          | boolean  | `false`           | Generate individual markdown files and link to them from llms.txt |
+| `keepFrontMatter`                | string[] | []                | Preserve selected front matter items when generating individual markdown files
 | `rootContent`                    | string   | (see below)       | Custom content to include at the root level of llms.txt       |
 | `fullRootContent`                | string   | (see below)       | Custom content to include at the root level of llms-full.txt  |
 

@@ -43,6 +43,7 @@ export default function docusaurusPluginLLMs(
     excludeImports = false,
     removeDuplicateHeadings = false,
     generateMarkdownFiles = false,
+    keepFrontMatter = [],
     rootContent,
     fullRootContent,
   } = options;
@@ -85,6 +86,7 @@ export default function docusaurusPluginLLMs(
       excludeImports,
       removeDuplicateHeadings,
       generateMarkdownFiles,
+      keepFrontMatter,
       rootContent,
       fullRootContent,
     }

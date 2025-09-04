@@ -13,6 +13,7 @@ export interface DocInfo {
   url: string;
   content: string;
   description: string;
+  frontMatter?: Record<string, any>;
 }
 
 /**
@@ -109,7 +110,10 @@ export interface PluginOptions {
   
   /** Whether to generate individual markdown files and link to them from llms.txt instead of original docs (default: false) */
   generateMarkdownFiles?: boolean;
-  
+
+  /** Array of frontmatter keys to preserve in generated individual markdown files (only used when generateMarkdownFiles is true) */
+  keepFrontMatter?: string[];
+
   /** Custom content to include at the root level of llms.txt (after title/description, before TOC) */
   rootContent?: string;
   
