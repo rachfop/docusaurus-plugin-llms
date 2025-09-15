@@ -6,6 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { minimatch } from 'minimatch';
 import matter from 'gray-matter';
+import * as YAML from 'yaml';
 import { PluginOptions } from './types';
 
 /**
@@ -99,7 +100,7 @@ export function extractTitle(data: any, content: string, filePath: string): stri
   // Finally use filename
   return path.basename(filePath, path.extname(filePath))
     .replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase());
+    .replace(/\b\w/g, (c: string) => c.toUpperCase());
 }
 
 /**
@@ -290,4 +291,81 @@ export function applyPathTransformations(
   }
   
   return transformedPath;
+}
+
+/**
+ * Sanitize a string to create a safe filename
+ * @param input - Input string (typically a title)
+ * @param fallback - Fallback string if input becomes empty after sanitization
+ * @returns Sanitized filename (without extension)
+ */
+export function sanitizeForFilename(input: string, fallback: string = 'untitled'): string {
+  if (!input) return fallback;
+  
+  const sanitized = input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  
+  return sanitized || fallback;
+}
+
+/**
+ * Ensure a unique identifier from a set of used identifiers
+ * @param baseIdentifier - Base identifier to make unique
+ * @param usedIdentifiers - Set of already used identifiers
+ * @param suffix - Suffix pattern (default: number in parentheses)
+ * @returns Unique identifier
+ */
+export function ensureUniqueIdentifier(
+  baseIdentifier: string, 
+  usedIdentifiers: Set<string>,
+  suffix: (counter: number, base: string) => string = (counter) => `(${counter})`
+): string {
+  let uniqueIdentifier = baseIdentifier;
+  let counter = 1;
+  
+  while (usedIdentifiers.has(uniqueIdentifier.toLowerCase())) {
+    counter++;
+    uniqueIdentifier = `${baseIdentifier}${suffix(counter, baseIdentifier)}`;
+  }
+  
+  usedIdentifiers.add(uniqueIdentifier.toLowerCase());
+  return uniqueIdentifier;
+}
+
+/**
+ * Create standardized markdown content template
+ * @param title - Document title
+ * @param description - Document description
+ * @param content - Document content
+ * @param includeMetadata - Whether to include description metadata
+ * @param frontMatter - Optional frontmatter to include at the top
+ * @returns Formatted markdown content
+ */
+export function createMarkdownContent(
+  title: string, 
+  description: string = '', 
+  content: string = '',
+  includeMetadata: boolean = true,
+  frontMatter?: Record<string, any>
+): string {
+  let result = '';
+  
+  // Add frontmatter if provided
+  if (frontMatter && Object.keys(frontMatter).length > 0) {
+    result += '---\n';
+    result += YAML.stringify(frontMatter, {
+      defaultStringType: 'PLAIN',
+      defaultKeyType: 'PLAIN'
+    });
+    result += '---\n\n';
+  }
+  
+  const descriptionLine = includeMetadata && description ? `\n\n> ${description}\n` : '\n';
+  
+  result += `# ${title}${descriptionLine}
+${content}`.trim() + '\n';
+
+  return result;
 } 

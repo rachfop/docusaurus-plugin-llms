@@ -5,7 +5,13 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { DocInfo, PluginContext, CustomLLMFile } from './types';
-import { writeFile, readMarkdownFiles } from './utils';
+import { 
+  writeFile, 
+  readMarkdownFiles, 
+  sanitizeForFilename, 
+  ensureUniqueIdentifier, 
+  createMarkdownContent 
+} from './utils';
 import { processFilesWithPatterns } from './processor';
 
 /**
@@ -62,29 +68,22 @@ export async function generateLLMFile(
       const headingMatch = firstLine.match(/^#+\s+(.+)$/);
       const firstHeadingText = headingMatch ? headingMatch[1].trim() : null;
       
-      // Determine the header text to use (original title or make it unique)
-      let headerText = doc.title;
-      let uniqueHeader = headerText;
-      let counter = 1;
-      
-      // If this header has been used before, make it unique by adding a suffix
-      while (usedHeaders.has(uniqueHeader.toLowerCase())) {
-        counter++;
-        // Try to make it more descriptive by adding the file path info if available
-        if (doc.path && counter === 2) {
-          const pathParts = doc.path.split('/');
-          const folderName = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
-          if (folderName) {
-            uniqueHeader = `${headerText} (${folderName.charAt(0).toUpperCase() + folderName.slice(1)})`;
-          } else {
-            uniqueHeader = `${headerText} (${counter})`;
+      // Generate unique header using the utility function
+      const uniqueHeader = ensureUniqueIdentifier(
+        doc.title, 
+        usedHeaders, 
+        (counter, base) => {
+          // Try to make it more descriptive by adding the file path info if available
+          if (doc.path && counter === 2) {
+            const pathParts = doc.path.split('/');
+            const folderName = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
+            if (folderName) {
+              return `(${folderName.charAt(0).toUpperCase() + folderName.slice(1)})`;
+            }
           }
-        } else {
-          uniqueHeader = `${headerText} (${counter})`;
+          return `(${counter})`;
         }
-      }
-      
-      usedHeaders.add(uniqueHeader.toLowerCase());
+      );
       
       if (firstHeadingText === doc.title) {
         // Content already has the same heading, replace it with our unique header if needed
@@ -111,14 +110,12 @@ ${doc.content}`;
     // Use custom root content or default message
     const rootContent = customRootContent || 'This file contains all documentation content in a single document following the llmstxt.org standard.';
     
-    const llmFileContent = `# ${fileTitle}
-
-> ${fileDescription}${versionInfo}
-
-${rootContent}
-
-${fullContentSections.join('\n\n---\n\n')}
-`;
+    const llmFileContent = createMarkdownContent(
+      fileTitle,
+      `${fileDescription}${versionInfo}`,
+      `${rootContent}\n\n${fullContentSections.join('\n\n---\n\n')}`,
+      true // include metadata (description)
+    );
 
     await writeFile(outputPath, llmFileContent);
   } else {
@@ -133,16 +130,12 @@ ${fullContentSections.join('\n\n---\n\n')}
     // Use custom root content or default message
     const rootContent = customRootContent || 'This file contains links to documentation sections following the llmstxt.org standard.';
     
-    const llmFileContent = `# ${fileTitle}
-
-> ${fileDescription}${versionInfo}
-
-${rootContent}
-
-## Table of Contents
-
-${tocItems.join('\n')}
-`;
+    const llmFileContent = createMarkdownContent(
+      fileTitle,
+      `${fileDescription}${versionInfo}`,
+      `${rootContent}\n\n## Table of Contents\n\n${tocItems.join('\n')}`,
+      true // include metadata (description)
+    );
 
     await writeFile(outputPath, llmFileContent);
   }
@@ -155,65 +148,90 @@ ${tocItems.join('\n')}
  * @param docs - Processed document information  
  * @param outputDir - Directory to write the markdown files
  * @param siteUrl - Base site URL
+ * @param docsDir - The configured docs directory name (e.g., 'docs', 'documentation', etc.)
+ * @param keepFrontMatter - Array of frontmatter keys to preserve in generated files
  * @returns Updated docs with new URLs pointing to generated markdown files
  */
 export async function generateIndividualMarkdownFiles(
   docs: DocInfo[],
   outputDir: string,
-  siteUrl: string
+  siteUrl: string,
+  docsDir: string = 'docs',
+  keepFrontMatter: string[] = []
 ): Promise<DocInfo[]> {
   const updatedDocs: DocInfo[] = [];
+  const usedPaths = new Set<string>();
   
-  // Create a map to ensure unique filenames
-  const usedFilenames = new Set<string>();
   
   for (const doc of docs) {
-    // Generate a filename from the document title or URL path
-    let baseFilename = doc.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+    // Use the original path structure, cleaning it up for file system use
+    let relativePath = doc.path
+      .replace(/^\/+/, '') // Remove leading slashes
+      .replace(/\.mdx?$/, '.md'); // Ensure .md extension
     
-    // Fallback to URL path if title generates empty filename
-    if (!baseFilename) {
-      baseFilename = doc.path
-        .replace(/^\/+|\/+$/g, '') // Remove leading/trailing slashes
-        .replace(/\//g, '-')
-        .replace(/[^a-z0-9-]/gi, '-')
-        .toLowerCase();
+    
+    relativePath = relativePath
+      .replace(new RegExp(`^${docsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`), '');// Remove configured docs dir prefix
+    
+    // If path is empty or invalid, create a fallback path
+    if (!relativePath || relativePath === '.md') {
+      const sanitizedTitle = sanitizeForFilename(doc.title, 'untitled');
+      relativePath = `${sanitizedTitle}.md`;
     }
     
-    // Ensure filename uniqueness
-    let filename = `${baseFilename}.md`;
+    // Ensure path uniqueness
+    let uniquePath = relativePath;
     let counter = 1;
-    while (usedFilenames.has(filename)) {
-      filename = `${baseFilename}-${counter}.md`;
+    while (usedPaths.has(uniquePath.toLowerCase())) {
       counter++;
+      const pathParts = relativePath.split('.');
+      const extension = pathParts.pop() || 'md';
+      const basePath = pathParts.join('.');
+      uniquePath = `${basePath}-${counter}.${extension}`;
     }
-    usedFilenames.add(filename);
+    usedPaths.add(uniquePath.toLowerCase());
     
-    // Create markdown content following llmstxt.org standard
-    const markdownContent = `# ${doc.title}
+    // Create the full file path and ensure directory exists
+    const fullPath = path.join(outputDir, uniquePath);
+    const directory = path.dirname(fullPath);
+    
+    // Create directory structure if it doesn't exist
+    await fs.mkdir(directory, { recursive: true });
+    
+    // Extract preserved frontmatter if specified
+    let preservedFrontMatter: Record<string, any> = {};
+    if (keepFrontMatter.length > 0 && doc.frontMatter) {
+      for (const key of keepFrontMatter) {
+        if (key in doc.frontMatter) {
+          preservedFrontMatter[key] = doc.frontMatter[key];
+        }
+      }
+    }
 
-> ${doc.description}
-
-${doc.content}
-`;
+    // Create markdown content using the utility function
+    const markdownContent = createMarkdownContent(
+      doc.title, 
+      doc.description, 
+      doc.content, 
+      true, // includeMetadata
+      Object.keys(preservedFrontMatter).length > 0 ? preservedFrontMatter : undefined
+    );
     
     // Write the markdown file
-    const markdownPath = path.join(outputDir, filename);
-    await writeFile(markdownPath, markdownContent);
+    await writeFile(fullPath, markdownContent);
     
     // Create updated DocInfo with new URL pointing to the generated markdown file
-    const newUrl = `${siteUrl}/${filename}`;
+    // Convert file path to URL path (use forward slashes)
+    const urlPath = uniquePath.replace(/\\/g, '/');
+    const newUrl = `${siteUrl}/${urlPath}`;
     
     updatedDocs.push({
       ...doc,
       url: newUrl,
-      path: `/${filename}` // Update path to the new markdown file
+      path: `/${urlPath}` // Update path to the new markdown file
     });
     
-    console.log(`Generated markdown file: ${filename}`);
+    console.log(`Generated markdown file: ${uniquePath}`);
   }
   
   return updatedDocs;
@@ -271,7 +289,9 @@ export async function generateStandardLLMFiles(
     processedDocs = await generateIndividualMarkdownFiles(
       processedDocs,
       outDir,
-      siteUrl
+      siteUrl,
+      context.docsDir,
+      context.options.keepFrontMatter || []
     );
   }
   
@@ -348,7 +368,9 @@ export async function generateCustomLLMFiles(
         customDocs = await generateIndividualMarkdownFiles(
           customDocs,
           outDir,
-          siteUrl
+          siteUrl,
+          context.docsDir,
+          context.options.keepFrontMatter || []
         );
       }
       

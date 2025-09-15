@@ -62,11 +62,19 @@ export async function processMarkdownFile(
     const linkPathBase = normalizedPath.replace(/\.mdx?$/, '');
     
     // Handle index files specially
-    const linkPath = linkPathBase.endsWith('index') 
+    let linkPath = linkPathBase.endsWith('index') 
       ? linkPathBase.replace(/\/index$/, '') 
       : linkPathBase;
     
-    // Apply path transformations to the link path
+    // linkPath might include the pathPrefix (e.g., "docs/api/core")
+    // We need to remove the pathPrefix before applying transformations, then add it back later
+    if (pathPrefix && linkPath.startsWith(`${pathPrefix}/`)) {
+      linkPath = linkPath.substring(`${pathPrefix}/`.length);
+    } else if (pathPrefix && linkPath === pathPrefix) {
+      linkPath = '';
+    }
+    
+    // Apply path transformations to the clean link path (without pathPrefix)
     const transformedLinkPath = applyPathTransformations(linkPath, pathTransformation);
     
     // Also apply path transformations to the pathPrefix if it's not empty
@@ -156,6 +164,7 @@ export async function processMarkdownFile(
     url: fullUrl,
     content: cleanedContent,
     description: description || '',
+    frontMatter: data,
   };
 }
 
@@ -236,7 +245,8 @@ export async function processFilesWithPatterns(
     try {
       // Determine if this is a blog or docs file
       const isBlogFile = filePath.includes(path.join(siteDir, 'blog'));
-      const baseDir = isBlogFile ? path.join(siteDir, 'blog') : path.join(siteDir, docsDir);
+      // Use siteDir as baseDir to preserve full directory structure (docs/path/file.md instead of just path/file.md)
+      const baseDir = siteDir;
       const pathPrefix = isBlogFile ? 'blog' : 'docs';
       
       // Try to find the resolved URL for this file from the route map

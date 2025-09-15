@@ -38,13 +38,15 @@
   "license": "MIT",
   "dependencies": {
     "gray-matter": "^4.0.3",
-    "minimatch": "^9.0.3"
+    "minimatch": "^9.0.3",
+    "yaml": "^2.8.1"
   },
   "peerDependencies": {
     "@docusaurus/core": "^3.0.0"
   },
   "devDependencies": {
     "@docusaurus/types": "^3.0.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/minimatch": "^5.1.2",
     "@types/node": "^20.6.0",
     "typescript": "^5.2.2"
