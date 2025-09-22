@@ -164,7 +164,7 @@ export async function generateIndividualMarkdownFiles(
   
   
   for (const doc of docs) {
-    // Use the original path structure, cleaning it up for file system use
+    // Use the original path structure as default filename.
     let relativePath = doc.path
       .replace(/^\/+/, '') // Remove leading slashes
       .replace(/\.mdx?$/, '.md'); // Ensure .md extension
@@ -172,7 +172,20 @@ export async function generateIndividualMarkdownFiles(
     
     relativePath = relativePath
       .replace(new RegExp(`^${docsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`), '');// Remove configured docs dir prefix
-    
+
+    // If frontmatter has slug, use that.
+    if (doc.frontMatter?.slug) {
+      const pathParts = relativePath.replace(/\.md$/, '').split('/');
+      pathParts[pathParts.length - 1] = doc.frontMatter.slug.replace(/^\/+|\/+$/g, '');
+      relativePath = pathParts.join('/') + '.md';
+    } 
+    // Otherwise, if frontmatter has id, use that.
+    else if (doc.frontMatter?.id) {
+      const pathParts = relativePath.replace(/\.md$/, '').split('/');
+      pathParts[pathParts.length - 1] = doc.frontMatter.id;
+      relativePath = pathParts.join('/') + '.md';
+    }
+
     // If path is empty or invalid, create a fallback path
     if (!relativePath || relativePath === '.md') {
       const sanitizedTitle = sanitizeForFilename(doc.title, 'untitled');
