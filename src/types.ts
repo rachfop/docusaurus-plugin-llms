@@ -119,6 +119,12 @@ export interface PluginOptions {
   
   /** Custom content to include at the root level of llms-full.txt (after title/description, before content sections) */
   fullRootContent?: string;
+
+  /** Whether to preserve directory structure in generated markdown files (default: true) */
+  preserveDirectoryStructure?: boolean;
+
+  /** Index signature for Docusaurus plugin compatibility */
+  [key: string]: unknown;
 }
 
 /**
