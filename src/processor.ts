@@ -6,12 +6,13 @@ import * as path from 'path';
 import matter from 'gray-matter';
 import { minimatch } from 'minimatch';
 import { DocInfo, PluginContext } from './types';
-import { 
-  readFile, 
-  extractTitle, 
-  cleanMarkdownContent, 
+import {
+  readFile,
+  extractTitle,
+  cleanMarkdownContent,
   applyPathTransformations,
-  resolvePartialImports
+  resolvePartialImports,
+  normalizePath
 } from './utils';
 
 /**
@@ -49,13 +50,21 @@ export async function processMarkdownFile(
   
   const relativePath = path.relative(baseDir, filePath);
   // Convert to URL path format (replace backslashes with forward slashes on Windows)
-  const normalizedPath = relativePath.replace(/\\/g, '/');
+  const normalizedPath = normalizePath(relativePath);
   
   let fullUrl: string;
   
   if (resolvedUrl) {
     // Use the actual resolved URL from Docusaurus if provided
-    fullUrl = new URL(resolvedUrl, siteUrl).toString();
+    try {
+      fullUrl = new URL(resolvedUrl, siteUrl).toString();
+    } catch (error) {
+      console.warn(`Invalid URL construction: ${resolvedUrl} with base ${siteUrl}. Using fallback.`);
+      // Fallback to string concatenation with proper path joining
+      const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
+      const urlPath = resolvedUrl.startsWith('/') ? resolvedUrl : `/${resolvedUrl}`;
+      fullUrl = baseUrl + urlPath;
+    }
   } else {
     // Fallback to the old path construction method
     // Convert .md extension to appropriate path
@@ -98,8 +107,15 @@ export async function processMarkdownFile(
     // Construct URL by encoding path components, then combine with site URL
     // We don't use URL constructor for the full path because it decodes some characters
     const pathPart = transformedPathPrefix ? `${transformedPathPrefix}/${encodedLinkPath}` : encodedLinkPath;
-    const baseUrl = new URL(siteUrl);
-    fullUrl = `${baseUrl.origin}/${pathPart}`;
+    try {
+      const baseUrl = new URL(siteUrl);
+      fullUrl = `${baseUrl.origin}/${pathPart}`;
+    } catch (error) {
+      console.warn(`Invalid siteUrl: ${siteUrl}. Using fallback.`);
+      // Fallback to string concatenation with proper path joining
+      const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
+      fullUrl = `${baseUrl}/${pathPart}`;
+    }
   }
   
   // Extract title
@@ -197,14 +213,14 @@ function matchesPattern(file: string, pattern: string, siteDir: string, docsDir:
   const minimatchOptions = { matchBase: true };
 
   // Get site-relative path (e.g., "docs/quickstart/file.md")
-  const siteRelativePath = path.relative(siteDir, file).replace(/\\/g, '/');
+  const siteRelativePath = normalizePath(path.relative(siteDir, file));
 
   // Get docs-relative path (e.g., "quickstart/file.md")
   // Normalize both paths to handle different path separators and resolve any .. or .
   const docsBaseDir = path.resolve(path.join(siteDir, docsDir));
   const resolvedFile = path.resolve(file);
   const docsRelativePath = resolvedFile.startsWith(docsBaseDir)
-    ? path.relative(docsBaseDir, resolvedFile).replace(/\\/g, '/')
+    ? normalizePath(path.relative(docsBaseDir, resolvedFile))
     : null;
 
   // Try matching against site-relative path
@@ -292,8 +308,7 @@ export async function processFilesWithPatterns(
       let resolvedUrl: string | undefined;
       if (context.routeMap) {
         // Convert file path to a potential route path
-        const relativePath = path.relative(baseDir, filePath)
-          .replace(/\\/g, '/')
+        const relativePath = normalizePath(path.relative(baseDir, filePath))
           .replace(/\.mdx?$/, '')
           .replace(/\/index$/, '');
 
