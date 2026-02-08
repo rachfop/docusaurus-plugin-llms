@@ -762,12 +762,21 @@ export function sanitizeForFilename(
  * @param usedIdentifiers - Set of already used identifiers
  * @param suffix - Suffix pattern (default: number in parentheses)
  * @returns Unique identifier
+ * @throws ValidationError if baseIdentifier is not a string or usedIdentifiers is not a Set
  */
 export function ensureUniqueIdentifier(
   baseIdentifier: string,
   usedIdentifiers: Set<string>,
   suffix: (counter: number, base: string) => string = (counter) => `(${counter})`
 ): string {
+  // Validate input parameters
+  validateString(baseIdentifier, 'baseIdentifier', { minLength: 1 });
+  validateRequired(usedIdentifiers, 'usedIdentifiers');
+
+  if (!(usedIdentifiers instanceof Set)) {
+    throw new ValidationError(`Parameter 'usedIdentifiers' must be a Set`);
+  }
+
   const MAX_ITERATIONS = 10000;
   let uniqueIdentifier = baseIdentifier;
   let counter = 1;
