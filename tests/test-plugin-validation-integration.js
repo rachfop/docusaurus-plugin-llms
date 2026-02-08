@@ -82,7 +82,7 @@ const testCases = [
       }]
     },
     shouldThrow: true,
-    expectedError: 'customLLMFiles[0].includePatterns cannot be empty',
+    expectedError: 'customLLMFiles[0].includePatterns must be a non-empty array',
     description: 'Plugin should reject empty includePatterns'
   },
   {
