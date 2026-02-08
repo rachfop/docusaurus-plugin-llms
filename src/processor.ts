@@ -84,11 +84,22 @@ export async function processMarkdownFile(
       transformedPathPrefix = '';
     }
     
-    // Generate full URL with transformed path and path prefix
-    fullUrl = new URL(
-      `${transformedPathPrefix ? `${transformedPathPrefix}/` : ''}${transformedLinkPath}`, 
-      siteUrl
-    ).toString();
+    // Ensure path segments are URL-safe
+    const encodedLinkPath = transformedLinkPath.split('/').map(segment => {
+      try {
+        return decodeURIComponent(segment) === segment
+          ? encodeURIComponent(segment)
+          : segment;
+      } catch {
+        return encodeURIComponent(segment);
+      }
+    }).join('/');
+
+    // Construct URL by encoding path components, then combine with site URL
+    // We don't use URL constructor for the full path because it decodes some characters
+    const pathPart = transformedPathPrefix ? `${transformedPathPrefix}/${encodedLinkPath}` : encodedLinkPath;
+    const baseUrl = new URL(siteUrl);
+    fullUrl = `${baseUrl.origin}/${pathPart}`;
   }
   
   // Extract title
