@@ -357,7 +357,11 @@ export function createMarkdownContent(
   // Add frontmatter if provided
   if (frontMatter && Object.keys(frontMatter).length > 0) {
     result += '---\n';
-    result += YAML.stringify(frontMatter);
+    result += YAML.stringify(frontMatter, {
+      lineWidth: 0,
+      defaultStringType: 'QUOTE_DOUBLE',
+      defaultKeyType: 'PLAIN'
+    });
     result += '---\n\n';
   }
   

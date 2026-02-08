@@ -152,7 +152,8 @@ async function runIndividualMarkdownGenerationTests() {
           testDir,
           testCase.siteUrl,
           'docs', // Use 'docs' as the default for tests
-          [] // No frontmatter preservation for basic tests
+          [], // No frontmatter preservation for basic tests
+          false // Don't preserve directory structure (old behavior for these tests)
         );
         
         // Check that the expected files were created at the correct paths
@@ -343,7 +344,8 @@ async function testEdgeCases() {
           testDir,
           'https://example.com',
           'docs', // Use 'docs' as the default for tests
-          [] // No frontmatter preservation for edge case tests
+          [], // No frontmatter preservation for edge case tests
+          false // Don't preserve directory structure (old behavior for these tests)
         );
         
         // Check that all expected paths exist
@@ -547,7 +549,8 @@ async function testKeepFrontMatter() {
           testDir,
           'https://example.com',
           'docs',
-          testCase.keepFrontMatter
+          testCase.keepFrontMatter,
+          false // Don't preserve directory structure (old behavior for these tests)
         );
         
         // Check that files were created

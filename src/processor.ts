@@ -268,59 +268,78 @@ export async function processFilesWithPatterns(
           .replace(/\\/g, '/')
           .replace(/\.mdx?$/, '')
           .replace(/\/index$/, '');
-        
-        // Function to remove numbered prefixes from path segments
-        const removeNumberedPrefixes = (path: string): string => {
-          return path.split('/').map(segment => {
-            // Remove numbered prefixes like "01-", "1-", "001-" from each segment
-            return segment.replace(/^\d+-/, '');
-          }).join('/');
-        };
-        
-        // Check various possible route patterns
-        const cleanPath = removeNumberedPrefixes(relativePath);
+
+        // Try exact match first (without manual prefix removal)
+        // This respects Docusaurus's resolved routes which already handle numbered prefixes
         const possiblePaths = [
-          `/${pathPrefix}/${cleanPath}`,
-          `/${cleanPath}`,
-          `/${pathPrefix}/${relativePath}`, // Try with original path
-          `/${relativePath}`, // Try without prefix
+          `/${pathPrefix}/${relativePath}`,
+          `/${relativePath}`,
         ];
-        
-        // Also handle nested folder structures with numbered prefixes
-        const segments = relativePath.split('/');
-        if (segments.length > 1) {
-          // Try removing numbered prefixes from different levels
-          for (let i = 0; i < segments.length; i++) {
-            const modifiedSegments = [...segments];
-            modifiedSegments[i] = modifiedSegments[i].replace(/^\d+-/, '');
-            const modifiedPath = modifiedSegments.join('/');
-            possiblePaths.push(`/${pathPrefix}/${modifiedPath}`);
-            possiblePaths.push(`/${modifiedPath}`);
-          }
-        }
-        
-        // Try to find a match in the route map
+
         for (const possiblePath of possiblePaths) {
-          if (context.routeMap.has(possiblePath)) {
-            resolvedUrl = context.routeMap.get(possiblePath);
+          if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
+            resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
             break;
           }
         }
-        
-        // If still not found, try to find the best match using the routesPaths array
-        if (!resolvedUrl && context.routesPaths) {
-          const normalizedCleanPath = cleanPath.toLowerCase();
-          const matchingRoute = context.routesPaths.find(routePath => {
-            const normalizedRoute = routePath.toLowerCase();
-            return normalizedRoute.endsWith(`/${normalizedCleanPath}`) || 
-                   normalizedRoute === `/${pathPrefix}/${normalizedCleanPath}` ||
-                   normalizedRoute === `/${normalizedCleanPath}`;
-          });
-          if (matchingRoute) {
-            resolvedUrl = matchingRoute;
+
+        // ONLY if exact match fails, try numbered prefix removal as fallback
+        if (!resolvedUrl) {
+          // Function to remove numbered prefixes from path segments
+          const removeNumberedPrefixes = (path: string): string => {
+            return path.split('/').map(segment => {
+              // Remove numbered prefixes like "01-", "1-", "001-" from each segment
+              return segment.replace(/^\d+-/, '');
+            }).join('/');
+          };
+
+          const cleanPath = removeNumberedPrefixes(relativePath);
+
+          for (const possiblePath of [`/${pathPrefix}/${cleanPath}`, `/${cleanPath}`]) {
+            if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
+              resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
+              break;
+            }
+          }
+
+          // Also handle nested folder structures with numbered prefixes
+          if (!resolvedUrl) {
+            const segments = relativePath.split('/');
+            if (segments.length > 1) {
+              // Try removing numbered prefixes from different levels
+              for (let i = 0; i < segments.length; i++) {
+                const modifiedSegments = [...segments];
+                modifiedSegments[i] = modifiedSegments[i].replace(/^\d+-/, '');
+                const modifiedPath = modifiedSegments.join('/');
+                const pathsToTry = [`/${pathPrefix}/${modifiedPath}`, `/${modifiedPath}`];
+
+                for (const possiblePath of pathsToTry) {
+                  if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
+                    resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
+                    break;
+                  }
+                }
+
+                if (resolvedUrl) break;
+              }
+            }
+          }
+
+          // If still not found, try to find the best match using the routesPaths array
+          if (!resolvedUrl && context.routesPaths) {
+            const normalizedCleanPath = cleanPath.toLowerCase();
+            const matchingRoute = context.routesPaths.find(routePath => {
+              const normalizedRoute = routePath.toLowerCase();
+              return normalizedRoute.endsWith(`/${normalizedCleanPath}`) ||
+                     normalizedRoute === `/${pathPrefix}/${normalizedCleanPath}` ||
+                     normalizedRoute === `/${normalizedCleanPath}`;
+            });
+            if (matchingRoute) {
+              resolvedUrl = matchingRoute;
+            }
           }
         }
-        
+
         // Log when we successfully resolve a URL using Docusaurus routes
         if (resolvedUrl && resolvedUrl !== `/${pathPrefix}/${relativePath}`) {
           console.log(`Resolved URL for ${path.basename(filePath)}: ${resolvedUrl} (was: /${pathPrefix}/${relativePath})`);
