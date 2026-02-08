@@ -93,7 +93,8 @@ async function runFilenameTests() {
           testDir,
           siteUrl,
           'docs',
-          []
+          [],
+          false // preserveDirectoryStructure = false
         );
 
         // Validate file paths
