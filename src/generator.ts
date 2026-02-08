@@ -48,6 +48,7 @@ function cleanDescriptionForToc(description: string): string {
  * @param includeFullContent - Whether to include full content or just links
  * @param version - Version of the file
  * @param customRootContent - Optional custom content to include at the root level
+ * @param batchSize - Batch size for processing documents (default: 100)
  */
 export async function generateLLMFile(
   docs: DocInfo[],
@@ -56,7 +57,8 @@ export async function generateLLMFile(
   fileDescription: string,
   includeFullContent: boolean,
   version?: string,
-  customRootContent?: string
+  customRootContent?: string,
+  batchSize: number = 100
 ): Promise<void> {
   // Validate path length before proceeding
   if (!validatePathLength(outputPath)) {
@@ -68,8 +70,21 @@ export async function generateLLMFile(
   
   if (includeFullContent) {
     // Generate full content file with header deduplication
+    // Process documents in batches to prevent memory issues on large sites
     const usedHeaders = new Set<string>();
-    const fullContentSections = docs.map(doc => {
+    const fullContentSections: string[] = [];
+
+    // Process documents in batches
+    for (let i = 0; i < docs.length; i += batchSize) {
+      const batch = docs.slice(i, i + batchSize);
+      const batchNumber = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(docs.length / batchSize);
+
+      if (totalBatches > 1) {
+        logger.verbose(`Processing batch ${batchNumber}/${totalBatches} (${batch.length} documents)`);
+      }
+
+      const batchSections = batch.map(doc => {
       // Check if content already starts with the same heading to avoid duplication
       const trimmedContent = doc.content.trim();
       const contentLines = trimmedContent.split('\n');
@@ -109,6 +124,9 @@ ${restOfContent}`;
 ${doc.content}`;
       }
     });
+
+      fullContentSections.push(...batchSections);
+    }
 
     // Use custom root content or default message
     const rootContent = customRootContent || 'This file contains all documentation content in a single document following the llmstxt.org standard.';
@@ -393,7 +411,8 @@ export async function generateStandardLLMFiles(
       docDescription,
       false, // links only
       version,
-      rootContent
+      rootContent,
+      processingBatchSize
     );
   }
 
@@ -407,7 +426,8 @@ export async function generateStandardLLMFiles(
       docDescription,
       true, // full content
       version,
-      fullRootContent
+      fullRootContent,
+      processingBatchSize
     );
   }
 }
@@ -422,7 +442,12 @@ export async function generateCustomLLMFiles(
   allDocFiles: string[]
 ): Promise<void> {
   const { outDir, siteUrl, docTitle, docDescription, options } = context;
-  const { customLLMFiles = [], ignoreFiles = [], generateMarkdownFiles = false } = options;
+  const {
+    customLLMFiles = [],
+    ignoreFiles = [],
+    generateMarkdownFiles = false,
+    processingBatchSize = 100
+  } = options;
   
   if (customLLMFiles.length === 0) {
     logger.warn('No custom LLM files configured. Skipping.');
@@ -477,7 +502,8 @@ export async function generateCustomLLMFiles(
         customDescription,
         customFile.fullContent,
         customFile.version,
-        customFile.rootContent
+        customFile.rootContent,
+        processingBatchSize
       );
       
       logger.info(`Generated custom LLM file: ${customFile.filename} with ${customDocs.length} documents`);
