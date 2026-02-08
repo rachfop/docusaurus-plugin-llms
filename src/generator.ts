@@ -183,7 +183,7 @@ export async function generateIndividualMarkdownFiles(
 
     // If frontmatter has slug, use that.
     if (doc.frontMatter?.slug) {
-      const slug = doc.frontMatter.slug.replace(/^\/+|\/+$/g, ''); // Trim slashes
+      const slug = doc.frontMatter.slug.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
 
       if (slug) { // Only process if slug is not empty after trimming
         if (slug.includes('/')) {
