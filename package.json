@@ -25,6 +25,10 @@
     "url": "https://github.com/rachfop/docusaurus-plugin-llms/issues"
   },
   "homepage": "https://github.com/rachfop/docusaurus-plugin-llms#readme",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/rachfop"
+  },
   "keywords": [
     "docusaurus",
     "docusaurus-plugin",

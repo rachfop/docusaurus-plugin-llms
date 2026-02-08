@@ -2,6 +2,11 @@
 
 A Docusaurus plugin for generating LLM-friendly documentation following the [llmstxt standard](https://llmstxt.org/).
 
+[![npm version](https://img.shields.io/npm/v/docusaurus-plugin-llms.svg)](https://www.npmjs.com/package/docusaurus-plugin-llms)
+[![npm downloads](https://img.shields.io/npm/dm/docusaurus-plugin-llms.svg)](https://www.npmjs.com/package/docusaurus-plugin-llms)
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/rachfop?style=flat&logo=githubsponsors&label=Sponsor&labelColor=gray&color=pink)](https://github.com/sponsors/rachfop)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Features
 
 - ⚡️ Easy integration with Docusaurus
