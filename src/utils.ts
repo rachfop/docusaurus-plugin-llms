@@ -225,8 +225,10 @@ const MAX_PATH_LENGTH_UNIX = 4096;
  *
  * @param filePath - The file path to normalize
  * @returns The normalized path with forward slashes
+ * @throws ValidationError if filePath is not a string
  */
 export function normalizePath(filePath: string): string {
+  validateString(filePath, 'filePath');
   return filePath.replace(/\\/g, '/');
 }
 
