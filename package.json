@@ -9,7 +9,7 @@
     "watch": "tsc --watch",
     "cleanup": "node cleanup.js",
     "prepublishOnly": "npm run build && npm run cleanup",
-    "test:unit": "node tests/test-regex-escaping.js && node tests/test-baseurl-handling.js && node tests/test-path-transforms.js && node tests/test-header-deduplication.js && node tests/test-import-removal.js && node tests/test-partials.js && node tests/test-root-content.js && node tests/test-filenames.js && node tests/test-url-encoding.js && node tests/test-nested-paths.js && node tests/test-filename-sanitization.js && node tests/test-yaml-encoding.js && node tests/test-url-error-handling.js",
+    "test:unit": "node tests/test-regex-escaping.js && node tests/test-baseurl-handling.js && node tests/test-path-transforms.js && node tests/test-header-deduplication.js && node tests/test-import-removal.js && node tests/test-partials.js && node tests/test-missing-partials.js && node tests/test-root-content.js && node tests/test-filenames.js && node tests/test-url-encoding.js && node tests/test-nested-paths.js && node tests/test-filename-sanitization.js && node tests/test-yaml-encoding.js && node tests/test-url-error-handling.js && node tests/test-regex-lastindex.js && node tests/test-whitespace-paths.js",
     "test:integration": "node tests/test-path-transformation.js",
     "test": "npm run build && npm run test:unit && npm run test:integration"
   },

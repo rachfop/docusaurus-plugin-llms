@@ -10,6 +10,16 @@ import * as YAML from 'yaml';
 import { PluginOptions } from './types';
 
 /**
+ * Normalize path separators to forward slashes for cross-platform compatibility
+ * Converts Windows backslashes to forward slashes
+ * @param filePath - Path to normalize
+ * @returns Normalized path with forward slashes
+ */
+export function normalizePath(filePath: string): string {
+  return filePath.replace(/\\/g, '/');
+}
+
+/**
  * Write content to a file
  * @param filePath - Path to write the file to
  * @param data - Content to write
@@ -44,13 +54,13 @@ export function shouldIgnoreFile(filePath: string, baseDir: string, ignorePatter
   const minimatchOptions = { matchBase: true };
 
   // Get site-relative path (e.g., "docs/quickstart/file.md")
-  const siteRelativePath = path.relative(baseDir, filePath).replace(/\\/g, '/');
+  const siteRelativePath = normalizePath(path.relative(baseDir, filePath));
 
   // Get docs-relative path (e.g., "quickstart/file.md")
   const docsBaseDir = path.resolve(path.join(baseDir, docsDir));
   const resolvedFile = path.resolve(filePath);
   const docsRelativePath = resolvedFile.startsWith(docsBaseDir)
-    ? path.relative(docsBaseDir, resolvedFile).replace(/\\/g, '/')
+    ? normalizePath(path.relative(docsBaseDir, resolvedFile))
     : null;
 
   return ignorePatterns.some(pattern => {
@@ -138,11 +148,13 @@ export async function resolvePartialImports(content: string, filePath: string): 
   // Match import statements for partials and JSX usage
   // Pattern 1: import PartialName from './_partial.mdx'
   // Pattern 2: import { PartialName } from './_partial.mdx'
-  const importRegex = /^\s*import\s+(?:(\w+)|{\s*(\w+)\s*})\s+from\s+['"]([^'"]+_[^'"]+\.mdx?)['"];?\s*$/gm;
+  // Create a fresh regex for each invocation to avoid lastIndex state leakage
+  const createImportRegex = () => /^\s*import\s+(?:(\w+)|{\s*(\w+)\s*})\s+from\s+['"]([^'"]+_[^'"]+\.mdx?)['"];?\s*$/gm;
   const imports = new Map<string, string>();
-  
+
   // First pass: collect all imports
   let match;
+  const importRegex = createImportRegex();
   while ((match = importRegex.exec(content)) !== null) {
     const componentName = match[1] || match[2];
     const importPath = match[3];
@@ -177,8 +189,21 @@ export async function resolvePartialImports(content: string, filePath: string): 
       resolved = resolved.replace(jsxRegex, partialMarkdown.trim());
       
     } catch (error) {
-      console.warn(`Failed to resolve partial import "${importPath}" in ${filePath}: ${error}`);
-      // Leave the import and usage as-is if we can't resolve it
+      console.warn(`Failed to resolve partial import from ${importPath}: ${error instanceof Error ? error.message : String(error)}`);
+
+      // Remove both the import statement AND the JSX usage even if partial can't be resolved
+      // This prevents leaving broken references in the output
+
+      // Remove the import statement
+      resolved = resolved.replace(
+        new RegExp(`^\\s*import\\s+(?:${componentName}|{\\s*${componentName}\\s*})\\s+from\\s+['"]${importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"];?\\s*$`, 'gm'),
+        ''
+      );
+
+      // Remove JSX usage of this component
+      // Handle both self-closing tags (<Component />) and regular tags with content (<Component>...</Component>)
+      const jsxRegex = new RegExp(`<${componentName}(?:\\s+[^>]*)?\\s*\\/?>(?:[\\s\\S]*?<\\/${componentName}>)?`, 'gm');
+      resolved = resolved.replace(jsxRegex, '');
     }
   }
   
@@ -343,18 +368,30 @@ export function sanitizeForFilename(input: string, fallback: string = 'untitled'
  * @returns Unique identifier
  */
 export function ensureUniqueIdentifier(
-  baseIdentifier: string, 
+  baseIdentifier: string,
   usedIdentifiers: Set<string>,
   suffix: (counter: number, base: string) => string = (counter) => `(${counter})`
 ): string {
+  const MAX_ITERATIONS = 10000;
   let uniqueIdentifier = baseIdentifier;
   let counter = 1;
-  
+  let iterations = 0;
+
   while (usedIdentifiers.has(uniqueIdentifier.toLowerCase())) {
     counter++;
     uniqueIdentifier = `${baseIdentifier}${suffix(counter, baseIdentifier)}`;
+
+    iterations++;
+    if (iterations >= MAX_ITERATIONS) {
+      // Fallback to timestamp-based unique identifier
+      const timestamp = Date.now().toString(36);
+      const random = Math.random().toString(36).substring(2, 8);
+      uniqueIdentifier = `${baseIdentifier}-${timestamp}-${random}`;
+      console.warn(`Maximum iterations reached for unique identifier. Using fallback: ${uniqueIdentifier}`);
+      break;
+    }
   }
-  
+
   usedIdentifiers.add(uniqueIdentifier.toLowerCase());
   return uniqueIdentifier;
 }
