@@ -318,8 +318,8 @@ export async function generateStandardLLMFiles(
     options 
   } = context;
   
-  const { 
-    generateLLMsTxt, 
+  const {
+    generateLLMsTxt,
     generateLLMsFullTxt,
     llmsTxtFilename = 'llms.txt',
     llmsFullTxtFilename = 'llms-full.txt',
@@ -328,7 +328,8 @@ export async function generateStandardLLMFiles(
     version,
     generateMarkdownFiles = false,
     rootContent,
-    fullRootContent
+    fullRootContent,
+    processingBatchSize = 100
   } = options;
   
   if (!generateLLMsTxt && !generateLLMsFullTxt) {
