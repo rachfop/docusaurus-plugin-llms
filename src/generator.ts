@@ -447,7 +447,7 @@ export async function collectDocFiles(context: PluginContext): Promise<string[]>
     await fs.access(fullDocsDir);
     
     // Collect all markdown files from docs directory
-    const docFiles = await readMarkdownFiles(fullDocsDir, siteDir, ignoreFiles);
+    const docFiles = await readMarkdownFiles(fullDocsDir, siteDir, ignoreFiles, docsDir);
     allDocFiles.push(...docFiles);
     
   } catch (err) {
@@ -462,7 +462,7 @@ export async function collectDocFiles(context: PluginContext): Promise<string[]>
       await fs.access(blogDir);
       
       // Collect all markdown files from blog directory
-      const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles);
+      const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles, docsDir);
       allDocFiles.push(...blogFiles);
       
     } catch (err) {

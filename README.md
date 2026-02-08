@@ -243,15 +243,32 @@ The configuration supports multiple path segments in both arrays.
 
 ### Document Ordering Examples
 
-The document ordering feature allows you to control the sequence in which files appear in the generated output:
+The document ordering feature allows you to control the sequence in which files appear in the generated output.
+
+#### Pattern Matching Behavior
+
+Patterns in `includeOrder`, `ignoreFiles`, and `customLLMFiles.includePatterns` are matched against **both** site-relative and docs-relative paths for maximum flexibility:
+
+- **Site-relative path**: The path relative to your site root (e.g., `docs/quickstart/file.md`)
+- **Docs-relative path**: The path relative to your docs directory (e.g., `quickstart/file.md`)
+
+This means both of these patterns will match the same file:
+```js
+includeOrder: [
+  'docs/quickstart/*',      // Matches site-relative path
+  'quickstart/*'            // Matches docs-relative path (more intuitive!)
+]
+```
+
+**Recommended approach**: Use docs-relative paths (without the `docs/` prefix) as they are more intuitive and portable across different configurations.
 
 **Example 1**: Basic Section Ordering
 ```js
 includeOrder: [
-  'getting-started/*',
-  'guides/*',
-  'api/*',
-  'advanced/*'
+  'getting-started/*',  // Matches docs/getting-started/*.md
+  'guides/*',           // Matches docs/guides/*.md
+  'api/*',              // Matches docs/api/*.md
+  'advanced/*'          // Matches docs/advanced/*.md
 ]
 ```
 Result: Files will appear in the generated output following this section order.
@@ -259,7 +276,7 @@ Result: Files will appear in the generated output following this section order.
 **Example 2**: Strict Inclusion List
 ```js
 includeOrder: [
-  'public-docs/**/*.md'
+  'public-docs/**/*.md'  // Matches docs/public-docs/**/*.md
 ],
 includeUnmatchedLast: false
 ```
@@ -268,15 +285,25 @@ Result: Only files matching 'public-docs/**/*.md' are included, all others are e
 **Example 3**: Detailed Ordering with Specific Files First
 ```js
 includeOrder: [
-  'getting-started/installation.md',
-  'getting-started/quick-start.md',
-  'getting-started/*.md',
-  'api/core/*.md',
-  'api/plugins/*.md',
-  'api/**/*.md'
+  'getting-started/installation.md',    // Specific file first
+  'getting-started/quick-start.md',     // Another specific file
+  'getting-started/*.md',               // Rest of getting-started
+  'api/core/*.md',                      // Core API docs
+  'api/plugins/*.md',                   // Plugin API docs
+  'api/**/*.md'                         // All other API docs
 ]
 ```
 Result: Installation and quick-start guides appear first, followed by other getting-started files, then API documentation in a specific order.
+
+**Example 4**: Nested Directory Patterns
+```js
+includeOrder: [
+  'tutorials/beginner/**/*',    // All beginner tutorials (deeply nested)
+  'tutorials/intermediate/*',   // Intermediate tutorials (one level)
+  'tutorials/**/*'              // All other tutorials
+]
+```
+Result: Beginner tutorials appear first (regardless of nesting depth), then intermediate, then everything else.
 
 ### Docusaurus Partials Support
 

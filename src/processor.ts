@@ -189,6 +189,37 @@ export async function processMarkdownFile(
  * @param includeUnmatched - Whether to include unmatched files
  * @returns Processed files
  */
+/**
+ * Helper function to check if a file matches a pattern
+ * Tries matching against multiple path variants for better usability
+ */
+function matchesPattern(file: string, pattern: string, siteDir: string, docsDir: string): boolean {
+  const minimatchOptions = { matchBase: true };
+
+  // Get site-relative path (e.g., "docs/quickstart/file.md")
+  const siteRelativePath = path.relative(siteDir, file).replace(/\\/g, '/');
+
+  // Get docs-relative path (e.g., "quickstart/file.md")
+  // Normalize both paths to handle different path separators and resolve any .. or .
+  const docsBaseDir = path.resolve(path.join(siteDir, docsDir));
+  const resolvedFile = path.resolve(file);
+  const docsRelativePath = resolvedFile.startsWith(docsBaseDir)
+    ? path.relative(docsBaseDir, resolvedFile).replace(/\\/g, '/')
+    : null;
+
+  // Try matching against site-relative path
+  if (minimatch(siteRelativePath, pattern, minimatchOptions)) {
+    return true;
+  }
+
+  // Try matching against docs-relative path if available
+  if (docsRelativePath && minimatch(docsRelativePath, pattern, minimatchOptions)) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function processFilesWithPatterns(
   context: PluginContext,
   allFiles: string[],
@@ -204,9 +235,8 @@ export async function processFilesWithPatterns(
   
   if (includePatterns.length > 0) {
     filteredFiles = allFiles.filter(file => {
-      const relativePath = path.relative(siteDir, file);
-      return includePatterns.some(pattern => 
-        minimatch(relativePath, pattern, { matchBase: true })
+      return includePatterns.some(pattern =>
+        matchesPattern(file, pattern, siteDir, docsDir)
       );
     });
   }
@@ -214,9 +244,8 @@ export async function processFilesWithPatterns(
   // Apply ignore patterns
   if (ignorePatterns.length > 0) {
     filteredFiles = filteredFiles.filter(file => {
-      const relativePath = path.relative(siteDir, file);
-      return !ignorePatterns.some(pattern => 
-        minimatch(relativePath, pattern, { matchBase: true })
+      return !ignorePatterns.some(pattern =>
+        matchesPattern(file, pattern, siteDir, docsDir)
       );
     });
   }
@@ -230,8 +259,7 @@ export async function processFilesWithPatterns(
     // Process files according to orderPatterns
     for (const pattern of orderPatterns) {
       const matchingFiles = filteredFiles.filter(file => {
-        const relativePath = path.relative(siteDir, file);
-        return minimatch(relativePath, pattern, { matchBase: true }) && !matchedFiles.has(file);
+        return matchesPattern(file, pattern, siteDir, docsDir) && !matchedFiles.has(file);
       });
       
       for (const file of matchingFiles) {
