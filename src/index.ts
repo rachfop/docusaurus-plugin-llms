@@ -54,12 +54,12 @@ export default function docusaurusPluginLLMs(
     outDir,
   } = context;
   
-  // Build the site URL with proper trailing slash
-  const siteUrl = siteConfig.url + (
-    siteConfig.baseUrl.endsWith('/') 
-      ? siteConfig.baseUrl.slice(0, -1) 
-      : siteConfig.baseUrl || ''
-  );
+  // Normalize baseUrl: remove trailing slash unless it's root '/'
+  let normalizedBaseUrl = siteConfig.baseUrl || '/';
+  if (normalizedBaseUrl !== '/' && normalizedBaseUrl.endsWith('/')) {
+    normalizedBaseUrl = normalizedBaseUrl.slice(0, -1);
+  }
+  const siteUrl = siteConfig.url + normalizedBaseUrl;
   
   // Create a plugin context object with processed options
   const pluginContext: PluginContext = {
