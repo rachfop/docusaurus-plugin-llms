@@ -125,10 +125,18 @@ export async function writeFile(filePath: string, data: string): Promise<void> {
 /**
  * Read content from a file
  * @param filePath - Path of the file to read
- * @returns Content of the file
+ * @returns Content of the file with BOM removed if present
  */
 export async function readFile(filePath: string): Promise<string> {
-  return fs.readFile(filePath, 'utf8');
+  let content = await fs.readFile(filePath, 'utf8');
+
+  // Remove UTF-8 BOM if present
+  // UTF-8 BOM is the character U+FEFF at the start of the file
+  if (content.charCodeAt(0) === 0xFEFF) {
+    content = content.slice(1);
+  }
+
+  return content;
 }
 
 /**
