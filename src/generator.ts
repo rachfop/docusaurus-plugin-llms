@@ -86,19 +86,11 @@ export async function generateLLMFile(
       );
       
       if (firstHeadingText === doc.title) {
-        // Content already has the same heading, replace it with our unique header if needed
-        if (uniqueHeader !== doc.title) {
-          const restOfContent = trimmedContent.split('\n').slice(1).join('\n');
-          return `## ${uniqueHeader}
+        // Content already has the same heading, replace it with our unique header
+        const restOfContent = trimmedContent.split('\n').slice(1).join('\n');
+        return `## ${uniqueHeader}
 
 ${restOfContent}`;
-        } else {
-          // Replace the existing H1 with H2 to comply with llmstxt.org standard
-          const restOfContent = trimmedContent.split('\n').slice(1).join('\n');
-          return `## ${uniqueHeader}
-
-${restOfContent}`;
-        }
       } else {
         // Content doesn't have the same heading, add our unique H2 header
         return `## ${uniqueHeader}
@@ -145,11 +137,12 @@ ${doc.content}`;
 
 /**
  * Generate individual markdown files for each document
- * @param docs - Processed document information  
+ * @param docs - Processed document information
  * @param outputDir - Directory to write the markdown files
  * @param siteUrl - Base site URL
  * @param docsDir - The configured docs directory name (e.g., 'docs', 'documentation', etc.)
  * @param keepFrontMatter - Array of frontmatter keys to preserve in generated files
+ * @param preserveDirectoryStructure - Whether to preserve the full directory structure (default: true)
  * @returns Updated docs with new URLs pointing to generated markdown files
  */
 export async function generateIndividualMarkdownFiles(
@@ -157,33 +150,57 @@ export async function generateIndividualMarkdownFiles(
   outputDir: string,
   siteUrl: string,
   docsDir: string = 'docs',
-  keepFrontMatter: string[] = []
+  keepFrontMatter: string[] = [],
+  preserveDirectoryStructure: boolean = true
 ): Promise<DocInfo[]> {
   const updatedDocs: DocInfo[] = [];
   const usedPaths = new Set<string>();
-  
-  
+
+
   for (const doc of docs) {
     // Use the original path structure as default filename.
     let relativePath = doc.path
       .replace(/^\/+/, '') // Remove leading slashes
       .replace(/\.mdx?$/, '.md'); // Ensure .md extension
-    
-    
-    relativePath = relativePath
-      .replace(new RegExp(`^${docsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`), '');// Remove configured docs dir prefix
+
+
+    // Strip the docsDir prefix only if preserveDirectoryStructure is false
+    if (!preserveDirectoryStructure) {
+      relativePath = relativePath
+        .replace(new RegExp(`^${docsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`), '');// Remove configured docs dir prefix
+    }
 
     // If frontmatter has slug, use that.
     if (doc.frontMatter?.slug) {
-      const pathParts = relativePath.replace(/\.md$/, '').split('/');
-      pathParts[pathParts.length - 1] = doc.frontMatter.slug.replace(/^\/+|\/+$/g, '');
-      relativePath = pathParts.join('/') + '.md';
-    } 
+      const slug = doc.frontMatter.slug.replace(/^\/+|\/+$/g, ''); // Trim slashes
+
+      if (slug) { // Only process if slug is not empty after trimming
+        if (slug.includes('/')) {
+          // Nested slug: create directory structure
+          relativePath = slug + '.md';
+        } else {
+          // Simple slug: replace just the filename
+          const pathParts = relativePath.replace(/\.md$/, '').split('/');
+          pathParts[pathParts.length - 1] = slug;
+          relativePath = pathParts.join('/') + '.md';
+        }
+      }
+    }
     // Otherwise, if frontmatter has id, use that.
     else if (doc.frontMatter?.id) {
-      const pathParts = relativePath.replace(/\.md$/, '').split('/');
-      pathParts[pathParts.length - 1] = doc.frontMatter.id;
-      relativePath = pathParts.join('/') + '.md';
+      const id = doc.frontMatter.id.replace(/^\/+|\/+$/g, ''); // Trim slashes
+
+      if (id) { // Only process if id is not empty after trimming
+        if (id.includes('/')) {
+          // Nested id: create directory structure
+          relativePath = id + '.md';
+        } else {
+          // Simple id: replace just the filename
+          const pathParts = relativePath.replace(/\.md$/, '').split('/');
+          pathParts[pathParts.length - 1] = id;
+          relativePath = pathParts.join('/') + '.md';
+        }
+      }
     }
 
     // If path is empty or invalid, create a fallback path
@@ -304,7 +321,8 @@ export async function generateStandardLLMFiles(
       outDir,
       siteUrl,
       context.docsDir,
-      context.options.keepFrontMatter || []
+      context.options.keepFrontMatter || [],
+      context.options.preserveDirectoryStructure !== false // Default to true
     );
   }
   
@@ -383,7 +401,8 @@ export async function generateCustomLLMFiles(
           outDir,
           siteUrl,
           context.docsDir,
-          context.options.keepFrontMatter || []
+          context.options.keepFrontMatter || [],
+          context.options.preserveDirectoryStructure !== false // Default to true
         );
       }
       
