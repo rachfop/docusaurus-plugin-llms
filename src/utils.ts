@@ -29,43 +29,66 @@ export async function readFile(filePath: string): Promise<string> {
 
 /**
  * Check if a file should be ignored based on glob patterns
+ * Matches against both site-relative and docs-relative paths
  * @param filePath - Path to the file
- * @param baseDir - Base directory for relative paths
+ * @param baseDir - Base directory (site root) for relative paths
  * @param ignorePatterns - Glob patterns for files to ignore
+ * @param docsDir - Docs directory name (e.g., 'docs')
  * @returns Whether the file should be ignored
  */
-export function shouldIgnoreFile(filePath: string, baseDir: string, ignorePatterns: string[]): boolean {
+export function shouldIgnoreFile(filePath: string, baseDir: string, ignorePatterns: string[], docsDir: string = 'docs'): boolean {
   if (ignorePatterns.length === 0) {
     return false;
   }
-  
-  const relativePath = path.relative(baseDir, filePath);
-  
-  return ignorePatterns.some(pattern => 
-    minimatch(relativePath, pattern, { matchBase: true })
-  );
+
+  const minimatchOptions = { matchBase: true };
+
+  // Get site-relative path (e.g., "docs/quickstart/file.md")
+  const siteRelativePath = path.relative(baseDir, filePath).replace(/\\/g, '/');
+
+  // Get docs-relative path (e.g., "quickstart/file.md")
+  const docsBaseDir = path.resolve(path.join(baseDir, docsDir));
+  const resolvedFile = path.resolve(filePath);
+  const docsRelativePath = resolvedFile.startsWith(docsBaseDir)
+    ? path.relative(docsBaseDir, resolvedFile).replace(/\\/g, '/')
+    : null;
+
+  return ignorePatterns.some(pattern => {
+    // Try matching against site-relative path
+    if (minimatch(siteRelativePath, pattern, minimatchOptions)) {
+      return true;
+    }
+
+    // Try matching against docs-relative path if available
+    if (docsRelativePath && minimatch(docsRelativePath, pattern, minimatchOptions)) {
+      return true;
+    }
+
+    return false;
+  });
 }
 
 /**
  * Recursively reads all Markdown files in a directory
  * @param dir - Directory to scan
- * @param baseDir - Base directory for relative paths
+ * @param baseDir - Base directory (site root) for relative paths
  * @param ignorePatterns - Glob patterns for files to ignore
+ * @param docsDir - Docs directory name (e.g., 'docs')
  * @returns Array of file paths
  */
-export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatterns: string[] = []): Promise<string[]> {
+export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatterns: string[] = [], docsDir: string = 'docs'): Promise<string[]> {
   const files: string[] = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
-    
-    if (shouldIgnoreFile(fullPath, baseDir, ignorePatterns)) {
+
+    if (shouldIgnoreFile(fullPath, baseDir, ignorePatterns, docsDir)) {
       continue;
     }
-    
+
     if (entry.isDirectory()) {
-      const subDirFiles = await readMarkdownFiles(fullPath, baseDir, ignorePatterns);
+      const subDirFiles = await readMarkdownFiles(fullPath, baseDir, ignorePatterns, docsDir);
       files.push(...subDirFiles);
     } else if (entry.name.endsWith('.md') || entry.name.endsWith('.mdx')) {
       // Skip partial files (those starting with underscore)
