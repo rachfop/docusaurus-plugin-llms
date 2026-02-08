@@ -6,6 +6,9 @@ jspm_packages/
 lib/
 dist/
 
+# Test output directory
+test-output/
+
 # Coverage directory
 coverage/
 
