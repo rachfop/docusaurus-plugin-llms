@@ -35,7 +35,7 @@ function generateLLMFile(docs, outputPath, fileTitle, fileDescription, includeFu
         // Try to make it more descriptive by adding the file path info if available
         if (doc.path && counter === 2) {
           const pathParts = doc.path.split('/');
-          const folderName = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
+          const folderName = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : '';
           if (folderName) {
             uniqueHeader = `${headerText} (${folderName.charAt(0).toUpperCase() + folderName.slice(1)})`;
           } else {
