@@ -141,7 +141,7 @@ export default function docusaurusPluginLLMs(
         
         // Skip further processing if no documents were found
         if (allDocFiles.length === 0) {
-          console.warn('No documents found to process.');
+          console.warn('No documents found to process. Skipping.');
           return;
         }
         
