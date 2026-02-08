@@ -137,7 +137,8 @@ module.exports = {
 | `version`                        | string   | `undefined`       | Global version to include in all generated files              |
 | `customLLMFiles`                 | array    | `[]`              | Array of custom LLM file configurations                       |
 | `generateMarkdownFiles`          | boolean  | `false`           | Generate individual markdown files and link to them from llms.txt |
-| `keepFrontMatter`                | string[] | []                | Preserve selected front matter items when generating individual markdown files
+| `keepFrontMatter`                | string[] | []                | Preserve selected front matter items when generating individual markdown files |
+| `preserveDirectoryStructure`     | boolean  | `true`            | Preserve full directory structure in generated markdown files (e.g., `docs/server/config.md` instead of `server/config.md`) |
 | `rootContent`                    | string   | (see below)       | Custom content to include at the root level of llms.txt       |
 | `fullRootContent`                | string   | (see below)       | Custom content to include at the root level of llms-full.txt  |
 
@@ -725,6 +726,35 @@ module.exports = {
 }
 ```
 
+### Directory Structure Options
+
+#### Preserving Directory Structure (`preserveDirectoryStructure`)
+
+By default (`preserveDirectoryStructure: true`), generated markdown files maintain the same directory structure as your HTML output, making them accessible at matching URL paths:
+
+**With `preserveDirectoryStructure: true` (default)**:
+```
+docs/server/config.md → build/docs/server/config.md
+```
+
+**With `preserveDirectoryStructure: false`**:
+```
+docs/server/config.md → build/server/config.md
+```
+
+This is particularly useful when you want markdown files to sit alongside HTML files in the build output, allowing them to be served from the same URL path with a `.md` extension.
+
+**Example configuration**:
+```js
+{
+  generateMarkdownFiles: true,
+  preserveDirectoryStructure: true,  // Default: matches HTML output structure
+  docsDir: 'docs'
+}
+```
+
+With this configuration, if your HTML is at `https://yoursite.com/docs/server/config.html`, the markdown will be at `https://yoursite.com/docs/server/config.md`.
+
 ### Generated File Structure
 
 With `generateMarkdownFiles: true`, your output directory will contain:
@@ -733,10 +763,26 @@ With `generateMarkdownFiles: true`, your output directory will contain:
 build/
 ├── llms.txt              # Index file with links to generated markdown files
 ├── llms-full.txt         # Full content file (if enabled)
-├── getting-started.md    # Generated from your getting started docs
-├── api-reference.md      # Generated from your API documentation  
-├── user-guide.md         # Generated from your user guides
+├── docs/                 # Preserves directory structure (default)
+│   ├── getting-started.md
+│   ├── api/
+│   │   └── reference.md
+│   └── server/
+│       └── config.md
 └── ...                   # Other generated markdown files
+```
+
+Or with `preserveDirectoryStructure: false`:
+
+```
+build/
+├── llms.txt              # Index file with links to generated markdown files
+├── llms-full.txt         # Full content file (if enabled)
+├── getting-started.md    # Flat structure (old behavior)
+├── api/
+│   └── reference.md
+└── server/
+    └── config.md
 ```
 
 ### Filename Generation
