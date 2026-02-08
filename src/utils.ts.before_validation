@@ -713,7 +713,6 @@ export function applyPathTransformations(
  * @param input - Input string (typically a title)
  * @param fallback - Fallback string if input becomes empty after sanitization
  * @returns Sanitized filename (without extension)
- * @throws ValidationError if input or fallback are not strings
  */
 export function sanitizeForFilename(
   input: string,
@@ -723,10 +722,6 @@ export function sanitizeForFilename(
     preserveCase?: boolean;
   } = {}
 ): string {
-  // Validate input parameters
-  validateString(input, 'input');
-  validateString(fallback, 'fallback', { minLength: 1 });
-
   if (!isNonEmptyString(input)) return fallback;
 
   const { preserveUnicode = true, preserveCase = false } = options;

@@ -12,7 +12,7 @@ import * as path from 'path';
 import type { LoadContext, Plugin, Props, RouteConfig } from '@docusaurus/types';
 import { PluginOptions, PluginContext, CustomLLMFile } from './types';
 import { collectDocFiles, generateStandardLLMFiles, generateCustomLLMFiles } from './generator';
-import { setLogLevel, LogLevel, logger } from './utils';
+import { setLogLevel, LogLevel, logger, getErrorMessage, isDefined, isNonEmptyString, isNonEmptyArray } from './utils';
 
 /**
  * Validates plugin options to ensure they conform to expected types and constraints
@@ -41,8 +41,8 @@ function validatePluginOptions(options: PluginOptions): void {
   }
 
   // Validate pathTransformation
-  if (options.pathTransformation !== undefined) {
-    if (typeof options.pathTransformation !== 'object' || options.pathTransformation === null) {
+  if (isDefined(options.pathTransformation)) {
+    if (typeof options.pathTransformation !== 'object') {
       throw new Error('pathTransformation must be an object');
     }
 
@@ -128,26 +128,20 @@ function validatePluginOptions(options: PluginOptions): void {
     }
 
     options.customLLMFiles.forEach((file, index) => {
-      if (typeof file !== 'object' || file === null) {
+      if (!isDefined(file) || typeof file !== 'object') {
         throw new Error(`customLLMFiles[${index}] must be an object`);
       }
 
       // Required fields
-      if (typeof file.filename !== 'string') {
-        throw new Error(`customLLMFiles[${index}].filename must be a string`);
-      }
-      if (file.filename.trim() === '') {
-        throw new Error(`customLLMFiles[${index}].filename cannot be empty`);
+      if (!isNonEmptyString(file.filename)) {
+        throw new Error(`customLLMFiles[${index}].filename must be a non-empty string`);
       }
 
-      if (!Array.isArray(file.includePatterns)) {
-        throw new Error(`customLLMFiles[${index}].includePatterns must be an array`);
+      if (!isNonEmptyArray(file.includePatterns)) {
+        throw new Error(`customLLMFiles[${index}].includePatterns must be a non-empty array`);
       }
       if (!file.includePatterns.every(item => typeof item === 'string')) {
         throw new Error(`customLLMFiles[${index}].includePatterns must contain only strings`);
-      }
-      if (file.includePatterns.length === 0) {
-        throw new Error(`customLLMFiles[${index}].includePatterns cannot be empty`);
       }
 
       if (typeof file.fullContent !== 'boolean') {
@@ -155,12 +149,12 @@ function validatePluginOptions(options: PluginOptions): void {
       }
 
       // Optional fields
-      if (file.title !== undefined && typeof file.title !== 'string') {
-        throw new Error(`customLLMFiles[${index}].title must be a string`);
+      if (isDefined(file.title) && !isNonEmptyString(file.title)) {
+        throw new Error(`customLLMFiles[${index}].title must be a non-empty string`);
       }
 
-      if (file.description !== undefined && typeof file.description !== 'string') {
-        throw new Error(`customLLMFiles[${index}].description must be a string`);
+      if (isDefined(file.description) && !isNonEmptyString(file.description)) {
+        throw new Error(`customLLMFiles[${index}].description must be a non-empty string`);
       }
 
       if (file.ignorePatterns !== undefined) {
@@ -185,12 +179,12 @@ function validatePluginOptions(options: PluginOptions): void {
         throw new Error(`customLLMFiles[${index}].includeUnmatchedLast must be a boolean`);
       }
 
-      if (file.version !== undefined && typeof file.version !== 'string') {
-        throw new Error(`customLLMFiles[${index}].version must be a string`);
+      if (isDefined(file.version) && !isNonEmptyString(file.version)) {
+        throw new Error(`customLLMFiles[${index}].version must be a non-empty string`);
       }
 
-      if (file.rootContent !== undefined && typeof file.rootContent !== 'string') {
-        throw new Error(`customLLMFiles[${index}].rootContent must be a string`);
+      if (isDefined(file.rootContent) && !isNonEmptyString(file.rootContent)) {
+        throw new Error(`customLLMFiles[${index}].rootContent must be a non-empty string`);
       }
     });
   }
@@ -334,7 +328,7 @@ export default function docusaurusPluginLLMs(
         const allDocFiles = await collectDocFiles(enhancedContext);
         
         // Skip further processing if no documents were found
-        if (allDocFiles.length === 0) {
+        if (!isNonEmptyArray(allDocFiles)) {
           logger.warn('No documents found to process. Skipping.');
           return;
         }
@@ -347,8 +341,8 @@ export default function docusaurusPluginLLMs(
         
         // Output overall statistics
         logger.info(`Stats: ${allDocFiles.length} total available documents processed`);
-      } catch (err: any) {
-        logger.error(`Error generating LLM documentation: ${err}`);
+      } catch (err: unknown) {
+        logger.error(`Error generating LLM documentation: ${getErrorMessage(err)}`);
       }
     },
   };
