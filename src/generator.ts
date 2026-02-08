@@ -249,9 +249,16 @@ export async function generateIndividualMarkdownFiles(
       }
     }
     usedPaths.add(uniquePath.toLowerCase());
-    
-    // Create the full file path and ensure directory exists
-    const fullPath = path.join(outputDir, uniquePath);
+
+    // Create the full file path and validate/shorten if needed
+    let fullPath = path.join(outputDir, uniquePath);
+    fullPath = shortenPathIfNeeded(fullPath, outputDir, uniquePath);
+
+    // Update uniquePath to reflect the shortened path if it was changed
+    if (fullPath !== path.join(outputDir, uniquePath)) {
+      uniquePath = path.relative(outputDir, fullPath);
+    }
+
     const directory = path.dirname(fullPath);
 
     // Create directory structure if it doesn't exist
