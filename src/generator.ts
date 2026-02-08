@@ -11,7 +11,10 @@ import {
   sanitizeForFilename,
   ensureUniqueIdentifier,
   createMarkdownContent,
-  normalizePath
+  normalizePath,
+  validatePathLength,
+  shortenPathIfNeeded,
+  logger
 } from './utils';
 import { processFilesWithPatterns } from './processor';
 

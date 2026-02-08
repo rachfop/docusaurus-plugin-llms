@@ -252,7 +252,7 @@ const testCases = [
     siteUrl: 'https://example.com'
   },
   {
-    name: 'Empty string slug (should still work)',
+    name: 'Empty string slug (should fall back to path)',
     docs: [
       {
         title: 'Empty String Slug',
@@ -269,7 +269,7 @@ const testCases = [
     siteUrl: 'https://example.com'
   },
   {
-    name: 'Whitespace-only slug',
+    name: 'Whitespace-only slug (should fall back to path)',
     docs: [
       {
         title: 'Whitespace Slug',
@@ -283,6 +283,128 @@ const testCases = [
       }
     ],
     expectedPaths: ['whitespace-slug.md'],
+    siteUrl: 'https://example.com'
+  },
+  {
+    name: 'Empty string title (should use fallback)',
+    docs: [
+      {
+        title: 'Empty Title',
+        path: 'docs/empty-title.md',
+        content: '# First Heading\n\nTest content with empty title in frontmatter',
+        description: 'Test empty title',
+        url: 'https://example.com/empty-title',
+        frontMatter: {
+          title: ''  // Empty string - should use first heading
+        }
+      }
+    ],
+    expectedPaths: ['empty-title.md'],
+    siteUrl: 'https://example.com'
+  },
+  {
+    name: 'Whitespace-only title (should use fallback)',
+    docs: [
+      {
+        title: 'Whitespace Title',
+        path: 'docs/whitespace-title.md',
+        content: '# Actual Title\n\nTest content with whitespace title',
+        description: 'Test whitespace title',
+        url: 'https://example.com/whitespace-title',
+        frontMatter: {
+          title: '  \t  '  // Whitespace only - should use first heading
+        }
+      }
+    ],
+    expectedPaths: ['whitespace-title.md'],
+    siteUrl: 'https://example.com'
+  },
+  {
+    name: 'Empty string description (should use fallback)',
+    docs: [
+      {
+        title: 'Empty Description',
+        path: 'docs/empty-description.md',
+        content: 'Test content with empty description.\n\nThis is the first paragraph.',
+        description: '',  // Empty description in frontmatter
+        url: 'https://example.com/empty-description',
+        frontMatter: {
+          description: ''  // Empty string - should use first paragraph
+        }
+      }
+    ],
+    expectedPaths: ['empty-description.md'],
+    siteUrl: 'https://example.com'
+  },
+  {
+    name: 'Whitespace-only description (should use fallback)',
+    docs: [
+      {
+        title: 'Whitespace Description',
+        path: 'docs/whitespace-description.md',
+        content: 'First paragraph content.\n\nSecond paragraph.',
+        description: '',  // Will be empty after trim
+        url: 'https://example.com/whitespace-description',
+        frontMatter: {
+          description: '   \n\t   '  // Whitespace only - should use first paragraph
+        }
+      }
+    ],
+    expectedPaths: ['whitespace-description.md'],
+    siteUrl: 'https://example.com'
+  },
+  {
+    name: 'Empty string id (should fall back to path)',
+    docs: [
+      {
+        title: 'Empty ID',
+        path: 'docs/empty-id.md',
+        content: 'Test content with empty id',
+        description: 'Test empty id',
+        url: 'https://example.com/empty-id',
+        frontMatter: {
+          id: ''  // Empty string - should fall back to path
+        }
+      }
+    ],
+    expectedPaths: ['empty-id.md'],
+    siteUrl: 'https://example.com'
+  },
+  {
+    name: 'Whitespace-only id (should fall back to path)',
+    docs: [
+      {
+        title: 'Whitespace ID',
+        path: 'docs/whitespace-id.md',
+        content: 'Test content with whitespace id',
+        description: 'Test whitespace id',
+        url: 'https://example.com/whitespace-id',
+        frontMatter: {
+          id: '\t  \n  '  // Whitespace only - should fall back
+        }
+      }
+    ],
+    expectedPaths: ['whitespace-id.md'],
+    siteUrl: 'https://example.com'
+  },
+  {
+    name: 'Multiple empty frontmatter fields',
+    docs: [
+      {
+        title: 'Multiple Empty Fields',
+        path: 'docs/multiple-empty.md',
+        content: '# Fallback Title\n\nFallback description paragraph.',
+        description: '',
+        url: 'https://example.com/multiple-empty',
+        frontMatter: {
+          title: '',
+          description: '  ',
+          slug: '\t',
+          id: ''
+        }
+      }
+    ],
+    expectedPaths: ['multiple-empty.md'],
     siteUrl: 'https://example.com'
   },
   {
