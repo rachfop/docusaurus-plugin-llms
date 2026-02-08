@@ -332,6 +332,7 @@ export async function generateStandardLLMFiles(
   } = options;
   
   if (!generateLLMsTxt && !generateLLMsFullTxt) {
+    console.warn('No standard LLM files configured for generation. Skipping.');
     return;
   }
   
@@ -346,9 +347,15 @@ export async function generateStandardLLMFiles(
   );
   
   console.log(`Processed ${processedDocs.length} documentation files for standard LLM files`);
-  
+
+  // Check if we have documents to process
+  if (processedDocs.length === 0) {
+    console.warn('No documents found matching patterns for standard LLM files. Skipping.');
+    return;
+  }
+
   // Generate individual markdown files if requested
-  if (generateMarkdownFiles && processedDocs.length > 0) {
+  if (generateMarkdownFiles) {
     console.log('Generating individual markdown files...');
     processedDocs = await generateIndividualMarkdownFiles(
       processedDocs,
@@ -402,6 +409,7 @@ export async function generateCustomLLMFiles(
   const { customLLMFiles = [], ignoreFiles = [], generateMarkdownFiles = false } = options;
   
   if (customLLMFiles.length === 0) {
+    console.warn('No custom LLM files configured. Skipping.');
     return;
   }
   
