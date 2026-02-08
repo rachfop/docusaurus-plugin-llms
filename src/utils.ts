@@ -10,10 +10,11 @@ import * as YAML from 'yaml';
 import { PluginOptions } from './types';
 
 /**
- * Normalize path separators to forward slashes for cross-platform compatibility
- * Converts Windows backslashes to forward slashes
- * @param filePath - Path to normalize
- * @returns Normalized path with forward slashes
+ * Normalizes a file path by converting all backslashes to forward slashes.
+ * This ensures consistent path handling across Windows and Unix systems.
+ *
+ * @param filePath - The file path to normalize
+ * @returns The normalized path with forward slashes
  */
 export function normalizePath(filePath: string): string {
   return filePath.replace(/\\/g, '/');
@@ -137,6 +138,15 @@ export function extractTitle(data: any, content: string, filePath: string): stri
 }
 
 /**
+ * Escape special regex characters in a string
+ * @param str - String to escape
+ * @returns Escaped string safe for use in regex
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Resolve and inline partial imports in markdown content
  * @param content - The markdown content with import statements
  * @param filePath - The path of the file containing the imports
@@ -144,7 +154,7 @@ export function extractTitle(data: any, content: string, filePath: string): stri
  */
 export async function resolvePartialImports(content: string, filePath: string): Promise<string> {
   let resolved = content;
-  
+
   // Match import statements for partials and JSX usage
   // Pattern 1: import PartialName from './_partial.mdx'
   // Pattern 2: import { PartialName } from './_partial.mdx'
@@ -158,55 +168,63 @@ export async function resolvePartialImports(content: string, filePath: string): 
   while ((match = importRegex.exec(content)) !== null) {
     const componentName = match[1] || match[2];
     const importPath = match[3];
-    
+
     // Only process imports for partial files (containing underscore)
     if (importPath.includes('_')) {
       imports.set(componentName, importPath);
     }
   }
-  
+
   // Resolve each partial import
   for (const [componentName, importPath] of imports) {
     try {
       // Resolve the partial file path relative to the current file
       const dir = path.dirname(filePath);
       const partialPath = path.resolve(dir, importPath);
-      
+
       // Read the partial file
       const partialContent = await readFile(partialPath);
       const { content: partialMarkdown } = matter(partialContent);
-      
+
+      // Escape special regex characters in component name and import path
+      const escapedComponentName = escapeRegex(componentName);
+      const escapedImportPath = escapeRegex(importPath);
+
       // Remove the import statement
       resolved = resolved.replace(
-        new RegExp(`^\\s*import\\s+(?:${componentName}|{\\s*${componentName}\\s*})\\s+from\\s+['"]${importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"];?\\s*$`, 'gm'),
+        new RegExp(`^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`, 'gm'),
         ''
       );
-      
+
       // Replace JSX usage with the partial content
       // Handle both self-closing tags and tags with content
       // <PartialName /> or <PartialName></PartialName> or <PartialName>...</PartialName>
-      const jsxRegex = new RegExp(`<${componentName}\\s*(?:[^>]*?)(?:/>|>[^<]*</${componentName}>)`, 'g');
+      const jsxRegex = new RegExp(`<${escapedComponentName}\\s*(?:[^>]*?)(?:/>|>[^<]*</${escapedComponentName}>)`, 'g');
       resolved = resolved.replace(jsxRegex, partialMarkdown.trim());
-      
+
     } catch (error) {
       console.warn(`Failed to resolve partial import from ${importPath}: ${error instanceof Error ? error.message : String(error)}`);
 
       // Remove both the import statement AND the JSX usage even if partial can't be resolved
       // This prevents leaving broken references in the output
 
+      // Escape special regex characters in component name and import path
+      const escapedComponentName = escapeRegex(componentName);
+      const escapedImportPath = escapeRegex(importPath);
+
       // Remove the import statement
       resolved = resolved.replace(
-        new RegExp(`^\\s*import\\s+(?:${componentName}|{\\s*${componentName}\\s*})\\s+from\\s+['"]${importPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"];?\\s*$`, 'gm'),
+        new RegExp(`^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`, 'gm'),
         ''
       );
 
       // Remove JSX usage of this component
       // Handle both self-closing tags (<Component />) and regular tags with content (<Component>...</Component>)
-      const jsxRegex = new RegExp(`<${componentName}(?:\\s+[^>]*)?\\s*\\/?>(?:[\\s\\S]*?<\\/${componentName}>)?`, 'gm');
+      const jsxRegex = new RegExp(`<${escapedComponentName}(?:\\s+[^>]*)?\\s*\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`, 'gm');
       resolved = resolved.replace(jsxRegex, '');
     }
   }
-  
+
   return resolved;
 }
 
