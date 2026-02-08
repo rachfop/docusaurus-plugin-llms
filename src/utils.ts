@@ -265,7 +265,9 @@ export function applyPathTransformations(
     for (const ignorePath of pathTransformation.ignorePaths) {
       // Create a regex that matches the ignore path at the beginning, middle, or end of the path
       // We use word boundaries to ensure we match complete path segments
-      const ignoreRegex = new RegExp(`(^|/)(${ignorePath})(/|$)`, 'g');
+      // Escape special regex characters in ignorePath to prevent regex injection
+      const escapedIgnorePath = ignorePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const ignoreRegex = new RegExp(`(^|/)(${escapedIgnorePath})(/|$)`, 'g');
       transformedPath = transformedPath.replace(ignoreRegex, '$1$3');
     }
     
