@@ -25,8 +25,8 @@ import {
  * @returns Processed file data
  */
 export async function processMarkdownFile(
-  filePath: string, 
-  baseDir: string, 
+  filePath: string,
+  baseDir: string,
   siteUrl: string,
   pathPrefix: string = 'docs',
   pathTransformation?: {
@@ -39,10 +39,37 @@ export async function processMarkdownFile(
 ): Promise<DocInfo | null> {
   const content = await readFile(filePath);
   const { data, content: markdownContent } = matter(content);
-  
+
   // Skip draft files
   if (data.draft === true) {
     return null;
+  }
+
+  // Validate and clean empty frontmatter fields
+  // Empty strings should be treated as undefined to allow fallback logic
+  if (data.title !== undefined && typeof data.title === 'string') {
+    if (!data.title.trim()) {
+      console.warn(`Empty title in frontmatter for ${filePath}. Using fallback.`);
+      data.title = undefined;
+    }
+  }
+
+  if (data.description !== undefined && typeof data.description === 'string') {
+    if (!data.description.trim()) {
+      data.description = undefined;
+    }
+  }
+
+  if (data.slug !== undefined && typeof data.slug === 'string') {
+    if (!data.slug.trim()) {
+      data.slug = undefined;
+    }
+  }
+
+  if (data.id !== undefined && typeof data.id === 'string') {
+    if (!data.id.trim()) {
+      data.id = undefined;
+    }
   }
   
   // Resolve partial imports before processing
@@ -93,13 +120,26 @@ export async function processMarkdownFile(
       transformedPathPrefix = '';
     }
     
-    // Ensure path segments are URL-safe
+    // Ensure path segments are URL-safe with sophisticated encoding detection
     const encodedLinkPath = transformedLinkPath.split('/').map(segment => {
+      // Check if segment contains characters that need encoding
+      // Unreserved characters (per RFC 3986): A-Z a-z 0-9 - . _ ~
+      if (!/[^A-Za-z0-9\-._~]/.test(segment)) {
+        // Segment only contains unreserved characters, no encoding needed
+        return segment;
+      }
+
       try {
-        return decodeURIComponent(segment) === segment
-          ? encodeURIComponent(segment)
-          : segment;
+        // Try to decode - if it changes, it was already encoded
+        const decoded = decodeURIComponent(segment);
+        if (decoded !== segment) {
+          // Was already encoded, return as-is
+          return segment;
+        }
+        // Not encoded, encode it
+        return encodeURIComponent(segment);
       } catch {
+        // Malformed encoding, re-encode
         return encodeURIComponent(segment);
       }
     }).join('/');
@@ -293,119 +333,123 @@ export async function processFilesWithPatterns(
     filesToProcess = filteredFiles;
   }
   
-  // Process each file to generate DocInfo
-  const processedDocs: DocInfo[] = [];
-  
-  for (const filePath of filesToProcess) {
-    try {
-      // Determine if this is a blog or docs file
-      const isBlogFile = filePath.includes(path.join(siteDir, 'blog'));
-      // Use siteDir as baseDir to preserve full directory structure (docs/path/file.md instead of just path/file.md)
-      const baseDir = siteDir;
-      const pathPrefix = isBlogFile ? 'blog' : 'docs';
-      
-      // Try to find the resolved URL for this file from the route map
-      let resolvedUrl: string | undefined;
-      if (context.routeMap) {
-        // Convert file path to a potential route path
-        const relativePath = normalizePath(path.relative(baseDir, filePath))
-          .replace(/\.mdx?$/, '')
-          .replace(/\/index$/, '');
+  // Process files in parallel using Promise.allSettled
+  const results = await Promise.allSettled(
+    filesToProcess.map(async (filePath) => {
+      try {
+        // Determine if this is a blog or docs file
+        const isBlogFile = filePath.includes(path.join(siteDir, 'blog'));
+        // Use siteDir as baseDir to preserve full directory structure (docs/path/file.md instead of just path/file.md)
+        const baseDir = siteDir;
+        const pathPrefix = isBlogFile ? 'blog' : 'docs';
 
-        // Try exact match first (without manual prefix removal)
-        // This respects Docusaurus's resolved routes which already handle numbered prefixes
-        const possiblePaths = [
-          `/${pathPrefix}/${relativePath}`,
-          `/${relativePath}`,
-        ];
+        // Try to find the resolved URL for this file from the route map
+        let resolvedUrl: string | undefined;
+        if (context.routeMap) {
+          // Convert file path to a potential route path
+          const relativePath = normalizePath(path.relative(baseDir, filePath))
+            .replace(/\.mdx?$/, '')
+            .replace(/\/index$/, '');
 
-        for (const possiblePath of possiblePaths) {
-          if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
-            resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
-            break;
-          }
-        }
+          // Try exact match first (without manual prefix removal)
+          // This respects Docusaurus's resolved routes which already handle numbered prefixes
+          const possiblePaths = [
+            `/${pathPrefix}/${relativePath}`,
+            `/${relativePath}`,
+          ];
 
-        // ONLY if exact match fails, try numbered prefix removal as fallback
-        if (!resolvedUrl) {
-          // Function to remove numbered prefixes from path segments
-          const removeNumberedPrefixes = (path: string): string => {
-            return path.split('/').map(segment => {
-              // Remove numbered prefixes like "01-", "1-", "001-" from each segment
-              return segment.replace(/^\d+-/, '');
-            }).join('/');
-          };
-
-          const cleanPath = removeNumberedPrefixes(relativePath);
-
-          for (const possiblePath of [`/${pathPrefix}/${cleanPath}`, `/${cleanPath}`]) {
+          for (const possiblePath of possiblePaths) {
             if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
               resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
               break;
             }
           }
 
-          // Also handle nested folder structures with numbered prefixes
+          // ONLY if exact match fails, try numbered prefix removal as fallback
           if (!resolvedUrl) {
-            const segments = relativePath.split('/');
-            if (segments.length > 1) {
-              // Try removing numbered prefixes from different levels
-              for (let i = 0; i < segments.length; i++) {
-                const modifiedSegments = [...segments];
-                modifiedSegments[i] = modifiedSegments[i].replace(/^\d+-/, '');
-                const modifiedPath = modifiedSegments.join('/');
-                const pathsToTry = [`/${pathPrefix}/${modifiedPath}`, `/${modifiedPath}`];
+            // Function to remove numbered prefixes from path segments
+            const removeNumberedPrefixes = (path: string): string => {
+              return path.split('/').map(segment => {
+                // Remove numbered prefixes like "01-", "1-", "001-" from each segment
+                return segment.replace(/^\d+-/, '');
+              }).join('/');
+            };
 
-                for (const possiblePath of pathsToTry) {
-                  if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
-                    resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
-                    break;
+            const cleanPath = removeNumberedPrefixes(relativePath);
+
+            for (const possiblePath of [`/${pathPrefix}/${cleanPath}`, `/${cleanPath}`]) {
+              if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
+                resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
+                break;
+              }
+            }
+
+            // Also handle nested folder structures with numbered prefixes
+            if (!resolvedUrl) {
+              const segments = relativePath.split('/');
+              if (segments.length > 1) {
+                // Try removing numbered prefixes from different levels
+                for (let i = 0; i < segments.length; i++) {
+                  const modifiedSegments = [...segments];
+                  modifiedSegments[i] = modifiedSegments[i].replace(/^\d+-/, '');
+                  const modifiedPath = modifiedSegments.join('/');
+                  const pathsToTry = [`/${pathPrefix}/${modifiedPath}`, `/${modifiedPath}`];
+
+                  for (const possiblePath of pathsToTry) {
+                    if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
+                      resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
+                      break;
+                    }
                   }
-                }
 
-                if (resolvedUrl) break;
+                  if (resolvedUrl) break;
+                }
+              }
+            }
+
+            // If still not found, try to find the best match using the routesPaths array
+            if (!resolvedUrl && context.routesPaths) {
+              const normalizedCleanPath = cleanPath.toLowerCase();
+              const matchingRoute = context.routesPaths.find(routePath => {
+                const normalizedRoute = routePath.toLowerCase();
+                return normalizedRoute.endsWith(`/${normalizedCleanPath}`) ||
+                       normalizedRoute === `/${pathPrefix}/${normalizedCleanPath}` ||
+                       normalizedRoute === `/${normalizedCleanPath}`;
+              });
+              if (matchingRoute) {
+                resolvedUrl = matchingRoute;
               }
             }
           }
 
-          // If still not found, try to find the best match using the routesPaths array
-          if (!resolvedUrl && context.routesPaths) {
-            const normalizedCleanPath = cleanPath.toLowerCase();
-            const matchingRoute = context.routesPaths.find(routePath => {
-              const normalizedRoute = routePath.toLowerCase();
-              return normalizedRoute.endsWith(`/${normalizedCleanPath}`) ||
-                     normalizedRoute === `/${pathPrefix}/${normalizedCleanPath}` ||
-                     normalizedRoute === `/${normalizedCleanPath}`;
-            });
-            if (matchingRoute) {
-              resolvedUrl = matchingRoute;
-            }
+          // Log when we successfully resolve a URL using Docusaurus routes
+          if (resolvedUrl && resolvedUrl !== `/${pathPrefix}/${relativePath}`) {
+            console.log(`Resolved URL for ${path.basename(filePath)}: ${resolvedUrl} (was: /${pathPrefix}/${relativePath})`);
           }
         }
 
-        // Log when we successfully resolve a URL using Docusaurus routes
-        if (resolvedUrl && resolvedUrl !== `/${pathPrefix}/${relativePath}`) {
-          console.log(`Resolved URL for ${path.basename(filePath)}: ${resolvedUrl} (was: /${pathPrefix}/${relativePath})`);
-        }
+        const docInfo = await processMarkdownFile(
+          filePath,
+          baseDir,
+          siteUrl,
+          pathPrefix,
+          context.options.pathTransformation,
+          context.options.excludeImports || false,
+          context.options.removeDuplicateHeadings || false,
+          resolvedUrl
+        );
+        return docInfo;
+      } catch (err: any) {
+        console.warn(`Error processing ${filePath}: ${err.message}`);
+        return null;
       }
-      
-      const docInfo = await processMarkdownFile(
-        filePath, 
-        baseDir, 
-        siteUrl,
-        pathPrefix,
-        context.options.pathTransformation,
-        context.options.excludeImports || false,
-        context.options.removeDuplicateHeadings || false,
-        resolvedUrl
-      );
-      if (docInfo !== null) {
-        processedDocs.push(docInfo);
-      }
-    } catch (err: any) {
-      console.warn(`Error processing ${filePath}: ${err.message}`);
-    }
-  }
-  
+    })
+  );
+
+  // Filter successful results and non-null DocInfo objects
+  const processedDocs = results
+    .filter((r): r is PromiseFulfilledResult<DocInfo | null> => r.status === 'fulfilled' && r.value !== null)
+    .map(r => r.value as DocInfo);
+
   return processedDocs;
 } 

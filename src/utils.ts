@@ -10,6 +10,49 @@ import * as YAML from 'yaml';
 import { PluginOptions } from './types';
 
 /**
+ * Logging level enumeration
+ */
+export enum LogLevel {
+  QUIET = 0,
+  NORMAL = 1,
+  VERBOSE = 2
+}
+
+let currentLogLevel = LogLevel.NORMAL;
+
+/**
+ * Set the logging level for the plugin
+ * @param level - The logging level to use
+ */
+export function setLogLevel(level: LogLevel): void {
+  currentLogLevel = level;
+}
+
+/**
+ * Logger utility for consistent logging across the plugin
+ */
+export const logger = {
+  error: (message: string) => {
+    console.error(`[docusaurus-plugin-llms] ERROR: ${message}`);
+  },
+  warn: (message: string) => {
+    if (currentLogLevel >= LogLevel.NORMAL) {
+      console.warn(`[docusaurus-plugin-llms] ${message}`);
+    }
+  },
+  info: (message: string) => {
+    if (currentLogLevel >= LogLevel.NORMAL) {
+      console.log(`[docusaurus-plugin-llms] ${message}`);
+    }
+  },
+  verbose: (message: string) => {
+    if (currentLogLevel >= LogLevel.VERBOSE) {
+      console.log(`[docusaurus-plugin-llms] ${message}`);
+    }
+  }
+};
+
+/**
  * Normalizes a file path by converting all backslashes to forward slashes.
  * This ensures consistent path handling across Windows and Unix systems.
  *
@@ -85,9 +128,10 @@ export function shouldIgnoreFile(filePath: string, baseDir: string, ignorePatter
  * @param baseDir - Base directory (site root) for relative paths
  * @param ignorePatterns - Glob patterns for files to ignore
  * @param docsDir - Docs directory name (e.g., 'docs')
+ * @param warnOnIgnoredFiles - Whether to warn about ignored files
  * @returns Array of file paths
  */
-export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatterns: string[] = [], docsDir: string = 'docs'): Promise<string[]> {
+export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatterns: string[] = [], docsDir: string = 'docs', warnOnIgnoredFiles: boolean = false): Promise<string[]> {
   const files: string[] = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
@@ -99,12 +143,22 @@ export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatt
     }
 
     if (entry.isDirectory()) {
-      const subDirFiles = await readMarkdownFiles(fullPath, baseDir, ignorePatterns, docsDir);
+      const subDirFiles = await readMarkdownFiles(fullPath, baseDir, ignorePatterns, docsDir, warnOnIgnoredFiles);
       files.push(...subDirFiles);
+    } else if (!entry.name.includes('.')) {
+      // File without extension
+      if (warnOnIgnoredFiles) {
+        logger.warn(`Ignoring file without extension: ${fullPath}`);
+      }
     } else if (entry.name.endsWith('.md') || entry.name.endsWith('.mdx')) {
       // Skip partial files (those starting with underscore)
       if (!entry.name.startsWith('_')) {
         files.push(fullPath);
+      }
+    } else {
+      // Other extension
+      if (warnOnIgnoredFiles) {
+        logger.warn(`Ignoring file with unsupported extension: ${fullPath}`);
       }
     }
   }
@@ -120,17 +174,17 @@ export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatt
  * @returns Extracted title
  */
 export function extractTitle(data: any, content: string, filePath: string): string {
-  // First try frontmatter
-  if (data.title) {
+  // First try frontmatter (check for valid non-empty string)
+  if (data.title && typeof data.title === 'string' && data.title.trim()) {
     return data.title;
   }
-  
+
   // Then try first heading
   const headingMatch = content.match(/^#\s+(.*)/m);
   if (headingMatch) {
     return headingMatch[1].trim();
   }
-  
+
   // Finally use filename
   return path.basename(filePath, path.extname(filePath))
     .replace(/-/g, ' ')
@@ -150,9 +204,14 @@ function escapeRegex(str: string): string {
  * Resolve and inline partial imports in markdown content
  * @param content - The markdown content with import statements
  * @param filePath - The path of the file containing the imports
+ * @param importChain - Set of file paths in the current import chain (for circular dependency detection)
  * @returns Content with partials resolved
  */
-export async function resolvePartialImports(content: string, filePath: string): Promise<string> {
+export async function resolvePartialImports(
+  content: string,
+  filePath: string,
+  importChain: Set<string> = new Set()
+): Promise<string> {
   let resolved = content;
 
   // Match import statements for partials and JSX usage
@@ -182,9 +241,38 @@ export async function resolvePartialImports(content: string, filePath: string): 
       const dir = path.dirname(filePath);
       const partialPath = path.resolve(dir, importPath);
 
+      // Check for circular import
+      if (importChain.has(partialPath)) {
+        const chain = Array.from(importChain).join(' -> ');
+        logger.error(`Circular import detected: ${chain} -> ${partialPath}`);
+
+        // Escape special regex characters in component name and import path
+        const escapedComponentName = escapeRegex(componentName);
+        const escapedImportPath = escapeRegex(importPath);
+
+        // Remove the import statement to prevent infinite recursion
+        resolved = resolved.replace(
+          new RegExp(`^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`, 'gm'),
+          ''
+        );
+
+        // Remove JSX usage of this component
+        const jsxRegex = new RegExp(`<${escapedComponentName}(?:\\s+[^>]*)?\\s*\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`, 'gm');
+        resolved = resolved.replace(jsxRegex, '');
+
+        continue;
+      }
+
+      // Add to chain before recursive call
+      const newChain = new Set(importChain);
+      newChain.add(partialPath);
+
       // Read the partial file
-      const partialContent = await readFile(partialPath);
+      let partialContent = await readFile(partialPath);
       const { content: partialMarkdown } = matter(partialContent);
+
+      // Recursively resolve imports in the partial with the updated chain
+      const resolvedPartial = await resolvePartialImports(partialMarkdown, partialPath, newChain);
 
       // Escape special regex characters in component name and import path
       const escapedComponentName = escapeRegex(componentName);
@@ -200,10 +288,10 @@ export async function resolvePartialImports(content: string, filePath: string): 
       // Handle both self-closing tags and tags with content
       // <PartialName /> or <PartialName></PartialName> or <PartialName>...</PartialName>
       const jsxRegex = new RegExp(`<${escapedComponentName}\\s*(?:[^>]*?)(?:/>|>[^<]*</${escapedComponentName}>)`, 'g');
-      resolved = resolved.replace(jsxRegex, partialMarkdown.trim());
+      resolved = resolved.replace(jsxRegex, resolvedPartial.trim());
 
     } catch (error) {
-      console.warn(`Failed to resolve partial import from ${importPath}: ${error instanceof Error ? error.message : String(error)}`);
+      logger.warn(`Failed to resolve partial import from ${importPath}: ${error instanceof Error ? error.message : String(error)}`);
 
       // Remove both the import statement AND the JSX usage even if partial can't be resolved
       // This prevents leaving broken references in the output
@@ -405,7 +493,7 @@ export function ensureUniqueIdentifier(
       const timestamp = Date.now().toString(36);
       const random = Math.random().toString(36).substring(2, 8);
       uniqueIdentifier = `${baseIdentifier}-${timestamp}-${random}`;
-      console.warn(`Maximum iterations reached for unique identifier. Using fallback: ${uniqueIdentifier}`);
+      logger.warn(`Maximum iterations reached for unique identifier. Using fallback: ${uniqueIdentifier}`);
       break;
     }
   }
