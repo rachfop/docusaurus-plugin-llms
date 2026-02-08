@@ -182,7 +182,7 @@ export async function generateIndividualMarkdownFiles(
     }
 
     // If frontmatter has slug, use that.
-    if (doc.frontMatter?.slug) {
+    if (doc.frontMatter?.slug && typeof doc.frontMatter.slug === 'string') {
       const slug = doc.frontMatter.slug.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
 
       if (slug) { // Only process if slug is not empty after trimming
@@ -199,7 +199,7 @@ export async function generateIndividualMarkdownFiles(
     }
     // Otherwise, if frontmatter has id, use that.
     else if (doc.frontMatter?.id) {
-      const id = doc.frontMatter.id.replace(/^\/+|\/+$/g, ''); // Trim slashes
+      const id = doc.frontMatter.id.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
 
       if (id) { // Only process if id is not empty after trimming
         if (id.includes('/')) {
@@ -214,8 +214,11 @@ export async function generateIndividualMarkdownFiles(
       }
     }
 
+    // Trim any leading/trailing whitespace from the path
+    relativePath = relativePath.trim();
+
     // If path is empty or invalid, create a fallback path
-    if (!relativePath?.trim() || relativePath.trim() === '.md' || relativePath.trim() === '') {
+    if (!relativePath || relativePath === '.md' || relativePath === '') {
       const sanitizedTitle = sanitizeForFilename(doc.title, 'untitled');
       relativePath = `${sanitizedTitle}.md`;
     }
@@ -223,12 +226,24 @@ export async function generateIndividualMarkdownFiles(
     // Ensure path uniqueness
     let uniquePath = relativePath;
     let counter = 1;
+    const MAX_PATH_ITERATIONS = 10000;
+    let pathIterations = 0;
+
     while (usedPaths.has(uniquePath.toLowerCase())) {
       counter++;
       const pathParts = relativePath.split('.');
       const extension = pathParts.pop() || 'md';
       const basePath = pathParts.join('.');
       uniquePath = `${basePath}-${counter}.${extension}`;
+
+      pathIterations++;
+      if (pathIterations >= MAX_PATH_ITERATIONS) {
+        // Fallback to timestamp
+        const timestamp = Date.now();
+        uniquePath = `${basePath}-${timestamp}.${extension}`;
+        console.warn(`Maximum iterations reached for unique path. Using timestamp: ${uniquePath}`);
+        break;
+      }
     }
     usedPaths.add(uniquePath.toLowerCase());
     
