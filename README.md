@@ -139,6 +139,7 @@ module.exports = {
 | `generateMarkdownFiles`          | boolean  | `false`           | Generate individual markdown files and link to them from llms.txt |
 | `keepFrontMatter`                | string[] | []                | Preserve selected front matter items when generating individual markdown files |
 | `preserveDirectoryStructure`     | boolean  | `true`            | Preserve full directory structure in generated markdown files (e.g., `docs/server/config.md` instead of `server/config.md`) |
+| `processingBatchSize`            | number   | `100`             | Batch size for processing documents to prevent out-of-memory errors on large sites |
 | `rootContent`                    | string   | (see below)       | Custom content to include at the root level of llms.txt       |
 | `fullRootContent`                | string   | (see below)       | Custom content to include at the root level of llms-full.txt  |
 | `logLevel`                       | string   | `'normal'`        | Logging level for plugin output: `'quiet'`, `'normal'`, or `'verbose'` |
@@ -210,6 +211,37 @@ Base URL: https://api.example.com/v2`
   }
 ]
 ```
+
+### Batch Processing for Large Sites
+
+The plugin includes batch processing to prevent out-of-memory errors when processing very large documentation sites. By default, documents are processed in batches of 100, but you can configure this using the `processingBatchSize` option.
+
+**When to adjust batch size:**
+- **Large sites (1000+ documents)**: Reduce batch size (e.g., `50`) to lower memory usage
+- **Small sites (< 100 documents)**: Default value is fine
+- **Memory-constrained environments**: Reduce batch size to prevent OOM errors
+- **High-memory systems**: Increase batch size (e.g., `200`) for faster processing
+
+**Example configuration:**
+```js
+module.exports = {
+  plugins: [
+    [
+      'docusaurus-plugin-llms',
+      {
+        processingBatchSize: 50, // Process 50 documents at a time
+        // ... other options
+      },
+    ],
+  ],
+};
+```
+
+**How it works:**
+- Documents are processed in chunks of the specified batch size
+- Each batch is processed sequentially to control memory usage
+- Document order is preserved across batches
+- Progress is logged when processing multiple batches (in verbose mode)
 
 ### Path Transformation Examples
 
