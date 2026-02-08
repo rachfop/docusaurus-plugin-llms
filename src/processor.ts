@@ -75,8 +75,8 @@ export async function processMarkdownFile(
   const normalizedPath = normalizePath(relativePath);
   
   let fullUrl: string;
-  
-  if (resolvedUrl) {
+
+  if (isNonEmptyString(resolvedUrl)) {
     // Use the actual resolved URL from Docusaurus if provided
     try {
       fullUrl = new URL(resolvedUrl, siteUrl).toString();
@@ -145,14 +145,14 @@ export async function processMarkdownFile(
     try {
       const baseUrl = new URL(siteUrl);
       fullUrl = `${baseUrl.origin}/${pathPart}`;
-    } catch (error) {
+    } catch (error: unknown) {
       logger.warn(`Invalid siteUrl: ${siteUrl}. Using fallback.`);
       // Fallback to string concatenation with proper path joining
       const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
       fullUrl = `${baseUrl}/${pathPart}`;
     }
   }
-  
+
   // Extract title
   const title = extractTitle(data, resolvedContent, filePath);
   
@@ -185,14 +185,14 @@ export async function processMarkdownFile(
   
   // Only remove heading markers at the beginning of descriptions or lines
   // This preserves # characters that are part of the content
-  if (description) {
+  if (isNonEmptyString(description)) {
     // Original approach had issues with hashtags inside content
     // Fix: Only remove # symbols at the beginning of lines or description
     // that are followed by a space (actual heading markers)
     description = description.replace(/^(#+)\s+/gm, '');
     
     // Special handling for description frontmatter with heading markers
-    if (data.description && data.description.startsWith('#')) {
+    if (isNonEmptyString(data.description) && data.description.startsWith('#')) {
       // If the description in frontmatter starts with a heading marker,
       // we should preserve it in the extracted description
       description = description.replace(/^#+\s+/, '');

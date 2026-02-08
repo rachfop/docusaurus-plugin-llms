@@ -14,7 +14,11 @@ import {
   normalizePath,
   validatePathLength,
   shortenPathIfNeeded,
-  logger
+  logger,
+  getErrorMessage,
+  isNonEmptyString,
+  isNonEmptyArray,
+  isDefined
 } from './utils';
 import { processFilesWithPatterns } from './processor';
 
@@ -24,7 +28,7 @@ import { processFilesWithPatterns } from './processor';
  * @returns Cleaned description suitable for TOC
  */
 function cleanDescriptionForToc(description: string): string {
-  if (!description) return '';
+  if (!isNonEmptyString(description)) return '';
 
   // Get just the first line for TOC display
   const lines = description.split('\n');
@@ -100,10 +104,10 @@ export async function generateLLMFile(
         usedHeaders, 
         (counter, base) => {
           // Try to make it more descriptive by adding the file path info if available
-          if (doc.path && counter === 2) {
+          if (isNonEmptyString(doc.path) && counter === 2) {
             const pathParts = doc.path.split('/');
             const folderName = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : '';
-            if (folderName) {
+            if (isNonEmptyString(folderName)) {
               return `(${folderName.charAt(0).toUpperCase() + folderName.slice(1)})`;
             }
           }
@@ -140,8 +144,8 @@ ${doc.content}`;
 
     try {
       await writeFile(outputPath, llmFileContent);
-    } catch (error) {
-      throw new Error(`Failed to write file ${outputPath}: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to write file ${outputPath}: ${getErrorMessage(error)}`);
     }
   } else {
     // Generate links-only file
@@ -164,8 +168,8 @@ ${doc.content}`;
 
     try {
       await writeFile(outputPath, llmFileContent);
-    } catch (error) {
-      throw new Error(`Failed to write file ${outputPath}: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to write file ${outputPath}: ${getErrorMessage(error)}`);
     }
   }
 
@@ -208,10 +212,10 @@ export async function generateIndividualMarkdownFiles(
     }
 
     // If frontmatter has slug, use that.
-    if (doc.frontMatter?.slug && typeof doc.frontMatter.slug === 'string') {
+    if (isNonEmptyString(doc.frontMatter?.slug)) {
       const slug = doc.frontMatter.slug.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
 
-      if (slug) { // Only process if slug is not empty after trimming
+      if (isNonEmptyString(slug)) { // Only process if slug is not empty after trimming
         if (slug.includes('/')) {
           // Nested slug: create directory structure
           relativePath = slug + '.md';
@@ -224,10 +228,10 @@ export async function generateIndividualMarkdownFiles(
       }
     }
     // Otherwise, if frontmatter has id, use that.
-    else if (doc.frontMatter?.id && typeof doc.frontMatter.id === 'string') {
+    else if (isNonEmptyString(doc.frontMatter?.id)) {
       const id = doc.frontMatter.id.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
 
-      if (id) { // Only process if id is not empty after trimming
+      if (isNonEmptyString(id)) { // Only process if id is not empty after trimming
         if (id.includes('/')) {
           // Nested id: create directory structure
           relativePath = id + '.md';
@@ -244,7 +248,7 @@ export async function generateIndividualMarkdownFiles(
     relativePath = relativePath.trim();
 
     // If path is empty or invalid, create a fallback path
-    if (!relativePath || relativePath === '.md' || relativePath === '') {
+    if (!isNonEmptyString(relativePath) || relativePath === '.md') {
       const sanitizedTitle = sanitizeForFilename(doc.title, 'untitled');
       relativePath = `${sanitizedTitle}.md`;
     }
@@ -287,13 +291,13 @@ export async function generateIndividualMarkdownFiles(
     // Create directory structure if it doesn't exist
     try {
       await fs.mkdir(directory, { recursive: true });
-    } catch (error) {
-      throw new Error(`Failed to create directory ${directory}: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to create directory ${directory}: ${getErrorMessage(error)}`);
     }
     
     // Extract preserved frontmatter if specified
     let preservedFrontMatter: Record<string, any> = {};
-    if (keepFrontMatter.length > 0 && doc.frontMatter) {
+    if (isNonEmptyArray(keepFrontMatter) && isDefined(doc.frontMatter)) {
       for (const key of keepFrontMatter) {
         if (key in doc.frontMatter) {
           preservedFrontMatter[key] = doc.frontMatter[key];
@@ -313,8 +317,8 @@ export async function generateIndividualMarkdownFiles(
     // Write the markdown file
     try {
       await writeFile(fullPath, markdownContent);
-    } catch (error) {
-      throw new Error(`Failed to write file ${fullPath}: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (error: unknown) {
+      throw new Error(`Failed to write file ${fullPath}: ${getErrorMessage(error)}`);
     }
     
     // Create updated DocInfo with new URL pointing to the generated markdown file
@@ -383,7 +387,7 @@ export async function generateStandardLLMFiles(
   logger.verbose(`Processed ${processedDocs.length} documentation files for standard LLM files`);
 
   // Check if we have documents to process
-  if (processedDocs.length === 0) {
+  if (!isNonEmptyArray(processedDocs)) {
     logger.warn('No documents found matching patterns for standard LLM files. Skipping.');
     return;
   }
@@ -529,12 +533,12 @@ export async function collectDocFiles(context: PluginContext): Promise<string[]>
   
   try {
     await fs.access(fullDocsDir);
-    
+
     // Collect all markdown files from docs directory
     const docFiles = await readMarkdownFiles(fullDocsDir, siteDir, ignoreFiles, docsDir, warnOnIgnoredFiles);
     allDocFiles.push(...docFiles);
-    
-  } catch (err) {
+
+  } catch (err: unknown) {
     logger.warn(`Docs directory not found: ${fullDocsDir}`);
   }
   
@@ -544,12 +548,12 @@ export async function collectDocFiles(context: PluginContext): Promise<string[]>
     
     try {
       await fs.access(blogDir);
-      
+
       // Collect all markdown files from blog directory
       const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles, docsDir, warnOnIgnoredFiles);
       allDocFiles.push(...blogFiles);
-      
-    } catch (err) {
+
+    } catch (err: unknown) {
       logger.warn(`Blog directory not found: ${blogDir}`);
     }
   }
