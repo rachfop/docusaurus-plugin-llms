@@ -198,7 +198,7 @@ export async function generateIndividualMarkdownFiles(
       }
     }
     // Otherwise, if frontmatter has id, use that.
-    else if (doc.frontMatter?.id) {
+    else if (doc.frontMatter?.id && typeof doc.frontMatter.id === 'string') {
       const id = doc.frontMatter.id.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
 
       if (id) { // Only process if id is not empty after trimming
