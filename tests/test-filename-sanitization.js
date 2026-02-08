@@ -7,31 +7,31 @@
 const { sanitizeForFilename } = require('../lib/utils');
 
 const testCases = [
-  // Current default behavior (ASCII-only, lowercase)
+  // ASCII-only mode (preserveUnicode: false)
   {
-    name: 'Converts to lowercase and removes unicode',
+    name: 'Converts to lowercase and removes unicode (ASCII mode)',
     input: 'Café Guide',
     expected: 'caf-guide',
-    options: {}
+    options: { preserveUnicode: false }
   },
   {
-    name: 'Removes unicode characters in default mode',
+    name: 'Removes unicode characters in ASCII mode',
     input: 'Introdução à Programação',
     expected: 'introdu-o-programa-o',
-    options: {}
+    options: { preserveUnicode: false }
   },
   {
-    name: 'Removes emoji and unicode',
+    name: 'Removes emoji and unicode (ASCII mode)',
     input: 'Hello 世界 Guide',
     expected: 'hello-guide',
-    options: {}
+    options: { preserveUnicode: false }
   },
 
-  // Special characters handling
+  // Special characters handling (Unicode mode is default)
   {
-    name: 'Removes special characters',
+    name: 'Removes special characters (Unicode mode)',
     input: 'C++ Programming: Advanced?',
-    expected: 'c-programming-advanced',
+    expected: 'c++-programming-advanced',
     options: {}
   },
   {
@@ -106,11 +106,11 @@ const testCases = [
     options: {}
   },
 
-  // Real-world examples
+  // Real-world examples (Unicode mode preserves more characters)
   {
-    name: 'Documentation title',
+    name: 'Documentation title (Unicode mode)',
     input: 'Getting Started: Installation & Setup',
-    expected: 'getting-started-installation-setup',
+    expected: 'getting-started-installation-&-setup',
     options: {}
   },
   {
@@ -120,15 +120,15 @@ const testCases = [
     options: {}
   },
   {
-    name: 'Technical guide with symbols',
+    name: 'Technical guide with symbols (Unicode mode)',
     input: 'Using $variables and @decorators',
-    expected: 'using-variables-and-decorators',
+    expected: 'using-$variables-and-@decorators',
     options: {}
   },
   {
-    name: 'Version with dots',
+    name: 'Version with dots (Unicode mode preserves dots)',
     input: 'Version 3.2.1 Release Notes',
-    expected: 'version-3-2-1-release-notes',
+    expected: 'version-3.2.1-release-notes',
     options: {}
   },
 
@@ -146,16 +146,108 @@ const testCases = [
     options: {}
   },
   {
-    name: 'Handles underscore',
+    name: 'Preserves underscores (Unicode mode)',
     input: 'file_name_test',
-    expected: 'file-name-test',
+    expected: 'file_name_test',
     options: {}
   },
   {
-    name: 'Handles URL-like input',
+    name: 'Handles URL-like input (Unicode mode preserves dots)',
     input: 'https://example.com/path',
-    expected: 'https-example-com-path',
+    expected: 'https-example.com-path',
     options: {}
+  },
+
+  // Unicode preservation tests (preserveUnicode: true)
+  {
+    name: 'Preserves unicode characters with preserveUnicode',
+    input: 'Café Guide',
+    expected: 'café-guide',
+    options: { preserveUnicode: true }
+  },
+  {
+    name: 'Preserves unicode accents',
+    input: 'Introdução à Programação',
+    expected: 'introdução-à-programação',
+    options: { preserveUnicode: true }
+  },
+  {
+    name: 'Preserves Chinese characters',
+    input: 'Hello 世界 Guide',
+    expected: 'hello-世界-guide',
+    options: { preserveUnicode: true }
+  },
+  {
+    name: 'Preserves emoji with unicode',
+    input: 'Guide 🚀 Rocket',
+    expected: 'guide-🚀-rocket',
+    options: { preserveUnicode: true }
+  },
+  {
+    name: 'Removes only unsafe characters with unicode',
+    input: 'Café/Guide\\Test:Name*File',
+    expected: 'café-guide-test-name-file',
+    options: { preserveUnicode: true }
+  },
+
+  // Case preservation tests
+  {
+    name: 'Preserves case when requested',
+    input: 'MixedCaseTitle',
+    expected: 'MixedCaseTitle',
+    options: { preserveCase: true }
+  },
+  {
+    name: 'Preserves case with unicode',
+    input: 'Café Guide',
+    expected: 'Café-Guide',
+    options: { preserveUnicode: true, preserveCase: true }
+  },
+
+  // Valid special character tests
+  {
+    name: 'Preserves underscores with unicode',
+    input: 'file_name_test',
+    expected: 'file_name_test',
+    options: { preserveUnicode: true }
+  },
+  {
+    name: 'Preserves hyphens',
+    input: 'my-test-file',
+    expected: 'my-test-file',
+    options: { preserveUnicode: true }
+  },
+  {
+    name: 'Preserves dots in middle of name',
+    input: 'version.3.2.1',
+    expected: 'version.3.2.1',
+    options: { preserveUnicode: true }
+  },
+  {
+    name: 'Removes leading dots with unicode',
+    input: '...hidden-file',
+    expected: 'hidden-file',
+    options: { preserveUnicode: true }
+  },
+  {
+    name: 'Preserves alphanumeric and valid chars',
+    input: 'test_123-guide.v2',
+    expected: 'test_123-guide.v2',
+    options: { preserveUnicode: true }
+  },
+
+  // Complex real-world cases with unicode
+  {
+    name: 'Technical doc with unicode and symbols',
+    input: 'Configuração: Sistema & Instalação',
+    expected: 'configuração-sistema-&-instalação',
+    options: { preserveUnicode: true }
+  },
+  {
+    name: 'Mixed unicode and ASCII with unsafe chars',
+    input: 'Guide: Hello/世界\\Test',
+    expected: 'guide-hello-世界-test',
+    options: { preserveUnicode: true }
   }
 ];
 

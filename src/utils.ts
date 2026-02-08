@@ -11,6 +11,166 @@ import * as YAML from 'yaml';
 import { PluginOptions } from './types';
 
 /**
+ * Null/Undefined Handling Guidelines:
+ *
+ * 1. For required parameters: Throw early if null/undefined
+ * 2. For optional parameters: Use optional chaining `value?.property`
+ * 3. For explicit null checks: Use `!== null` and `!== undefined` or the isDefined type guard
+ * 4. For string validation: Use isNonEmptyString() type guard
+ * 5. For truthy checks on booleans: Use explicit comparison or Boolean(value)
+ *
+ * Avoid: `if (value)` when value could be 0, '', or false legitimately
+ * Use: Type guards for consistent, type-safe checks
+ */
+
+/**
+ * Type guard to check if a value is defined (not null or undefined)
+ * @param value - Value to check
+ * @returns True if value is not null or undefined
+ */
+export function isDefined<T>(value: T | null | undefined): value is T {
+  return value !== null && value !== undefined;
+}
+
+/**
+ * Type guard to check if a value is a non-empty string
+ * @param value - Value to check
+ * @returns True if value is a string with at least one non-whitespace character
+ */
+export function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * Type guard to check if a value is a non-empty array
+ * @param value - Value to check
+ * @returns True if value is an array with at least one element
+ */
+export function isNonEmptyArray<T>(value: unknown): value is T[] {
+  return Array.isArray(value) && value.length > 0;
+}
+
+/**
+ * Safely extract an error message from an unknown error value
+ * @param error - The error value (can be Error, string, or any other type)
+ * @returns A string representation of the error
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  try {
+    const stringified = JSON.stringify(error);
+    // JSON.stringify returns undefined for undefined values, handle that case
+    return stringified !== undefined ? stringified : 'Unknown error';
+  } catch {
+    return 'Unknown error';
+  }
+}
+
+/**
+ * Extract stack trace from unknown error types
+ * @param error - The error value (can be Error or any other type)
+ * @returns Stack trace if available, undefined otherwise
+ */
+export function getErrorStack(error: unknown): string | undefined {
+  if (error instanceof Error) {
+    return error.stack;
+  }
+  return undefined;
+}
+
+/**
+ * Custom error class for validation errors
+ */
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+/**
+ * Validates that a value is not null or undefined
+ * @param value - The value to validate
+ * @param paramName - The parameter name for error messages
+ * @returns The validated value
+ * @throws ValidationError if the value is null or undefined
+ */
+export function validateRequired<T>(
+  value: T | null | undefined,
+  paramName: string
+): T {
+  if (value === null || value === undefined) {
+    throw new ValidationError(`Required parameter '${paramName}' is null or undefined`);
+  }
+  return value;
+}
+
+/**
+ * Validates that a value is a string and optionally checks its properties
+ * @param value - The value to validate
+ * @param paramName - The parameter name for error messages
+ * @param options - Validation options for min/max length and pattern
+ * @returns The validated string
+ * @throws ValidationError if validation fails
+ */
+export function validateString(
+  value: unknown,
+  paramName: string,
+  options: { minLength?: number; maxLength?: number; pattern?: RegExp } = {}
+): string {
+  if (typeof value !== 'string') {
+    throw new ValidationError(`Parameter '${paramName}' must be a string, got ${typeof value}`);
+  }
+
+  if (options.minLength !== undefined && value.length < options.minLength) {
+    throw new ValidationError(`Parameter '${paramName}' must be at least ${options.minLength} characters`);
+  }
+
+  if (options.maxLength !== undefined && value.length > options.maxLength) {
+    throw new ValidationError(`Parameter '${paramName}' exceeds maximum length of ${options.maxLength}`);
+  }
+
+  if (options.pattern && !options.pattern.test(value)) {
+    throw new ValidationError(`Parameter '${paramName}' does not match required pattern`);
+  }
+
+  return value;
+}
+
+/**
+ * Validates that a value is an array and optionally validates elements
+ * @param value - The value to validate
+ * @param paramName - The parameter name for error messages
+ * @param elementValidator - Optional function to validate each element
+ * @returns The validated array
+ * @throws ValidationError if validation fails
+ */
+export function validateArray<T>(
+  value: unknown,
+  paramName: string,
+  elementValidator?: (item: unknown) => boolean
+): T[] {
+  if (!Array.isArray(value)) {
+    throw new ValidationError(`Parameter '${paramName}' must be an array`);
+  }
+
+  if (elementValidator) {
+    value.forEach((item, index) => {
+      if (!elementValidator(item)) {
+        throw new ValidationError(`Element at index ${index} in '${paramName}' failed validation`);
+      }
+    });
+  }
+
+  return value as T[];
+}
+
+/**
  * Logging level enumeration
  */
 export enum LogLevel {
@@ -149,7 +309,7 @@ export async function readFile(filePath: string): Promise<string> {
  * @returns Whether the file should be ignored
  */
 export function shouldIgnoreFile(filePath: string, baseDir: string, ignorePatterns: string[], docsDir: string = 'docs'): boolean {
-  if (ignorePatterns.length === 0) {
+  if (!isNonEmptyArray(ignorePatterns)) {
     return false;
   }
 
@@ -187,9 +347,35 @@ export function shouldIgnoreFile(filePath: string, baseDir: string, ignorePatter
  * @param ignorePatterns - Glob patterns for files to ignore
  * @param docsDir - Docs directory name (e.g., 'docs')
  * @param warnOnIgnoredFiles - Whether to warn about ignored files
+ * @param visitedPaths - Set of already visited real paths to detect symlink loops (internal use)
  * @returns Array of file paths
  */
-export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatterns: string[] = [], docsDir: string = 'docs', warnOnIgnoredFiles: boolean = false): Promise<string[]> {
+export async function readMarkdownFiles(
+  dir: string,
+  baseDir: string,
+  ignorePatterns: string[] = [],
+  docsDir: string = 'docs',
+  warnOnIgnoredFiles: boolean = false,
+  visitedPaths: Set<string> = new Set()
+): Promise<string[]> {
+  // Get real path to detect symlink loops
+  let realPath: string;
+  try {
+    realPath = await fs.realpath(dir);
+  } catch (error: unknown) {
+    logger.warn(`Failed to resolve real path for ${dir}: ${getErrorMessage(error)}`);
+    return [];
+  }
+
+  // Check if we've already visited this path (symlink loop detection)
+  if (visitedPaths.has(realPath)) {
+    logger.warn(`Skipping already visited path (possible symlink loop): ${dir}`);
+    return [];
+  }
+
+  // Add to visited paths
+  visitedPaths.add(realPath);
+
   const files: string[] = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
@@ -200,8 +386,22 @@ export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatt
       continue;
     }
 
-    if (entry.isDirectory()) {
-      const subDirFiles = await readMarkdownFiles(fullPath, baseDir, ignorePatterns, docsDir, warnOnIgnoredFiles);
+    // Handle both regular directories and symlinked directories
+    let isDir = entry.isDirectory();
+    if (!isDir && entry.isSymbolicLink()) {
+      // Check if symlink points to a directory
+      try {
+        const stats = await fs.stat(fullPath);
+        isDir = stats.isDirectory();
+      } catch (error: unknown) {
+        // Broken symlink, warn and skip it
+        logger.warn(`Skipping broken symlink: ${fullPath}`);
+        continue;
+      }
+    }
+
+    if (isDir) {
+      const subDirFiles = await readMarkdownFiles(fullPath, baseDir, ignorePatterns, docsDir, warnOnIgnoredFiles, visitedPaths);
       files.push(...subDirFiles);
     } else if (!entry.name.includes('.')) {
       // File without extension
@@ -224,6 +424,7 @@ export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatt
   return files;
 }
 
+
 /**
  * Extract title from content or use the filename
  * @param data - Frontmatter data
@@ -233,13 +434,13 @@ export async function readMarkdownFiles(dir: string, baseDir: string, ignorePatt
  */
 export function extractTitle(data: any, content: string, filePath: string): string {
   // First try frontmatter (check for valid non-empty string)
-  if (data.title && typeof data.title === 'string' && data.title.trim()) {
+  if (isNonEmptyString(data.title)) {
     return data.title;
   }
 
   // Then try first heading
   const headingMatch = content.match(/^#\s+(.*)/m);
-  if (headingMatch) {
+  if (isNonEmptyString(headingMatch?.[1])) {
     return headingMatch[1].trim();
   }
 
@@ -348,8 +549,8 @@ export async function resolvePartialImports(
       const jsxRegex = new RegExp(`<${escapedComponentName}\\s*(?:[^>]*?)(?:/>|>[^<]*</${escapedComponentName}>)`, 'g');
       resolved = resolved.replace(jsxRegex, resolvedPartial.trim());
 
-    } catch (error) {
-      logger.warn(`Failed to resolve partial import from ${importPath}: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (error: unknown) {
+      logger.warn(`Failed to resolve partial import from ${importPath}: ${getErrorMessage(error)}`);
 
       // Remove both the import statement AND the JSX usage even if partial can't be resolved
       // This prevents leaving broken references in the output
@@ -466,14 +667,14 @@ export function applyPathTransformations(
   urlPath: string,
   pathTransformation?: PluginOptions['pathTransformation']
 ): string {
-  if (!pathTransformation) {
+  if (!isDefined(pathTransformation)) {
     return urlPath;
   }
 
   let transformedPath = urlPath;
-  
+
   // Remove ignored path segments
-  if (pathTransformation.ignorePaths?.length) {
+  if (isNonEmptyArray(pathTransformation.ignorePaths)) {
     for (const ignorePath of pathTransformation.ignorePaths) {
       // Create a regex that matches the ignore path at the beginning, middle, or end of the path
       // We use word boundaries to ensure we match complete path segments
@@ -491,7 +692,7 @@ export function applyPathTransformations(
   }
   
   // Add path segments if they're not already present
-  if (pathTransformation.addPaths?.length) {
+  if (isNonEmptyArray(pathTransformation.addPaths)) {
     // Process in reverse order to maintain the specified order in the final path
     // This is because each path is prepended to the front
     const pathsToAdd = [...pathTransformation.addPaths].reverse();
@@ -513,14 +714,38 @@ export function applyPathTransformations(
  * @param fallback - Fallback string if input becomes empty after sanitization
  * @returns Sanitized filename (without extension)
  */
-export function sanitizeForFilename(input: string, fallback: string = 'untitled'): string {
-  if (!input) return fallback;
-  
-  const sanitized = input
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
+export function sanitizeForFilename(
+  input: string,
+  fallback: string = 'untitled',
+  options: {
+    preserveUnicode?: boolean;
+    preserveCase?: boolean;
+  } = {}
+): string {
+  if (!isNonEmptyString(input)) return fallback;
+
+  const { preserveUnicode = true, preserveCase = false } = options;
+
+  let sanitized = preserveCase ? input : input.toLowerCase();
+
+  if (preserveUnicode) {
+    // Only remove filesystem-unsafe characters: / \ : * ? " < > |
+    // Keep underscores, dots (except at start), hyphens, and unicode
+    // Also replace spaces with dashes for better filesystem compatibility
+    sanitized = sanitized.replace(/[/\\:*?"<>|\s]+/g, '-');
+  } else {
+    // Allow alphanumeric, underscores, hyphens, dots
+    sanitized = sanitized.replace(/[^a-z0-9_.-]+/g, '-');
+  }
+
+  // Remove leading dots (hidden files on Unix)
+  sanitized = sanitized.replace(/^\.+/, '');
+
+  // Clean up multiple dashes and trim
+  sanitized = sanitized
+    .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
-  
+
   return sanitized || fallback;
 }
 
@@ -579,7 +804,7 @@ export function createMarkdownContent(
   let result = '';
   
   // Add frontmatter if provided
-  if (frontMatter && Object.keys(frontMatter).length > 0) {
+  if (isDefined(frontMatter) && Object.keys(frontMatter).length > 0) {
     result += '---\n';
     result += YAML.stringify(frontMatter, {
       lineWidth: 0,
