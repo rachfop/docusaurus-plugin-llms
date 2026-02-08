@@ -141,6 +141,7 @@ module.exports = {
 | `preserveDirectoryStructure`     | boolean  | `true`            | Preserve full directory structure in generated markdown files (e.g., `docs/server/config.md` instead of `server/config.md`) |
 | `rootContent`                    | string   | (see below)       | Custom content to include at the root level of llms.txt       |
 | `fullRootContent`                | string   | (see below)       | Custom content to include at the root level of llms-full.txt  |
+| `logLevel`                       | string   | `'normal'`        | Logging level for plugin output: `'quiet'`, `'normal'`, or `'verbose'` |
 
 ### Custom Root Content
 
@@ -497,6 +498,130 @@ The generated files will include the version information under the description:
 Version: 1.0.0
 
 This file contains all documentation content in a single document following the llmstxt.org standard.
+```
+
+## Logging Configuration
+
+The plugin includes a configurable logging system that allows you to control the amount of output during the build process.
+
+### Log Levels
+
+The plugin supports three logging levels:
+
+- **quiet**: Suppresses all output except errors
+- **normal** (default): Shows standard informational messages and warnings
+- **verbose**: Shows detailed progress information including file-by-file processing
+
+### Configuration
+
+```js
+module.exports = {
+  plugins: [
+    [
+      'docusaurus-plugin-llms',
+      {
+        logLevel: 'verbose', // Options: 'quiet', 'normal', 'verbose'
+        // Other configuration options...
+      },
+    ],
+  ],
+};
+```
+
+### Log Level Details
+
+#### Quiet Mode (`logLevel: 'quiet'`)
+
+Only errors are displayed. Use this for clean builds in CI/CD environments or when you don't need build feedback.
+
+```js
+{
+  logLevel: 'quiet'
+}
+```
+
+Output:
+```
+[docusaurus-plugin-llms] ERROR: Error generating LLM documentation: ...
+```
+
+#### Normal Mode (`logLevel: 'normal'`) - Default
+
+Shows standard progress messages, warnings, and errors. This is the recommended setting for most users.
+
+```js
+{
+  logLevel: 'normal' // or omit - this is the default
+}
+```
+
+Output:
+```
+[docusaurus-plugin-llms] Generating LLM-friendly documentation...
+[docusaurus-plugin-llms] Generating individual markdown files...
+[docusaurus-plugin-llms] Generated: /path/to/llms.txt
+[docusaurus-plugin-llms] Generated: /path/to/llms-full.txt
+[docusaurus-plugin-llms] Stats: 42 total available documents processed
+```
+
+#### Verbose Mode (`logLevel: 'verbose'`)
+
+Shows detailed information about every file being processed. Use this for debugging or when you need detailed feedback.
+
+```js
+{
+  logLevel: 'verbose'
+}
+```
+
+Output:
+```
+[docusaurus-plugin-llms] Generating LLM-friendly documentation...
+[docusaurus-plugin-llms] Generating file: /path/to/llms.txt, version: undefined
+[docusaurus-plugin-llms] Processed 42 documentation files for standard LLM files
+[docusaurus-plugin-llms] Generating individual markdown files...
+[docusaurus-plugin-llms] Generated markdown file: getting-started.md
+[docusaurus-plugin-llms] Generated markdown file: api/reference.md
+[docusaurus-plugin-llms] Generated: /path/to/llms.txt
+[docusaurus-plugin-llms] Generated: /path/to/llms-full.txt
+[docusaurus-plugin-llms] Stats: 42 total available documents processed
+```
+
+### Use Cases
+
+#### Development
+
+Use normal or verbose mode during development to see what's being generated:
+
+```js
+{
+  logLevel: 'verbose',
+  generateMarkdownFiles: true
+}
+```
+
+#### Production/CI
+
+Use quiet mode in production builds or CI/CD to reduce log noise:
+
+```js
+{
+  logLevel: 'quiet',
+  generateLLMsTxt: true,
+  generateLLMsFullTxt: true
+}
+```
+
+#### Debugging
+
+Use verbose mode when troubleshooting issues:
+
+```js
+{
+  logLevel: 'verbose',
+  excludeImports: true,
+  removeDuplicateHeadings: true
+}
 ```
 
 ## Content Cleaning Options

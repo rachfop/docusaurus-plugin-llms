@@ -111,6 +111,78 @@ const testCases = [
     filename: 'math=fun.md',
     expectedUrlPath: '/docs/math%3Dfun',
     content: '# Math = Fun\n\nThis has an equals sign in the filename.'
+  },
+  {
+    name: 'Prevents double-encoding of already encoded spaces',
+    filename: 'hello%20world.md',
+    expectedUrlPath: '/docs/hello%20world',
+    content: '# Pre-encoded Spaces\n\nThis filename has already encoded spaces.'
+  },
+  {
+    name: 'Prevents double-encoding of already encoded special chars',
+    filename: 'rock%26roll.md',
+    expectedUrlPath: '/docs/rock%26roll',
+    content: '# Pre-encoded Ampersand\n\nThis filename has already encoded ampersand.'
+  },
+  {
+    name: 'Handles mixed encoded and unencoded segments',
+    filename: 'hello%20world/test file.md',
+    expectedUrlPath: '/docs/hello%20world/test%20file',
+    content: '# Mixed Encoding\n\nFirst segment encoded, second not.'
+  },
+  {
+    name: 'Handles unreserved characters without encoding',
+    filename: 'test-file_name.md',
+    expectedUrlPath: '/docs/test-file_name',
+    content: '# Unreserved Characters\n\nDashes and underscores should not be encoded.'
+  },
+  {
+    name: 'Handles tilde character (unreserved)',
+    filename: 'file~backup.md',
+    expectedUrlPath: '/docs/file~backup',
+    content: '# Tilde Character\n\nTilde is an unreserved character.'
+  },
+  {
+    name: 'Preserves valid partial encoding',
+    filename: 'bad%2encoding.md',
+    expectedUrlPath: '/docs/bad%2encoding',
+    content: '# Partial Encoding\n\nThis has valid percent encoding (%2e) and is preserved.'
+  },
+  {
+    name: 'Encodes brackets',
+    filename: 'test[1].md',
+    expectedUrlPath: '/docs/test%5B1%5D',
+    content: '# Brackets\n\nThis has square brackets in the filename.'
+  },
+  {
+    name: 'Encodes pipe character',
+    filename: 'option|value.md',
+    expectedUrlPath: '/docs/option%7Cvalue',
+    content: '# Pipe Character\n\nThis has a pipe in the filename.'
+  },
+  {
+    name: 'Preserves already encoded unicode',
+    filename: '%C3%BCber.md',
+    expectedUrlPath: '/docs/%C3%BCber',
+    content: '# Pre-encoded Unicode\n\nThis is über pre-encoded.'
+  },
+  {
+    name: 'Handles semicolon',
+    filename: 'key;value.md',
+    expectedUrlPath: '/docs/key%3Bvalue',
+    content: '# Semicolon\n\nThis has a semicolon in the filename.'
+  },
+  {
+    name: 'Handles comma',
+    filename: 'one,two,three.md',
+    expectedUrlPath: '/docs/one%2Ctwo%2Cthree',
+    content: '# Comma\n\nThis has commas in the filename.'
+  },
+  {
+    name: 'Handles truly malformed encoding',
+    filename: 'bad%ZZencoding.md',
+    expectedUrlPath: '/docs/bad%25ZZencoding',
+    content: '# Truly Malformed\n\nThis has truly malformed percent encoding that will throw an error.'
   }
 ];
 

@@ -4,6 +4,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { minimatch } from 'minimatch';
 import matter from 'gray-matter';
 import * as YAML from 'yaml';
@@ -53,6 +54,12 @@ export const logger = {
 };
 
 /**
+ * Constants for path length limits
+ */
+const MAX_PATH_LENGTH_WINDOWS = 260;
+const MAX_PATH_LENGTH_UNIX = 4096;
+
+/**
  * Normalizes a file path by converting all backslashes to forward slashes.
  * This ensures consistent path handling across Windows and Unix systems.
  *
@@ -61,6 +68,49 @@ export const logger = {
  */
 export function normalizePath(filePath: string): string {
   return filePath.replace(/\\/g, '/');
+}
+
+/**
+ * Validates that a file path does not exceed the platform-specific maximum length
+ * @param filePath - The file path to validate
+ * @returns True if the path is within limits, false otherwise
+ */
+export function validatePathLength(filePath: string): boolean {
+  const maxLength = process.platform === 'win32'
+    ? MAX_PATH_LENGTH_WINDOWS
+    : MAX_PATH_LENGTH_UNIX;
+
+  if (filePath.length > maxLength) {
+    logger.error(`Path exceeds maximum length (${maxLength}): ${filePath}`);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Shortens a file path by creating a hash-based filename if the path is too long
+ * @param fullPath - The full file path that may be too long
+ * @param outputDir - The output directory base path
+ * @param relativePath - The relative path from the output directory
+ * @returns A shortened path if necessary, or the original path if it's within limits
+ */
+export function shortenPathIfNeeded(
+  fullPath: string,
+  outputDir: string,
+  relativePath: string
+): string {
+  if (validatePathLength(fullPath)) {
+    return fullPath;
+  }
+
+  // Create a hash of the relative path to ensure uniqueness
+  const hash = crypto.createHash('md5').update(relativePath).digest('hex').substring(0, 8);
+  const shortenedPath = path.join(outputDir, `${hash}.md`);
+
+  logger.warn(`Path too long, using shortened path: ${shortenedPath}`);
+  logger.verbose(`Original path: ${fullPath}`);
+
+  return shortenedPath;
 }
 
 /**

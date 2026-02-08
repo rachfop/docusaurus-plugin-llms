@@ -58,7 +58,12 @@ export async function generateLLMFile(
   version?: string,
   customRootContent?: string
 ): Promise<void> {
-  console.log(`Generating file: ${outputPath}, version: ${version || 'undefined'}`);
+  // Validate path length before proceeding
+  if (!validatePathLength(outputPath)) {
+    throw new Error(`Output path exceeds maximum length: ${outputPath}`);
+  }
+
+  logger.verbose(`Generating file: ${outputPath}, version: ${version || 'undefined'}`);
   const versionInfo = version ? `\n\nVersion: ${version}` : '';
   
   if (includeFullContent) {
@@ -146,7 +151,7 @@ ${doc.content}`;
     }
   }
 
-  console.log(`Generated: ${outputPath}`);
+  logger.info(`Generated: ${outputPath}`);
 }
 
 /**
@@ -244,7 +249,7 @@ export async function generateIndividualMarkdownFiles(
         // Fallback to timestamp
         const timestamp = Date.now();
         uniquePath = `${basePath}-${timestamp}.${extension}`;
-        console.warn(`Maximum iterations reached for unique path. Using timestamp: ${uniquePath}`);
+        logger.warn(`Maximum iterations reached for unique path. Using timestamp: ${uniquePath}`);
         break;
       }
     }
@@ -305,7 +310,7 @@ export async function generateIndividualMarkdownFiles(
       path: `/${urlPath}` // Update path to the new markdown file
     });
     
-    console.log(`Generated markdown file: ${uniquePath}`);
+    logger.verbose(`Generated markdown file: ${uniquePath}`);
   }
   
   return updatedDocs;
@@ -343,7 +348,7 @@ export async function generateStandardLLMFiles(
   } = options;
   
   if (!generateLLMsTxt && !generateLLMsFullTxt) {
-    console.warn('No standard LLM files configured for generation. Skipping.');
+    logger.warn('No standard LLM files configured for generation. Skipping.');
     return;
   }
   
@@ -357,17 +362,17 @@ export async function generateStandardLLMFiles(
     includeUnmatchedLast
   );
   
-  console.log(`Processed ${processedDocs.length} documentation files for standard LLM files`);
+  logger.verbose(`Processed ${processedDocs.length} documentation files for standard LLM files`);
 
   // Check if we have documents to process
   if (processedDocs.length === 0) {
-    console.warn('No documents found matching patterns for standard LLM files. Skipping.');
+    logger.warn('No documents found matching patterns for standard LLM files. Skipping.');
     return;
   }
 
   // Generate individual markdown files if requested
   if (generateMarkdownFiles) {
-    console.log('Generating individual markdown files...');
+    logger.info('Generating individual markdown files...');
     processedDocs = await generateIndividualMarkdownFiles(
       processedDocs,
       outDir,
@@ -420,14 +425,14 @@ export async function generateCustomLLMFiles(
   const { customLLMFiles = [], ignoreFiles = [], generateMarkdownFiles = false } = options;
   
   if (customLLMFiles.length === 0) {
-    console.warn('No custom LLM files configured. Skipping.');
+    logger.warn('No custom LLM files configured. Skipping.');
     return;
   }
   
-  console.log(`Generating ${customLLMFiles.length} custom LLM files...`);
+  logger.info(`Generating ${customLLMFiles.length} custom LLM files...`);
   
   for (const customFile of customLLMFiles) {
-    console.log(`Processing custom file: ${customFile.filename}, version: ${customFile.version || 'undefined'}`);
+    logger.verbose(`Processing custom file: ${customFile.filename}, version: ${customFile.version || 'undefined'}`);
     
     // Combine global ignores with custom ignores
     const combinedIgnores = [...ignoreFiles];
@@ -448,7 +453,7 @@ export async function generateCustomLLMFiles(
     if (customDocs.length > 0) {
       // Generate individual markdown files if requested
       if (generateMarkdownFiles) {
-        console.log(`Generating individual markdown files for custom file: ${customFile.filename}...`);
+        logger.info(`Generating individual markdown files for custom file: ${customFile.filename}...`);
         customDocs = await generateIndividualMarkdownFiles(
           customDocs,
           outDir,
@@ -475,9 +480,9 @@ export async function generateCustomLLMFiles(
         customFile.rootContent
       );
       
-      console.log(`Generated custom LLM file: ${customFile.filename} with ${customDocs.length} documents`);
+      logger.info(`Generated custom LLM file: ${customFile.filename} with ${customDocs.length} documents`);
     } else {
-      console.warn(`No matching documents found for custom LLM file: ${customFile.filename}`);
+      logger.warn(`No matching documents found for custom LLM file: ${customFile.filename}`);
     }
   }
 }
@@ -489,7 +494,7 @@ export async function generateCustomLLMFiles(
  */
 export async function collectDocFiles(context: PluginContext): Promise<string[]> {
   const { siteDir, docsDir, options } = context;
-  const { ignoreFiles = [], includeBlog = false } = options;
+  const { ignoreFiles = [], includeBlog = false, warnOnIgnoredFiles = false } = options;
   
   const allDocFiles: string[] = [];
   
@@ -500,11 +505,11 @@ export async function collectDocFiles(context: PluginContext): Promise<string[]>
     await fs.access(fullDocsDir);
     
     // Collect all markdown files from docs directory
-    const docFiles = await readMarkdownFiles(fullDocsDir, siteDir, ignoreFiles, docsDir);
+    const docFiles = await readMarkdownFiles(fullDocsDir, siteDir, ignoreFiles, docsDir, warnOnIgnoredFiles);
     allDocFiles.push(...docFiles);
     
   } catch (err) {
-    console.warn(`Docs directory not found: ${fullDocsDir}`);
+    logger.warn(`Docs directory not found: ${fullDocsDir}`);
   }
   
   // Process blog if enabled
@@ -515,11 +520,11 @@ export async function collectDocFiles(context: PluginContext): Promise<string[]>
       await fs.access(blogDir);
       
       // Collect all markdown files from blog directory
-      const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles, docsDir);
+      const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles, docsDir, warnOnIgnoredFiles);
       allDocFiles.push(...blogFiles);
       
     } catch (err) {
-      console.warn(`Blog directory not found: ${blogDir}`);
+      logger.warn(`Blog directory not found: ${blogDir}`);
     }
   }
   
