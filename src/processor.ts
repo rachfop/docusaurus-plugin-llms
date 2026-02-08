@@ -13,7 +13,9 @@ import {
   applyPathTransformations,
   resolvePartialImports,
   normalizePath,
-  logger
+  logger,
+  getErrorMessage,
+  isNonEmptyString
 } from './utils';
 
 /**
@@ -48,29 +50,21 @@ export async function processMarkdownFile(
 
   // Validate and clean empty frontmatter fields
   // Empty strings should be treated as undefined to allow fallback logic
-  if (data.title !== undefined && typeof data.title === 'string') {
-    if (!data.title.trim()) {
-      logger.warn(`Empty title in frontmatter for ${filePath}. Using fallback.`);
-      data.title = undefined;
-    }
+  if (data.title !== undefined && !isNonEmptyString(data.title)) {
+    logger.warn(`Empty title in frontmatter for ${filePath}. Using fallback.`);
+    data.title = undefined;
   }
 
-  if (data.description !== undefined && typeof data.description === 'string') {
-    if (!data.description.trim()) {
-      data.description = undefined;
-    }
+  if (data.description !== undefined && !isNonEmptyString(data.description)) {
+    data.description = undefined;
   }
 
-  if (data.slug !== undefined && typeof data.slug === 'string') {
-    if (!data.slug.trim()) {
-      data.slug = undefined;
-    }
+  if (data.slug !== undefined && !isNonEmptyString(data.slug)) {
+    data.slug = undefined;
   }
 
-  if (data.id !== undefined && typeof data.id === 'string') {
-    if (!data.id.trim()) {
-      data.id = undefined;
-    }
+  if (data.id !== undefined && !isNonEmptyString(data.id)) {
+    data.id = undefined;
   }
   
   // Resolve partial imports before processing
@@ -86,7 +80,7 @@ export async function processMarkdownFile(
     // Use the actual resolved URL from Docusaurus if provided
     try {
       fullUrl = new URL(resolvedUrl, siteUrl).toString();
-    } catch (error) {
+    } catch (error: unknown) {
       logger.warn(`Invalid URL construction: ${resolvedUrl} with base ${siteUrl}. Using fallback.`);
       // Fallback to string concatenation with proper path joining
       const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
@@ -166,7 +160,7 @@ export async function processMarkdownFile(
   let description = '';
   
   // First priority: Use frontmatter description if available
-  if (data.description) {
+  if (isNonEmptyString(data.description)) {
     description = data.description;
   } else {
     // Second priority: Find the first non-heading paragraph
@@ -234,6 +228,143 @@ export async function processMarkdownFile(
     description: description || '',
     frontMatter: data,
   };
+}
+
+/**
+ * Remove numbered prefixes from path segments (e.g., "01-intro" -> "intro")
+ */
+function removeNumberedPrefixes(path: string): string {
+  return path.split('/').map(segment => {
+    // Remove numbered prefixes like "01-", "1-", "001-" from each segment
+    return segment.replace(/^\d+-/, '');
+  }).join('/');
+}
+
+/**
+ * Try to find a route in the route map from a list of possible paths
+ */
+function findRouteInMap(routeMap: Map<string, string>, possiblePaths: string[]): string | undefined {
+  for (const possiblePath of possiblePaths) {
+    const route = routeMap.get(possiblePath) || routeMap.get(possiblePath + '/');
+    if (route) {
+      return route;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Try exact match for route resolution
+ */
+function tryExactRouteMatch(
+  routeMap: Map<string, string>,
+  relativePath: string,
+  pathPrefix: string
+): string | undefined {
+  const possiblePaths = [
+    `/${pathPrefix}/${relativePath}`,
+    `/${relativePath}`,
+  ];
+  return findRouteInMap(routeMap, possiblePaths);
+}
+
+/**
+ * Try route resolution with numbered prefix removal
+ */
+function tryNumberedPrefixResolution(
+  routeMap: Map<string, string>,
+  relativePath: string,
+  pathPrefix: string
+): string | undefined {
+  const cleanPath = removeNumberedPrefixes(relativePath);
+
+  // Try basic cleaned path
+  const basicPaths = [`/${pathPrefix}/${cleanPath}`, `/${cleanPath}`];
+  const basicMatch = findRouteInMap(routeMap, basicPaths);
+  if (basicMatch) {
+    return basicMatch;
+  }
+
+  // Try nested folder structures with numbered prefixes at different levels
+  const segments = relativePath.split('/');
+  if (segments.length > 1) {
+    for (let i = 0; i < segments.length; i++) {
+      const modifiedSegments = [...segments];
+      modifiedSegments[i] = modifiedSegments[i].replace(/^\d+-/, '');
+      const modifiedPath = modifiedSegments.join('/');
+      const pathsToTry = [`/${pathPrefix}/${modifiedPath}`, `/${modifiedPath}`];
+
+      const match = findRouteInMap(routeMap, pathsToTry);
+      if (match) {
+        return match;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Try finding best match using routes paths array
+ */
+function tryRoutesPathsMatch(
+  routesPaths: string[],
+  relativePath: string,
+  pathPrefix: string
+): string | undefined {
+  const cleanPath = removeNumberedPrefixes(relativePath);
+  const normalizedCleanPath = cleanPath.toLowerCase();
+
+  return routesPaths.find(routePath => {
+    const normalizedRoute = routePath.toLowerCase();
+    return normalizedRoute.endsWith(`/${normalizedCleanPath}`) ||
+           normalizedRoute === `/${pathPrefix}/${normalizedCleanPath}` ||
+           normalizedRoute === `/${normalizedCleanPath}`;
+  });
+}
+
+/**
+ * Resolve the URL for a document using Docusaurus routes
+ * @param filePath - Full path to the file
+ * @param baseDir - Base directory (typically siteDir)
+ * @param pathPrefix - Path prefix ('docs' or 'blog')
+ * @param context - Plugin context with route map
+ * @returns Resolved URL or undefined if not found
+ */
+function resolveDocumentUrl(
+  filePath: string,
+  baseDir: string,
+  pathPrefix: string,
+  context: PluginContext
+): string | undefined {
+  // Early return if no route map available
+  if (!context.routeMap) {
+    return undefined;
+  }
+
+  // Convert file path to a potential route path
+  const relativePath = normalizePath(path.relative(baseDir, filePath))
+    .replace(/\.mdx?$/, '')
+    .replace(/\/index$/, '');
+
+  // Try exact match first (respects Docusaurus's resolved routes)
+  const exactMatch = tryExactRouteMatch(context.routeMap, relativePath, pathPrefix);
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  // Try numbered prefix removal as fallback
+  const prefixMatch = tryNumberedPrefixResolution(context.routeMap, relativePath, pathPrefix);
+  if (prefixMatch) {
+    return prefixMatch;
+  }
+
+  // Try to find the best match using the routesPaths array
+  if (context.routesPaths) {
+    return tryRoutesPathsMatch(context.routesPaths, relativePath, pathPrefix);
+  }
+
+  return undefined;
 }
 
 /**
@@ -345,86 +476,14 @@ export async function processFilesWithPatterns(
         const pathPrefix = isBlogFile ? 'blog' : 'docs';
 
         // Try to find the resolved URL for this file from the route map
-        let resolvedUrl: string | undefined;
-        if (context.routeMap) {
-          // Convert file path to a potential route path
+        const resolvedUrl = resolveDocumentUrl(filePath, baseDir, pathPrefix, context);
+
+        // Log when we successfully resolve a URL using Docusaurus routes
+        if (resolvedUrl && context.routeMap) {
           const relativePath = normalizePath(path.relative(baseDir, filePath))
             .replace(/\.mdx?$/, '')
             .replace(/\/index$/, '');
-
-          // Try exact match first (without manual prefix removal)
-          // This respects Docusaurus's resolved routes which already handle numbered prefixes
-          const possiblePaths = [
-            `/${pathPrefix}/${relativePath}`,
-            `/${relativePath}`,
-          ];
-
-          for (const possiblePath of possiblePaths) {
-            if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
-              resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
-              break;
-            }
-          }
-
-          // ONLY if exact match fails, try numbered prefix removal as fallback
-          if (!resolvedUrl) {
-            // Function to remove numbered prefixes from path segments
-            const removeNumberedPrefixes = (path: string): string => {
-              return path.split('/').map(segment => {
-                // Remove numbered prefixes like "01-", "1-", "001-" from each segment
-                return segment.replace(/^\d+-/, '');
-              }).join('/');
-            };
-
-            const cleanPath = removeNumberedPrefixes(relativePath);
-
-            for (const possiblePath of [`/${pathPrefix}/${cleanPath}`, `/${cleanPath}`]) {
-              if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
-                resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
-                break;
-              }
-            }
-
-            // Also handle nested folder structures with numbered prefixes
-            if (!resolvedUrl) {
-              const segments = relativePath.split('/');
-              if (segments.length > 1) {
-                // Try removing numbered prefixes from different levels
-                for (let i = 0; i < segments.length; i++) {
-                  const modifiedSegments = [...segments];
-                  modifiedSegments[i] = modifiedSegments[i].replace(/^\d+-/, '');
-                  const modifiedPath = modifiedSegments.join('/');
-                  const pathsToTry = [`/${pathPrefix}/${modifiedPath}`, `/${modifiedPath}`];
-
-                  for (const possiblePath of pathsToTry) {
-                    if (context.routeMap.has(possiblePath) || context.routeMap.has(possiblePath + '/')) {
-                      resolvedUrl = context.routeMap.get(possiblePath) || context.routeMap.get(possiblePath + '/');
-                      break;
-                    }
-                  }
-
-                  if (resolvedUrl) break;
-                }
-              }
-            }
-
-            // If still not found, try to find the best match using the routesPaths array
-            if (!resolvedUrl && context.routesPaths) {
-              const normalizedCleanPath = cleanPath.toLowerCase();
-              const matchingRoute = context.routesPaths.find(routePath => {
-                const normalizedRoute = routePath.toLowerCase();
-                return normalizedRoute.endsWith(`/${normalizedCleanPath}`) ||
-                       normalizedRoute === `/${pathPrefix}/${normalizedCleanPath}` ||
-                       normalizedRoute === `/${normalizedCleanPath}`;
-              });
-              if (matchingRoute) {
-                resolvedUrl = matchingRoute;
-              }
-            }
-          }
-
-          // Log when we successfully resolve a URL using Docusaurus routes
-          if (resolvedUrl && resolvedUrl !== `/${pathPrefix}/${relativePath}`) {
+          if (resolvedUrl !== `/${pathPrefix}/${relativePath}`) {
             logger.verbose(`Resolved URL for ${path.basename(filePath)}: ${resolvedUrl} (was: /${pathPrefix}/${relativePath})`);
           }
         }
@@ -440,8 +499,8 @@ export async function processFilesWithPatterns(
           resolvedUrl
         );
         return docInfo;
-      } catch (err: any) {
-        logger.warn(`Error processing ${filePath}: ${err.message}`);
+      } catch (err: unknown) {
+        logger.warn(`Error processing ${filePath}: ${getErrorMessage(err)}`);
         return null;
       }
     })
