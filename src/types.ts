@@ -123,6 +123,15 @@ export interface PluginOptions {
   /** Whether to preserve directory structure in generated markdown files (default: true) */
   preserveDirectoryStructure?: boolean;
 
+  /** Batch size for processing large document sets to prevent memory issues (default: 100) */
+  processingBatchSize?: number;
+
+  /** Logging level for plugin output (default: 'normal'). Options: 'quiet', 'normal', 'verbose' */
+  logLevel?: 'quiet' | 'normal' | 'verbose';
+
+  /** Whether to warn about files that are ignored (no extension or unsupported extension) (default: false) */
+  warnOnIgnoredFiles?: boolean;
+
   /** Index signature for Docusaurus plugin compatibility */
   [key: string]: unknown;
 }

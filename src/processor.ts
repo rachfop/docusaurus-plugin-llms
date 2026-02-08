@@ -12,7 +12,8 @@ import {
   cleanMarkdownContent,
   applyPathTransformations,
   resolvePartialImports,
-  normalizePath
+  normalizePath,
+  logger
 } from './utils';
 
 /**
@@ -49,7 +50,7 @@ export async function processMarkdownFile(
   // Empty strings should be treated as undefined to allow fallback logic
   if (data.title !== undefined && typeof data.title === 'string') {
     if (!data.title.trim()) {
-      console.warn(`Empty title in frontmatter for ${filePath}. Using fallback.`);
+      logger.warn(`Empty title in frontmatter for ${filePath}. Using fallback.`);
       data.title = undefined;
     }
   }
@@ -86,7 +87,7 @@ export async function processMarkdownFile(
     try {
       fullUrl = new URL(resolvedUrl, siteUrl).toString();
     } catch (error) {
-      console.warn(`Invalid URL construction: ${resolvedUrl} with base ${siteUrl}. Using fallback.`);
+      logger.warn(`Invalid URL construction: ${resolvedUrl} with base ${siteUrl}. Using fallback.`);
       // Fallback to string concatenation with proper path joining
       const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
       const urlPath = resolvedUrl.startsWith('/') ? resolvedUrl : `/${resolvedUrl}`;
@@ -151,7 +152,7 @@ export async function processMarkdownFile(
       const baseUrl = new URL(siteUrl);
       fullUrl = `${baseUrl.origin}/${pathPart}`;
     } catch (error) {
-      console.warn(`Invalid siteUrl: ${siteUrl}. Using fallback.`);
+      logger.warn(`Invalid siteUrl: ${siteUrl}. Using fallback.`);
       // Fallback to string concatenation with proper path joining
       const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
       fullUrl = `${baseUrl}/${pathPart}`;
@@ -208,17 +209,17 @@ export async function processMarkdownFile(
     
     // Validate that the description doesn't contain markdown headings
     if (description.match(/^#+\s+/m)) {
-      console.warn(`Warning: Description for "${title}" may still contain heading markers`);
+      logger.warn(`Warning: Description for "${title}" may still contain heading markers`);
     }
     
     // Warn if the description contains HTML tags
     if (/<[^>]+>/g.test(description)) {
-      console.warn(`Warning: Description for "${title}" contains HTML tags`);
+      logger.warn(`Warning: Description for "${title}" contains HTML tags`);
     }
     
     // Warn if the description is very long
     if (description.length > 500) {
-      console.warn(`Warning: Description for "${title}" is very long (${description.length} characters)`);
+      logger.warn(`Warning: Description for "${title}" is very long (${description.length} characters)`);
     }
   }
   
@@ -424,7 +425,7 @@ export async function processFilesWithPatterns(
 
           // Log when we successfully resolve a URL using Docusaurus routes
           if (resolvedUrl && resolvedUrl !== `/${pathPrefix}/${relativePath}`) {
-            console.log(`Resolved URL for ${path.basename(filePath)}: ${resolvedUrl} (was: /${pathPrefix}/${relativePath})`);
+            logger.verbose(`Resolved URL for ${path.basename(filePath)}: ${resolvedUrl} (was: /${pathPrefix}/${relativePath})`);
           }
         }
 
@@ -440,7 +441,7 @@ export async function processFilesWithPatterns(
         );
         return docInfo;
       } catch (err: any) {
-        console.warn(`Error processing ${filePath}: ${err.message}`);
+        logger.warn(`Error processing ${filePath}: ${err.message}`);
         return null;
       }
     })
