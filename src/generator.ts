@@ -5,12 +5,13 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { DocInfo, PluginContext, CustomLLMFile } from './types';
-import { 
-  writeFile, 
-  readMarkdownFiles, 
-  sanitizeForFilename, 
-  ensureUniqueIdentifier, 
-  createMarkdownContent 
+import {
+  writeFile,
+  readMarkdownFiles,
+  sanitizeForFilename,
+  ensureUniqueIdentifier,
+  createMarkdownContent,
+  normalizePath
 } from './utils';
 import { processFilesWithPatterns } from './processor';
 
@@ -21,10 +22,11 @@ import { processFilesWithPatterns } from './processor';
  */
 function cleanDescriptionForToc(description: string): string {
   if (!description) return '';
-  
+
   // Get just the first line for TOC display
-  const firstLine = description.split('\n')[0];
-  
+  const lines = description.split('\n');
+  const firstLine = lines.length > 0 ? lines[0] : '';
+
   // Remove heading markers only at the beginning of the line
   // Be careful to only remove actual heading markers (# followed by space at beginning)
   // and not hashtag symbols that are part of the content (inline hashtags)
@@ -62,8 +64,9 @@ export async function generateLLMFile(
     const fullContentSections = docs.map(doc => {
       // Check if content already starts with the same heading to avoid duplication
       const trimmedContent = doc.content.trim();
-      const firstLine = trimmedContent.split('\n')[0];
-      
+      const contentLines = trimmedContent.split('\n');
+      const firstLine = contentLines.length > 0 ? contentLines[0] : '';
+
       // Check if the first line is a heading that matches our title
       const headingMatch = firstLine.match(/^#+\s+(.+)$/);
       const firstHeadingText = headingMatch ? headingMatch[1].trim() : null;
@@ -76,7 +79,7 @@ export async function generateLLMFile(
           // Try to make it more descriptive by adding the file path info if available
           if (doc.path && counter === 2) {
             const pathParts = doc.path.split('/');
-            const folderName = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
+            const folderName = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : '';
             if (folderName) {
               return `(${folderName.charAt(0).toUpperCase() + folderName.slice(1)})`;
             }
@@ -109,7 +112,11 @@ ${doc.content}`;
       true // include metadata (description)
     );
 
-    await writeFile(outputPath, llmFileContent);
+    try {
+      await writeFile(outputPath, llmFileContent);
+    } catch (error) {
+      throw new Error(`Failed to write file ${outputPath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   } else {
     // Generate links-only file
     const tocItems = docs.map(doc => {
@@ -129,9 +136,13 @@ ${doc.content}`;
       true // include metadata (description)
     );
 
-    await writeFile(outputPath, llmFileContent);
+    try {
+      await writeFile(outputPath, llmFileContent);
+    } catch (error) {
+      throw new Error(`Failed to write file ${outputPath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
-  
+
   console.log(`Generated: ${outputPath}`);
 }
 
@@ -204,7 +215,7 @@ export async function generateIndividualMarkdownFiles(
     }
 
     // If path is empty or invalid, create a fallback path
-    if (!relativePath || relativePath === '.md') {
+    if (!relativePath?.trim() || relativePath.trim() === '.md' || relativePath.trim() === '') {
       const sanitizedTitle = sanitizeForFilename(doc.title, 'untitled');
       relativePath = `${sanitizedTitle}.md`;
     }
@@ -224,9 +235,13 @@ export async function generateIndividualMarkdownFiles(
     // Create the full file path and ensure directory exists
     const fullPath = path.join(outputDir, uniquePath);
     const directory = path.dirname(fullPath);
-    
+
     // Create directory structure if it doesn't exist
-    await fs.mkdir(directory, { recursive: true });
+    try {
+      await fs.mkdir(directory, { recursive: true });
+    } catch (error) {
+      throw new Error(`Failed to create directory ${directory}: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
     // Extract preserved frontmatter if specified
     let preservedFrontMatter: Record<string, any> = {};
@@ -240,19 +255,23 @@ export async function generateIndividualMarkdownFiles(
 
     // Create markdown content using the utility function
     const markdownContent = createMarkdownContent(
-      doc.title, 
-      doc.description, 
-      doc.content, 
+      doc.title,
+      doc.description,
+      doc.content,
       true, // includeMetadata
       Object.keys(preservedFrontMatter).length > 0 ? preservedFrontMatter : undefined
     );
-    
+
     // Write the markdown file
-    await writeFile(fullPath, markdownContent);
+    try {
+      await writeFile(fullPath, markdownContent);
+    } catch (error) {
+      throw new Error(`Failed to write file ${fullPath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
     // Create updated DocInfo with new URL pointing to the generated markdown file
     // Convert file path to URL path (use forward slashes)
-    const urlPath = uniquePath.replace(/\\/g, '/');
+    const urlPath = normalizePath(uniquePath);
     const newUrl = `${siteUrl}/${urlPath}`;
     
     updatedDocs.push({
