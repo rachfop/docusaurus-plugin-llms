@@ -324,7 +324,8 @@ export async function generateIndividualMarkdownFiles(
     // Create updated DocInfo with new URL pointing to the generated markdown file
     // Convert file path to URL path (use forward slashes)
     const urlPath = normalizePath(uniquePath);
-    const newUrl = `${siteUrl}/${urlPath}`;
+    const baseUrlNormalized = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
+    const newUrl = `${baseUrlNormalized}/${urlPath}`;
     
     updatedDocs.push({
       ...doc,
