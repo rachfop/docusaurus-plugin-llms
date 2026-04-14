@@ -226,6 +226,9 @@ export default function docusaurusPluginLLMs(
     rootContent,
     fullRootContent,
     logLevel = 'normal',
+    preserveDirectoryStructure = true,
+    processingBatchSize = 100,
+    warnOnIgnoredFiles = false,
   } = options;
 
   // Initialize logging level
@@ -277,6 +280,9 @@ export default function docusaurusPluginLLMs(
       keepFrontMatter,
       rootContent,
       fullRootContent,
+      preserveDirectoryStructure,
+      processingBatchSize,
+      warnOnIgnoredFiles,
     }
   };
 
