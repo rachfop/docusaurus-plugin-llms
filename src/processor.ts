@@ -450,7 +450,30 @@ export async function processFilesWithPatterns(
       try {
         const baseDir = siteDir;
         const isBlogFile = filePath.includes(path.join(siteDir, 'blog'));
-        const pathPrefix = isBlogFile ? 'blog' : 'docs';
+
+        // Determine which section this file belongs to
+        let pathPrefix: string;
+        let sectionLabel: string | undefined;
+
+        if (isBlogFile) {
+          pathPrefix = 'blog';
+        } else if (context.docsSections && context.docsSections.length > 0) {
+          const matchedSection = context.docsSections.find(s => {
+            const sectionDir = path.join(siteDir, s.path);
+            return filePath.startsWith(sectionDir + path.sep) || filePath.startsWith(sectionDir + '/');
+          });
+
+          if (matchedSection) {
+            pathPrefix = matchedSection.routeBasePath;
+            if (context.docsSections.length > 1) {
+              sectionLabel = matchedSection.label || matchedSection.path;
+            }
+          } else {
+            pathPrefix = docsDir;
+          }
+        } else {
+          pathPrefix = docsDir;
+        }
 
         const resolvedUrl = await resolveDocumentUrl(filePath, baseDir, context);
 
@@ -468,6 +491,11 @@ export async function processFilesWithPatterns(
           context.options.removeDuplicateHeadings || false,
           resolvedUrl
         );
+
+        if (docInfo && sectionLabel) {
+          docInfo.section = sectionLabel;
+        }
+
         return docInfo;
       } catch (err: unknown) {
         logger.warn(`Error processing ${filePath}: ${getErrorMessage(err)}`);

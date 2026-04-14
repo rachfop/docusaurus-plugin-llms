@@ -149,20 +149,47 @@ ${doc.content}`;
     }
   } else {
     // Generate links-only file
-    const tocItems = docs.map(doc => {
-      // Clean and format the description for TOC
-      const cleanedDescription = cleanDescriptionForToc(doc.description);
-      
-      return `- [${doc.title}](${doc.url})${cleanedDescription ? `: ${cleanedDescription}` : ''}`;
-    });
+    const docsHaveSections = docs.some(doc => doc.section);
+
+    let tocContent: string;
+
+    if (docsHaveSections) {
+      // Group docs by section and emit ## Section headings
+      const sectionMap = new Map<string, string[]>();
+      for (const doc of docs) {
+        const sectionKey = doc.section || '';
+        if (!sectionMap.has(sectionKey)) {
+          sectionMap.set(sectionKey, []);
+        }
+        const cleanedDescription = cleanDescriptionForToc(doc.description);
+        sectionMap.get(sectionKey)!.push(
+          `- [${doc.title}](${doc.url})${cleanedDescription ? `: ${cleanedDescription}` : ''}`
+        );
+      }
+
+      const sectionBlocks: string[] = [];
+      for (const [sectionLabel, items] of sectionMap) {
+        const heading = isNonEmptyString(sectionLabel) ? `## ${sectionLabel}\n\n` : '';
+        sectionBlocks.push(`${heading}${items.join('\n')}`);
+      }
+
+      tocContent = sectionBlocks.join('\n\n');
+    } else {
+      const tocItems = docs.map(doc => {
+        // Clean and format the description for TOC
+        const cleanedDescription = cleanDescriptionForToc(doc.description);
+        return `- [${doc.title}](${doc.url})${cleanedDescription ? `: ${cleanedDescription}` : ''}`;
+      });
+      tocContent = `## Table of Contents\n\n${tocItems.join('\n')}`;
+    }
 
     // Use custom root content or default message
     const rootContent = customRootContent || 'This file contains links to documentation sections following the llmstxt.org standard.';
-    
+
     const llmFileContent = createMarkdownContent(
       fileTitle,
       `${fileDescription}${versionInfo}`,
-      `${rootContent}\n\n## Table of Contents\n\n${tocItems.join('\n')}`,
+      `${rootContent}\n\n${tocContent}`,
       true // include metadata (description)
     );
 
@@ -524,40 +551,42 @@ export async function generateCustomLLMFiles(
  * @returns Array of file paths
  */
 export async function collectDocFiles(context: PluginContext): Promise<string[]> {
-  const { siteDir, docsDir, options } = context;
+  const { siteDir, options, docsSections } = context;
   const { ignoreFiles = [], includeBlog = false, warnOnIgnoredFiles = false } = options;
-  
+
   const allDocFiles: string[] = [];
-  
-  // Process docs directory
-  const fullDocsDir = path.join(siteDir, docsDir);
-  
-  try {
-    await fs.access(fullDocsDir);
 
-    // Collect all markdown files from docs directory
-    const docFiles = await readMarkdownFiles(fullDocsDir, siteDir, ignoreFiles, docsDir, warnOnIgnoredFiles);
-    allDocFiles.push(...docFiles);
+  // Process each docs section
+  for (const section of docsSections) {
+    const fullDocsDir = path.join(siteDir, section.path);
 
-  } catch (err: unknown) {
-    logger.warn(`Docs directory not found: ${fullDocsDir}`);
+    try {
+      await fs.access(fullDocsDir);
+
+      // Collect all markdown files from this section's directory
+      const docFiles = await readMarkdownFiles(fullDocsDir, siteDir, ignoreFiles, section.path, warnOnIgnoredFiles);
+      allDocFiles.push(...docFiles);
+
+    } catch (err: unknown) {
+      logger.warn(`Docs directory not found: ${fullDocsDir}`);
+    }
   }
-  
+
   // Process blog if enabled
   if (includeBlog) {
     const blogDir = path.join(siteDir, 'blog');
-    
+
     try {
       await fs.access(blogDir);
 
       // Collect all markdown files from blog directory
-      const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles, docsDir, warnOnIgnoredFiles);
+      const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles, context.docsDir, warnOnIgnoredFiles);
       allDocFiles.push(...blogFiles);
 
     } catch (err: unknown) {
       logger.warn(`Blog directory not found: ${blogDir}`);
     }
   }
-  
+
   return allDocFiles;
 } 

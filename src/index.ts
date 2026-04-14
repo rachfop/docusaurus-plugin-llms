@@ -10,7 +10,7 @@
 
 import * as path from 'path';
 import type { LoadContext, Plugin, Props } from '@docusaurus/types';
-import { PluginOptions, PluginContext, CustomLLMFile } from './types';
+import { PluginOptions, PluginContext, CustomLLMFile, DocsSection } from './types';
 import { collectDocFiles, generateStandardLLMFiles, generateCustomLLMFiles } from './generator';
 import { setLogLevel, LogLevel, logger, getErrorMessage, isDefined, isNonEmptyString, isNonEmptyArray } from './utils';
 
@@ -85,9 +85,31 @@ function validatePluginOptions(options: PluginOptions): void {
     }
   }
 
+  // Validate docsDir (string or array of section objects)
+  if (options.docsDir !== undefined) {
+    if (typeof options.docsDir !== 'string' && !Array.isArray(options.docsDir)) {
+      throw new Error('docsDir must be a string or an array of section objects');
+    }
+    if (Array.isArray(options.docsDir)) {
+      (options.docsDir as DocsSection[]).forEach((section, index) => {
+        if (typeof section !== 'object' || section === null) {
+          throw new Error(`docsDir[${index}] must be an object`);
+        }
+        if (typeof section.path !== 'string' || section.path.trim() === '') {
+          throw new Error(`docsDir[${index}].path must be a non-empty string`);
+        }
+        if (typeof section.routeBasePath !== 'string' || section.routeBasePath.trim() === '') {
+          throw new Error(`docsDir[${index}].routeBasePath must be a non-empty string`);
+        }
+        if (section.label !== undefined && (typeof section.label !== 'string' || section.label.trim() === '')) {
+          throw new Error(`docsDir[${index}].label must be a non-empty string`);
+        }
+      });
+    }
+  }
+
   // Validate string options
   const stringOptions = [
-    'docsDir',
     'title',
     'description',
     'llmsTxtFilename',
@@ -208,7 +230,7 @@ export default function docusaurusPluginLLMs(
   const {
     generateLLMsTxt = true,
     generateLLMsFullTxt = true,
-    docsDir = 'docs',
+    docsDir,
     ignoreFiles = [],
     title,
     description,
@@ -230,6 +252,18 @@ export default function docusaurusPluginLLMs(
     processingBatchSize = 100,
     warnOnIgnoredFiles = false,
   } = options;
+
+  // Normalize docsDir into docsSections array
+  const docsSections: DocsSection[] =
+    Array.isArray(docsDir) && docsDir.length > 0
+      ? (docsDir as DocsSection[])
+      : [{
+          path: typeof docsDir === 'string' ? docsDir : 'docs',
+          routeBasePath: typeof docsDir === 'string' ? docsDir : 'docs',
+        }];
+
+  // Resolved string form of docsDir for backward-compat fields
+  const resolvedDocsDir = docsSections[0].path;
 
   // Initialize logging level
   const logLevelMap = {
@@ -257,9 +291,10 @@ export default function docusaurusPluginLLMs(
     siteDir,
     outDir,
     siteUrl,
-    docsDir,
+    docsDir: resolvedDocsDir,
     docTitle: title || siteConfig.title,
     docDescription: description || siteConfig.tagline || '',
+    docsSections,
     options: {
       generateLLMsTxt,
       generateLLMsFullTxt,

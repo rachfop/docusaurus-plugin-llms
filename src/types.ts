@@ -3,6 +3,18 @@
  */
 
 /**
+ * Interface for a documentation section (used when docsDir is an array)
+ */
+export interface DocsSection {
+  /** Filesystem path relative to siteDir (e.g., 'docs', 'api') */
+  path: string;
+  /** Docusaurus routeBasePath for this section (e.g., 'docs', 'api') */
+  routeBasePath: string;
+  /** Optional human-readable label shown as a section heading in llms.txt */
+  label?: string;
+}
+
+/**
  * Interface for processed document information
  */
 export interface DocInfo {
@@ -12,6 +24,8 @@ export interface DocInfo {
   content: string;
   description: string;
   frontMatter?: Record<string, any>;
+  /** Section label assigned when multiple docsDir sections are configured */
+  section?: string;
 }
 
 /**
@@ -59,8 +73,8 @@ export interface PluginOptions {
   /** Whether to generate the llms-full.txt file (default: true) */
   generateLLMsFullTxt?: boolean;
   
-  /** Base directory for documentation files (default: 'docs') */
-  docsDir?: string;
+  /** Base directory for documentation files (default: 'docs'), or an array of section objects */
+  docsDir?: string | DocsSection[];
   
   /** Array of glob patterns for files to ignore */
   ignoreFiles?: string[];
@@ -146,4 +160,5 @@ export interface PluginContext {
   docDescription: string;
   options: PluginOptions;
   routesPaths?: string[];
+  docsSections: DocsSection[];
 } 
