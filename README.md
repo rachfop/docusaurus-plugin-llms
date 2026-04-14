@@ -1067,6 +1067,8 @@ Generate both original links and markdown files for different use cases:
 
 ## How It Works
 
+> **Note:** This plugin uses the `postBuild` lifecycle hook and only runs during `npm run build`. It does not run during `docusaurus start` (the development server).
+
 This plugin automatically generates the following files during the build process:
 
 - **llms.txt**: Contains links to all sections of your documentation
