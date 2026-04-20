@@ -44,6 +44,16 @@ function cleanDescriptionForToc(description: string): string {
 }
 
 /**
+ * Append .md to a URL per the llmstxt.org spec, stripping any trailing
+ * slashes first.  URLs that already end with .md are returned unchanged.
+ */
+function applyMdExtension(url: string): string {
+  const stripped = url.replace(/\/+$/, '');
+  if (stripped.endsWith('.md')) return stripped;
+  return `${stripped}.md`;
+}
+
+/**
  * Generate an LLM-friendly file
  * @param docs - Processed document information
  * @param outputPath - Path to write the output file
@@ -53,6 +63,7 @@ function cleanDescriptionForToc(description: string): string {
  * @param version - Version of the file
  * @param customRootContent - Optional custom content to include at the root level
  * @param batchSize - Batch size for processing documents (default: 100)
+ * @param addMdExtension - Whether to append .md to link URLs (default: true)
  */
 export async function generateLLMFile(
   docs: DocInfo[],
@@ -62,7 +73,8 @@ export async function generateLLMFile(
   includeFullContent: boolean,
   version?: string,
   customRootContent?: string,
-  batchSize: number = 100
+  batchSize: number = 100,
+  addMdExtension: boolean = true
 ): Promise<void> {
   // Validate path length before proceeding
   if (!validatePathLength(outputPath)) {
@@ -162,8 +174,9 @@ ${doc.content}`;
           sectionMap.set(sectionKey, []);
         }
         const cleanedDescription = cleanDescriptionForToc(doc.description);
+        const linkUrl = addMdExtension ? applyMdExtension(doc.url) : doc.url;
         sectionMap.get(sectionKey)!.push(
-          `- [${doc.title}](${doc.url})${cleanedDescription ? `: ${cleanedDescription}` : ''}`
+          `- [${doc.title}](${linkUrl})${cleanedDescription ? `: ${cleanedDescription}` : ''}`
         );
       }
 
@@ -176,9 +189,9 @@ ${doc.content}`;
       tocContent = sectionBlocks.join('\n\n');
     } else {
       const tocItems = docs.map(doc => {
-        // Clean and format the description for TOC
         const cleanedDescription = cleanDescriptionForToc(doc.description);
-        return `- [${doc.title}](${doc.url})${cleanedDescription ? `: ${cleanedDescription}` : ''}`;
+        const linkUrl = addMdExtension ? applyMdExtension(doc.url) : doc.url;
+        return `- [${doc.title}](${linkUrl})${cleanedDescription ? `: ${cleanedDescription}` : ''}`;
       });
       tocContent = `## Table of Contents\n\n${tocItems.join('\n')}`;
     }
@@ -394,7 +407,8 @@ export async function generateStandardLLMFiles(
     generateMarkdownFiles = false,
     rootContent,
     fullRootContent,
-    processingBatchSize = 100
+    processingBatchSize = 100,
+    addMdExtension = true
   } = options;
   
   if (!generateLLMsTxt && !generateLLMsFullTxt) {
@@ -444,7 +458,8 @@ export async function generateStandardLLMFiles(
       false, // links only
       version,
       rootContent,
-      processingBatchSize
+      processingBatchSize,
+      addMdExtension
     );
   }
 
@@ -459,7 +474,8 @@ export async function generateStandardLLMFiles(
       true, // full content
       version,
       fullRootContent,
-      processingBatchSize
+      processingBatchSize,
+      addMdExtension
     );
   }
 }
@@ -478,7 +494,8 @@ export async function generateCustomLLMFiles(
     customLLMFiles = [],
     ignoreFiles = [],
     generateMarkdownFiles = false,
-    processingBatchSize = 100
+    processingBatchSize = 100,
+    addMdExtension = true
   } = options;
   
   if (customLLMFiles.length === 0) {
@@ -535,7 +552,8 @@ export async function generateCustomLLMFiles(
         customFile.fullContent,
         customFile.version,
         customFile.rootContent,
-        processingBatchSize
+        processingBatchSize,
+        addMdExtension
       );
       
       logger.info(`Generated custom LLM file: ${customFile.filename} with ${customDocs.length} documents`);

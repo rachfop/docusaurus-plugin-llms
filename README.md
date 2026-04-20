@@ -143,6 +143,7 @@ module.exports = {
 | `customLLMFiles`                 | array    | `[]`              | Array of custom LLM file configurations                       |
 | `generateMarkdownFiles`          | boolean  | `false`           | Generate individual markdown files and link to them from llms.txt |
 | `keepFrontMatter`                | string[] | []                | Preserve selected front matter items when generating individual markdown files |
+| `addMdExtension`                 | boolean  | `true`            | Append `.md` to link URLs in `llms.txt` per the llmstxt.org spec |
 | `preserveDirectoryStructure`     | boolean  | `true`            | Preserve full directory structure in generated markdown files (e.g., `docs/server/config.md` instead of `server/config.md`) |
 | `processingBatchSize`            | number   | `100`             | Batch size for processing documents to prevent out-of-memory errors on large sites |
 | `rootContent`                    | string   | (see below)       | Custom content to include at the root level of llms.txt       |
@@ -215,6 +216,26 @@ Authentication required for all endpoints except /health.
 Base URL: https://api.example.com/v2`
   }
 ]
+```
+
+### Markdown Link Extensions (`addMdExtension`)
+
+Per the [llmstxt.org specification](https://llmstxt.org/), links in `llms.txt` should point to markdown versions of pages rather than HTML pages. The plugin appends `.md` to all link URLs by default.
+
+For example, a Docusaurus page at `https://example.com/docs/getting-started/` becomes:
+
+```
+- [Getting Started](https://example.com/docs/getting-started.md)
+```
+
+Any trailing slashes are stripped before the extension is applied. If a URL already ends with `.md` (e.g. when using `generateMarkdownFiles: true`), it is not doubled.
+
+To disable this behavior and keep the original Docusaurus URLs:
+
+```js
+{
+  addMdExtension: false,
+}
 ```
 
 ### Batch Processing for Large Sites

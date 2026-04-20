@@ -76,7 +76,8 @@ function validatePluginOptions(options: PluginOptions): void {
     'excludeImports',
     'removeDuplicateHeadings',
     'generateMarkdownFiles',
-    'preserveDirectoryStructure'
+    'preserveDirectoryStructure',
+    'addMdExtension'
   ] as const;
 
   for (const option of booleanOptions) {
@@ -247,6 +248,7 @@ export default function docusaurusPluginLLMs(
     keepFrontMatter = [],
     rootContent,
     fullRootContent,
+    addMdExtension = true,
     logLevel = 'normal',
     preserveDirectoryStructure = true,
     processingBatchSize = 100,
@@ -315,6 +317,7 @@ export default function docusaurusPluginLLMs(
       keepFrontMatter,
       rootContent,
       fullRootContent,
+      addMdExtension,
       preserveDirectoryStructure,
       processingBatchSize,
       warnOnIgnoredFiles,

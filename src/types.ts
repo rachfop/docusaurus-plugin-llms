@@ -138,6 +138,9 @@ export interface PluginOptions {
   /** Batch size for processing large document sets to prevent memory issues (default: 100) */
   processingBatchSize?: number;
 
+  /** Whether to append .md to link URLs in llms.txt per the llmstxt.org spec (default: true) */
+  addMdExtension?: boolean;
+
   /** Logging level for plugin output (default: 'normal'). Options: 'quiet', 'normal', 'verbose' */
   logLevel?: 'quiet' | 'normal' | 'verbose';
 

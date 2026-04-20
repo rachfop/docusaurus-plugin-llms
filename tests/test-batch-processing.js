@@ -251,7 +251,7 @@ async function testBatchProcessingLinksOnly() {
   const content = await fs.readFile(outputPath, 'utf-8');
 
   // Links-only files should have markdown links
-  const linkMatches = content.match(/\[Document \d+\]\(https:\/\/example\.com\/docs\/doc-\d+\)/g);
+  const linkMatches = content.match(/\[Document \d+\]\(https:\/\/example\.com\/docs\/doc-\d+\.md\)/g);
   if (!linkMatches || linkMatches.length !== docCount) {
     throw new Error(`Expected ${docCount} links, found ${linkMatches ? linkMatches.length : 0}`);
   }
