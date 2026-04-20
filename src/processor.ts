@@ -167,8 +167,9 @@ export async function processMarkdownFile(
     const paragraphs = resolvedContent.split('\n\n');
     for (const para of paragraphs) {
       const trimmedPara = para.trim();
-      // Skip empty paragraphs and headings
-      if (trimmedPara && !trimmedPara.startsWith('#')) {
+      // Skip empty paragraphs, headings, and import/export statements
+      const isImportOrExport = /^(import\s|export\s)/.test(trimmedPara);
+      if (trimmedPara && !trimmedPara.startsWith('#') && !isImportOrExport) {
         description = trimmedPara;
         break;
       }
