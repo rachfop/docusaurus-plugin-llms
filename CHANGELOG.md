@@ -5,6 +5,19 @@ All notable changes to the docusaurus-plugin-llms will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-06-01
+
+### Added
+
+- **`rewriteImageUrls` option** — opt-in (`false` by default) that rewrites relative image references (`./img/`, `../img/`, `../../img/`, etc.) in generated `.md` files and `llms-full.txt` to absolute hashed URLs served by the site (e.g. `https://site.com/assets/images/diagram-abc123.png`). Resolves images being inaccessible to LLMs reading the served markdown.
+  - Scans `build/assets/images/` after the build and builds a basename → hashed-path lookup map.
+  - Uses byte-comparison to disambiguate when two source images share the same filename.
+  - Images not bundled by Docusaurus (e.g. unreferenced files) are left unchanged.
+
+- **Generated `.md` paths now match page URLs** — when `generateMarkdownFiles: true`, each file is placed at the path derived from the resolved Docusaurus route (e.g. `guia/setup.md`) rather than a title-slugified name, so the `.md` is reachable at the same URL as the HTML page with a `.md` extension.
+
+- **Numeric ordering prefix stripping** — `01-`, `02-` style prefixes are now stripped from every path segment when deriving output paths, matching the clean URLs that Docusaurus itself produces.
+
 ## [0.3.1] - 2026-04-14
 
 ### Fixed

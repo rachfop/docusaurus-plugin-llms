@@ -147,6 +147,11 @@ export interface PluginOptions {
   /** Whether to warn about files that are ignored (no extension or unsupported extension) (default: false) */
   warnOnIgnoredFiles?: boolean;
 
+  /** Whether to rewrite relative image URLs to absolute URLs in generated content (default: false).
+   *  When enabled, references like `./img/foo.png` are resolved to their hashed build output URL
+   *  (e.g., `https://site.com/assets/images/foo-abc123.png`) so LLMs can access the images. */
+  rewriteImageUrls?: boolean;
+
   /** Index signature for Docusaurus plugin compatibility */
   [key: string]: unknown;
 }
@@ -163,5 +168,8 @@ export interface PluginContext {
   docDescription: string;
   options: PluginOptions;
   routesPaths?: string[];
+  /** Pre-built lookup map: image basename → hashed asset paths relative to outDir.
+   *  Built once per postBuild run when rewriteImageUrls is true. */
+  imageAssetMap?: Map<string, string[]>;
   docsSections: DocsSection[];
 } 

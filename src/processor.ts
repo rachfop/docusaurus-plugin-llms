@@ -15,7 +15,8 @@ import {
   normalizePath,
   logger,
   getErrorMessage,
-  isNonEmptyString
+  isNonEmptyString,
+  rewriteRelativeImageUrls
 } from './utils';
 
 /**
@@ -38,7 +39,9 @@ export async function processMarkdownFile(
   },
   excludeImports: boolean = false,
   removeDuplicateHeadings: boolean = false,
-  resolvedUrl?: string
+  resolvedUrl?: string,
+  imageAssetMap?: Map<string, string[]>,
+  outDir?: string
 ): Promise<DocInfo | null> {
   const content = await readFile(filePath);
   const { data, content: markdownContent } = matter(content);
@@ -221,11 +224,16 @@ export async function processMarkdownFile(
   // Clean and process content (now with partials already resolved)
   const cleanedContent = cleanMarkdownContent(resolvedContent, excludeImports, removeDuplicateHeadings);
   
+  // Rewrite relative image URLs to absolute build-output URLs when requested
+  const finalContent = (imageAssetMap && outDir)
+    ? await rewriteRelativeImageUrls(cleanedContent, filePath, imageAssetMap, siteUrl, outDir)
+    : cleanedContent;
+  
   return {
     title,
     path: normalizedPath,
     url: fullUrl,
-    content: cleanedContent,
+    content: finalContent,
     description: description || '',
     frontMatter: data,
   };
@@ -334,7 +342,33 @@ async function resolveDocumentUrl(
 
     for (const override of [data.slug, data.id]) {
       if (!isNonEmptyString(override)) continue;
-      const slug = override.replace(/^\/+|\/+$/g, '');
+      const rawSlug = override.trim();
+
+      // Handle root slug (slug: "/") — means the page is at the root of its section.
+      // A plain slug strip would produce "" and skip; instead find the section this
+      // file belongs to and use its routeBasePath to locate the correct route.
+      if (/^\/+$/.test(rawSlug)) {
+        // Determine which section owns this file to get the correct base route.
+        let sectionBase = '/';
+        if (context.docsSections?.length > 0) {
+          const matched = context.docsSections.find(s => {
+            const abs = path.resolve(baseDir, s.path);
+            return filePath.startsWith(abs + path.sep) || filePath.startsWith(abs + '/');
+          });
+          if (matched && matched.routeBasePath !== '/') {
+            sectionBase = `/${matched.routeBasePath}`;
+          }
+        }
+        // Look for an exact or trailing-slash-equivalent route in routesPaths.
+        const rootMatch = context.routesPaths.find(r => {
+          const clean = r.replace(/\/+$/, '') || '/';
+          return clean === sectionBase;
+        });
+        return rootMatch ?? sectionBase;
+      }
+
+      const slug = rawSlug.replace(/^\/+|\/+$/g, '');
+      if (!isNonEmptyString(slug)) continue;
       const parentDir = path.dirname(tail);
       const overriddenTail = parentDir === '.' ? slug : `${parentDir}/${slug}`;
       const match = findMatchingRoute(context.routesPaths, overriddenTail);
@@ -490,7 +524,9 @@ export async function processFilesWithPatterns(
           context.options.pathTransformation,
           context.options.excludeImports || false,
           context.options.removeDuplicateHeadings || false,
-          resolvedUrl
+          resolvedUrl,
+          context.imageAssetMap,
+          context.options.rewriteImageUrls ? context.outDir : undefined
         );
 
         if (docInfo && sectionLabel) {
