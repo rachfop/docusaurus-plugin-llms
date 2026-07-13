@@ -217,6 +217,32 @@ ${doc.content}`;
 }
 
 /**
+ * Build a fallback output file path from the source file path when URL resolution
+ * is unavailable. Strips the docsDir prefix (when preserveDirectoryStructure is
+ * false) and numeric ordering prefixes ("01-", "02-") from every path segment.
+ */
+function buildFallbackPath(docPath: string, docsDir: string, preserveDirectoryStructure: boolean): string {
+  let rel = docPath
+    .replace(/^\/+/, '')
+    .replace(/\.mdx?$/, '.md');
+
+  if (!preserveDirectoryStructure) {
+    rel = rel.replace(
+      new RegExp(`^${docsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`),
+      ''
+    );
+  }
+
+  // Strip numeric ordering prefixes (e.g. "01-intro" → "intro") from each segment
+  rel = rel
+    .split('/')
+    .map(segment => segment.replace(/^\d+-/, ''))
+    .join('/');
+
+  return rel;
+}
+
+/**
  * Generate individual markdown files for each document
  * @param docs - Processed document information
  * @param outputDir - Directory to write the markdown files
@@ -239,21 +265,59 @@ export async function generateIndividualMarkdownFiles(
 
 
   for (const doc of docs) {
-    // Use the original path structure as default filename.
-    let relativePath = doc.path
-      .replace(/^\/+/, '') // Remove leading slashes
-      .replace(/\.mdx?$/, '.md'); // Ensure .md extension
+    // Derive output path from the resolved page URL (already stripped of numeric
+    // prefixes like "01-" by Docusaurus). Fallback to doc.path when URL is
+    // unavailable or malformed.
+    let relativePath: string;
 
+    if (isNonEmptyString(doc.url)) {
+      try {
+        // Extract clean pathname: "https://site.com/guides/start" → "guides/start.md"
+        const urlPathname = new URL(doc.url).pathname
+          .replace(/^\/+/, '') // remove leading slash
+          .replace(/\/+$/, ''); // remove trailing slash
 
-    // Strip the docsDir prefix only if preserveDirectoryStructure is false
-    if (!preserveDirectoryStructure) {
-      relativePath = relativePath
-        .replace(new RegExp(`^${docsDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`), '');// Remove configured docs dir prefix
+        if (urlPathname === '') {
+          // Root page (slug: /) → serve as index.md
+          relativePath = 'index.md';
+        } else {
+          // Strip any residual numeric ordering prefixes from each segment.
+          // Docusaurus already strips them in resolved URLs, but fallback URLs
+          // constructed from the source file path may still contain them.
+          let cleanPathname = urlPathname
+            .split('/')
+            .map(segment => segment.replace(/^\d+-/, ''))
+            .join('/')
+            // Strip an existing markdown extension so we don't produce
+            // double extensions like "config.md.md" when doc.url already
+            // ends in .md/.mdx (e.g. in tests or external usage).
+            .replace(/\.mdx?$/i, '');
+
+          // When not preserving directory structure, drop the leading docsDir
+          // segment so paths are flattened relative to the docs root — matching
+          // buildFallbackPath and the pre-existing preserveDirectoryStructure
+          // contract (the URL pathname otherwise retains the "docs/" route base).
+          if (!preserveDirectoryStructure && isNonEmptyString(docsDir)) {
+            const prefix = `${docsDir.replace(/^\/+|\/+$/g, '')}/`;
+            if (cleanPathname.startsWith(prefix)) {
+              cleanPathname = cleanPathname.slice(prefix.length);
+            }
+          }
+
+          relativePath = `${cleanPathname}.md`;
+        }
+      } catch {
+        // Malformed URL — fall back to file path with prefix stripping
+        relativePath = buildFallbackPath(doc.path, docsDir, preserveDirectoryStructure);
+      }
+    } else {
+      // No URL available — fall back to file path (legacy behaviour)
+      relativePath = buildFallbackPath(doc.path, docsDir, preserveDirectoryStructure);
     }
 
     // If frontmatter has slug, use that.
     if (isNonEmptyString(doc.frontMatter?.slug)) {
-      const slug = doc.frontMatter.slug.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
+      const slug = doc.frontMatter!.slug.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
 
       if (isNonEmptyString(slug)) { // Only process if slug is not empty after trimming
         if (slug.includes('/')) {
@@ -269,7 +333,7 @@ export async function generateIndividualMarkdownFiles(
     }
     // Otherwise, if frontmatter has id, use that.
     else if (isNonEmptyString(doc.frontMatter?.id)) {
-      const id = doc.frontMatter.id.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
+      const id = doc.frontMatter!.id.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
 
       if (isNonEmptyString(id)) { // Only process if id is not empty after trimming
         if (id.includes('/')) {

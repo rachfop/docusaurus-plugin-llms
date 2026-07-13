@@ -12,7 +12,7 @@ import * as path from 'path';
 import type { LoadContext, Plugin, Props } from '@docusaurus/types';
 import { PluginOptions, PluginContext, CustomLLMFile, DocsSection } from './types';
 import { collectDocFiles, generateStandardLLMFiles, generateCustomLLMFiles } from './generator';
-import { setLogLevel, LogLevel, logger, getErrorMessage, isDefined, isNonEmptyString, isNonEmptyArray } from './utils';
+import { setLogLevel, LogLevel, logger, getErrorMessage, isDefined, isNonEmptyString, isNonEmptyArray, buildImageAssetMap } from './utils';
 
 /**
  * Validates plugin options to ensure they conform to expected types and constraints
@@ -253,6 +253,7 @@ export default function docusaurusPluginLLMs(
     preserveDirectoryStructure = true,
     processingBatchSize = 100,
     warnOnIgnoredFiles = false,
+    rewriteImageUrls = false,
   } = options;
 
   // Normalize docsDir into docsSections array
@@ -321,6 +322,7 @@ export default function docusaurusPluginLLMs(
       preserveDirectoryStructure,
       processingBatchSize,
       warnOnIgnoredFiles,
+      rewriteImageUrls,
     }
   };
 
@@ -339,10 +341,21 @@ export default function docusaurusPluginLLMs(
         // If props are provided (Docusaurus 3.x+), pass the resolved route
         // paths so route resolution can match files to their actual URLs
         if (props?.routesPaths) {
+          logger.verbose(`routesPaths available: ${props.routesPaths.length} routes — sample: ${props.routesPaths.slice(0, 5).join(', ')}`);
           enhancedContext = {
             ...pluginContext,
             routesPaths: props.routesPaths,
           };
+        } else {
+          logger.verbose('routesPaths NOT available in postBuild props — URL resolution will use file-path fallback');
+        }
+
+        // Build image asset map when rewriteImageUrls is enabled
+        if (rewriteImageUrls) {
+          logger.verbose('Building image asset map for URL rewriting...');
+          const imageAssetMap = await buildImageAssetMap(enhancedContext.outDir);
+          logger.verbose(`Image asset map: ${imageAssetMap.size} unique image basenames indexed`);
+          enhancedContext = { ...enhancedContext, imageAssetMap };
         }
         
         // Collect all document files

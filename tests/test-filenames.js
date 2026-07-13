@@ -73,6 +73,70 @@ const testCases = [
   }
 ];
 
+// Numeric prefix stripping tests
+//
+// These use realistic Docusaurus URLs (no .md extension, numeric prefixes
+// already stripped by routing OR present in fallback paths).
+//
+const numericPrefixTestCases = [
+  {
+    name: 'Strips numeric prefix from URL-derived path',
+    doc: {
+      title: 'Getting Started',
+      path: 'docs/01-introduction/01-getting-started.md',
+      content: 'content',
+      description: 'desc',
+      url: 'https://example.com/docs/01-introduction/01-getting-started',
+      frontMatter: {}
+    },
+    expectedPath: 'docs/introduction/getting-started.md',
+    expectedUrl: 'https://example.com/docs/introduction/getting-started.md',
+    preserveDirectoryStructure: true,
+  },
+  {
+    name: 'Strips numeric prefix from deeply nested URL',
+    doc: {
+      title: 'Install',
+      path: 'docs/02-guide/03-setup/04-install.md',
+      content: 'content',
+      description: 'desc',
+      url: 'https://example.com/docs/02-guide/03-setup/04-install',
+      frontMatter: {}
+    },
+    expectedPath: 'docs/guide/setup/install.md',
+    expectedUrl: 'https://example.com/docs/guide/setup/install.md',
+    preserveDirectoryStructure: true,
+  },
+  {
+    name: 'Leaves non-prefixed segments untouched',
+    doc: {
+      title: 'Reference',
+      path: 'docs/api/reference.md',
+      content: 'content',
+      description: 'desc',
+      url: 'https://example.com/docs/api/reference',
+      frontMatter: {}
+    },
+    expectedPath: 'docs/api/reference.md',
+    expectedUrl: 'https://example.com/docs/api/reference.md',
+    preserveDirectoryStructure: true,
+  },
+  {
+    name: 'Fallback path strips numeric prefix when no URL',
+    doc: {
+      title: 'Getting Started',
+      path: 'docs/01-introduction/01-getting-started.md',
+      content: 'content',
+      description: 'desc',
+      url: '',
+      frontMatter: {}
+    },
+    expectedPath: 'introduction/getting-started.md',
+    expectedUrl: 'https://example.com/introduction/getting-started.md',
+    preserveDirectoryStructure: false,
+  },
+];
+
 async function runFilenameTests() {
   console.log('Running filename tests...\n');
   
@@ -114,6 +178,42 @@ async function runFilenameTests() {
         failed++;
       }
     }
+
+    console.log('\n--- Numeric prefix stripping tests ---\n');
+
+    for (const testCase of numericPrefixTestCases) {
+      console.log(`Test: ${testCase.name}`);
+
+      try {
+        cleanupTestDirectory(testDir);
+
+        const preserve = testCase.preserveDirectoryStructure !== false;
+        const result = await generateIndividualMarkdownFiles(
+          [testCase.doc],
+          testDir,
+          siteUrl,
+          'docs',
+          [],
+          preserve
+        );
+
+        const expectedFullPath = path.join(testDir, testCase.expectedPath);
+        if (!fs.existsSync(expectedFullPath)) {
+          throw new Error(`Expected file at path "${testCase.expectedPath}" not found`);
+        }
+
+        if (result[0].url !== testCase.expectedUrl) {
+          throw new Error(`Expected URL "${testCase.expectedUrl}", got "${result[0].url}"`);
+        }
+
+        console.log(`✅ PASS`);
+        passed++;
+      } catch (error) {
+        console.log(`❌ FAIL: ${error.message}`);
+        failed++;
+      }
+    }
+
   } finally {
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true });

@@ -21,6 +21,7 @@ A Docusaurus plugin for generating LLM-friendly documentation following the [llm
 - 🧹 Cleans HTML and normalizes content for optimal LLM consumption
 - 🚫 Optional import statement removal for cleaner MDX content
 - 🔄 Optional duplicate heading removal for concise output
+- 🖼️ Rewrites relative image paths to absolute build-output URLs
 - 📊 Provides statistics about generated documentation
 
 ## Table of Contents
@@ -32,6 +33,7 @@ A Docusaurus plugin for generating LLM-friendly documentation following the [llm
 - [Document Ordering Examples](#document-ordering-examples)
 - [Custom LLM Files](#custom-llm-files)
 - [Content Cleaning Options](#content-cleaning-options)
+- [Image URL Rewriting](#image-url-rewriting-rewriteimageurls)
 - [Best Practices](#best-practices)
 - [How It Works](#how-it-works)
 - [Implementation Details](#implementation-details)
@@ -138,6 +140,7 @@ module.exports = {
 | `pathTransformation.ignorePaths` | string[] | `[]`              | Path segments to ignore when constructing URLs                |
 | `pathTransformation`             | object   | `undefined`       | Path transformation options for URL construction              |
 | `removeDuplicateHeadings`        | boolean  | `false`           | Remove redundant content that duplicates heading text         |
+| `rewriteImageUrls`               | boolean  | `false`           | Rewrite relative image paths to absolute hashed build-output URLs |
 | `title`                          | string   | Site title        | Custom title to use in generated files                        |
 | `version`                        | string   | `undefined`       | Global version to include in all generated files              |
 | `customLLMFiles`                 | array    | `[]`              | Array of custom LLM file configurations                       |
@@ -830,6 +833,60 @@ module.exports = {
 - Removes both imports and redundant content
 - Recommended for API documentation and auto-generated content
 - Produces the cleanest, most concise output
+
+## Image URL Rewriting (`rewriteImageUrls`)
+
+Docusaurus source files commonly reference images with paths relative to the source file:
+
+```md
+![Architecture diagram](./img/arch.png)
+![Deployment flow](../img/deploy.png)
+![Infrastructure overview](../../img/infra.png)
+```
+
+During a Docusaurus build, these images are copied to `build/assets/images/` with a content hash appended to the filename (e.g., `arch-1a2b3c4d5e6f7890.png`). The generated `.md` files and `llms-full.txt` still contain the original relative paths, which are **invalid** from the perspective of an LLM reading the served files — they cannot resolve `../img/` relative to an absolute URL.
+
+Enabling `rewriteImageUrls: true` scans `build/assets/images/` after the build completes and rewrites every relative image reference to an absolute URL pointing to the hashed file:
+
+**Before:**
+```md
+![Architecture diagram](./img/arch.png)
+```
+
+**After:**
+```md
+![Architecture diagram](https://yoursite.com/assets/images/arch-1a2b3c4d5e6f7890.png)
+```
+
+### Configuration
+
+```js
+module.exports = {
+  plugins: [
+    [
+      'docusaurus-plugin-llms',
+      {
+        generateMarkdownFiles: true,
+        rewriteImageUrls: true, // opt-in: default is false
+      },
+    ],
+  ],
+};
+```
+
+### How It Works
+
+1. After the build completes, the plugin scans `build/assets/images/` and builds a lookup map from **original basename** → **list of hashed build paths**.
+2. For each relative image reference found in generated content, the original basename is extracted and looked up in the map.
+3. **Single match** — the path is rewritten directly.
+4. **Multiple matches** (two images happen to share the same filename) — the source file is read and its bytes are compared against each candidate. The exact match is used.
+5. **No match** (image does not appear in the build, e.g., placeholder images or files in unprocessed sections) — the original relative path is kept as-is.
+
+### Limitations
+
+- Only rewrites images that Docusaurus actually bundled into `build/assets/images/`. Images that are not referenced by any rendered page are not present in the build and therefore cannot be rewritten.
+- Applies to both individual `.md` files (when `generateMarkdownFiles: true`) and `llms-full.txt`.
+- This option defaults to `false` to preserve backward compatibility.
 
 ## Best Practices
 

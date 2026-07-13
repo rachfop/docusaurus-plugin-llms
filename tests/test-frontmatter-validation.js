@@ -31,7 +31,6 @@ const testCases = [
         path: 'docs/test.md',
         content: 'Test content',
         description: 'Test with numeric slug',
-        url: 'https://example.com/test',
         frontMatter: {
           slug: 12345  // Number instead of string
         }
@@ -49,7 +48,6 @@ const testCases = [
         path: 'docs/boolean-slug.md',
         content: 'Test content with boolean slug',
         description: 'Test with boolean slug',
-        url: 'https://example.com/boolean',
         frontMatter: {
           slug: true  // Boolean instead of string
         }
@@ -66,7 +64,6 @@ const testCases = [
         path: 'docs/object-slug.md',
         content: 'Test content with object slug',
         description: 'Test with object slug',
-        url: 'https://example.com/object',
         frontMatter: {
           slug: { nested: 'value' }  // Object instead of string
         }
@@ -83,7 +80,6 @@ const testCases = [
         path: 'docs/array-slug.md',
         content: 'Test content with array slug',
         description: 'Test with array slug',
-        url: 'https://example.com/array',
         frontMatter: {
           slug: ['path', 'segments']  // Array instead of string
         }
@@ -100,7 +96,6 @@ const testCases = [
         path: 'docs/null-slug.md',
         content: 'Test content with null slug',
         description: 'Test with null slug',
-        url: 'https://example.com/null',
         frontMatter: {
           slug: null  // Null value
         }
@@ -117,7 +112,6 @@ const testCases = [
         path: 'docs/numeric-id.md',
         content: 'Test content with numeric id',
         description: 'Test with numeric id',
-        url: 'https://example.com/numeric',
         frontMatter: {
           id: 99999  // Number instead of string
         }
@@ -134,7 +128,6 @@ const testCases = [
         path: 'docs/boolean-id.md',
         content: 'Test content with boolean id',
         description: 'Test with boolean id',
-        url: 'https://example.com/bool',
         frontMatter: {
           id: false  // Boolean instead of string
         }
@@ -151,7 +144,6 @@ const testCases = [
         path: 'docs/object-id.md',
         content: 'Test content with object id',
         description: 'Test with object id',
-        url: 'https://example.com/obj',
         frontMatter: {
           id: { key: 'value' }  // Object instead of string
         }
@@ -168,7 +160,6 @@ const testCases = [
         path: 'docs/array-id.md',
         content: 'Test content with array id',
         description: 'Test with array id',
-        url: 'https://example.com/arr',
         frontMatter: {
           id: ['id', 'parts']  // Array instead of string
         }
@@ -185,7 +176,6 @@ const testCases = [
         path: 'docs/both-invalid.md',
         content: 'Test content with both invalid',
         description: 'Test with both slug and id invalid',
-        url: 'https://example.com/both',
         frontMatter: {
           slug: 123,
           id: true
@@ -203,7 +193,6 @@ const testCases = [
         path: 'docs/mixed-validation.md',
         content: 'Test content with invalid slug but valid id',
         description: 'Test mixed validation',
-        url: 'https://example.com/mixed',
         frontMatter: {
           slug: 456,  // Invalid - should be ignored
           id: 'valid-id'  // Valid - should be used
@@ -222,7 +211,6 @@ const testCases = [
         path: 'docs/another-mixed.md',
         content: 'Test content with valid slug but invalid id',
         description: 'Test mixed validation (reverse)',
-        url: 'https://example.com/mixed2',
         frontMatter: {
           slug: 'valid-slug',  // Valid - should be used
           id: false  // Invalid - should be ignored (slug takes precedence anyway)
@@ -241,7 +229,6 @@ const testCases = [
         path: 'docs/undefined-values.md',
         content: 'Test content with undefined values',
         description: 'Test undefined values',
-        url: 'https://example.com/undefined',
         frontMatter: {
           slug: undefined,
           id: undefined
@@ -259,7 +246,6 @@ const testCases = [
         path: 'docs/empty-string-slug.md',
         content: 'Test content with empty string slug',
         description: 'Test empty string slug',
-        url: 'https://example.com/empty',
         frontMatter: {
           slug: ''  // Empty string - is a string, but should fall back to path
         }
@@ -276,7 +262,6 @@ const testCases = [
         path: 'docs/whitespace-slug.md',
         content: 'Test content with whitespace slug',
         description: 'Test whitespace slug',
-        url: 'https://example.com/whitespace',
         frontMatter: {
           slug: '   '  // Whitespace only - is a string, but should fall back
         }
@@ -293,7 +278,6 @@ const testCases = [
         path: 'docs/empty-title.md',
         content: '# First Heading\n\nTest content with empty title in frontmatter',
         description: 'Test empty title',
-        url: 'https://example.com/empty-title',
         frontMatter: {
           title: ''  // Empty string - should use first heading
         }
@@ -310,7 +294,6 @@ const testCases = [
         path: 'docs/whitespace-title.md',
         content: '# Actual Title\n\nTest content with whitespace title',
         description: 'Test whitespace title',
-        url: 'https://example.com/whitespace-title',
         frontMatter: {
           title: '  \t  '  // Whitespace only - should use first heading
         }
@@ -327,7 +310,6 @@ const testCases = [
         path: 'docs/empty-description.md',
         content: 'Test content with empty description.\n\nThis is the first paragraph.',
         description: '',  // Empty description in frontmatter
-        url: 'https://example.com/empty-description',
         frontMatter: {
           description: ''  // Empty string - should use first paragraph
         }
@@ -344,7 +326,6 @@ const testCases = [
         path: 'docs/whitespace-description.md',
         content: 'First paragraph content.\n\nSecond paragraph.',
         description: '',  // Will be empty after trim
-        url: 'https://example.com/whitespace-description',
         frontMatter: {
           description: '   \n\t   '  // Whitespace only - should use first paragraph
         }
@@ -361,7 +342,6 @@ const testCases = [
         path: 'docs/empty-id.md',
         content: 'Test content with empty id',
         description: 'Test empty id',
-        url: 'https://example.com/empty-id',
         frontMatter: {
           id: ''  // Empty string - should fall back to path
         }
@@ -378,7 +358,6 @@ const testCases = [
         path: 'docs/whitespace-id.md',
         content: 'Test content with whitespace id',
         description: 'Test whitespace id',
-        url: 'https://example.com/whitespace-id',
         frontMatter: {
           id: '\t  \n  '  // Whitespace only - should fall back
         }
@@ -395,7 +374,6 @@ const testCases = [
         path: 'docs/multiple-empty.md',
         content: '# Fallback Title\n\nFallback description paragraph.',
         description: '',
-        url: 'https://example.com/multiple-empty',
         frontMatter: {
           title: '',
           description: '  ',
@@ -415,7 +393,6 @@ const testCases = [
         path: 'docs/guides/nested/deep.md',
         content: 'Test nested path with invalid slug',
         description: 'Test nested paths',
-        url: 'https://example.com/nested',
         frontMatter: {
           slug: { path: 'invalid' }  // Object instead of string
         }
