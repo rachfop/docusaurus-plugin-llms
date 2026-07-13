@@ -46,7 +46,7 @@
     "yaml": "2.8.1"
   },
   "peerDependencies": {
-    "@docusaurus/core": "3.0.0"
+    "@docusaurus/core": "^3.0.0"
   },
   "devDependencies": {
     "@docusaurus/types": "3.0.0",

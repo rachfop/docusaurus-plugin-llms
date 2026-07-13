@@ -75,8 +75,8 @@ const testCases = [
         title: 'Troubleshooting Guide',
         path: '',
         content: 'This is a troubleshooting guide.\n\nCommon issues and solutions.',
-        description: 'How to troubleshoot common issues',
-        url: 'https://example.com/troubleshooting'
+        description: 'How to troubleshoot common issues'
+        // No url: the title fallback is only reached when no route resolves.
       }
     ],
     expectedPaths: ['troubleshooting-guide.md'],
@@ -327,7 +327,9 @@ async function testEdgeCases() {
           path: 'docs/special-chars/file.with.dots.md',
           content: 'Content with special path',
           description: 'Testing special characters',
-          url: 'https://example.com/docs/special'
+          // URL-primary: route kept consistent with `path` so dotted filenames
+          // survive derivation (docsDir prefix stripped since preserve=false).
+          url: 'https://example.com/docs/special-chars/file.with.dots'
         }
       ],
       expectedPaths: ['special-chars/file.with.dots.md']

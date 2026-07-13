@@ -935,7 +935,11 @@ export async function rewriteRelativeImageUrls(
       } catch { /* source unreadable — keep original */ }
     }
 
-    resolved.set(relPath, assetPath ? `${baseUrl}${assetPath}` : relPath);
+    // Preserve any query string / fragment (e.g. "?raw=1", "#anchor") so we
+    // don't change semantics for downstream tooling that relies on them.
+    const suffixMatch = relPath.match(/[?#].*$/);
+    const suffix = suffixMatch ? suffixMatch[0] : '';
+    resolved.set(relPath, assetPath ? `${baseUrl}${assetPath}${suffix}` : relPath);
   }
 
   // Apply all substitutions in a single pass

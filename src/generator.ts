@@ -284,10 +284,26 @@ export async function generateIndividualMarkdownFiles(
           // Strip any residual numeric ordering prefixes from each segment.
           // Docusaurus already strips them in resolved URLs, but fallback URLs
           // constructed from the source file path may still contain them.
-          const cleanPathname = urlPathname
+          let cleanPathname = urlPathname
             .split('/')
             .map(segment => segment.replace(/^\d+-/, ''))
-            .join('/');
+            .join('/')
+            // Strip an existing markdown extension so we don't produce
+            // double extensions like "config.md.md" when doc.url already
+            // ends in .md/.mdx (e.g. in tests or external usage).
+            .replace(/\.mdx?$/i, '');
+
+          // When not preserving directory structure, drop the leading docsDir
+          // segment so paths are flattened relative to the docs root — matching
+          // buildFallbackPath and the pre-existing preserveDirectoryStructure
+          // contract (the URL pathname otherwise retains the "docs/" route base).
+          if (!preserveDirectoryStructure && isNonEmptyString(docsDir)) {
+            const prefix = `${docsDir.replace(/^\/+|\/+$/g, '')}/`;
+            if (cleanPathname.startsWith(prefix)) {
+              cleanPathname = cleanPathname.slice(prefix.length);
+            }
+          }
+
           relativePath = `${cleanPathname}.md`;
         }
       } catch {

@@ -28,7 +28,13 @@ function cleanupTempDir(tmpDir) {
 }
 
 /**
- * Test cases for whitespace-only paths
+ * Test cases for whitespace-only paths.
+ *
+ * These docs intentionally have no `url`: whitespace/empty source paths are
+ * precisely the case where Docusaurus produced no resolvable route, so path
+ * derivation falls back to `path` → slug/id → sanitized title. (When a URL is
+ * present it takes precedence — that URL-primary behaviour is covered by
+ * test-filenames.js and test-individual-markdown-generation.js.)
  */
 const testCases = [
   {
@@ -37,7 +43,6 @@ const testCases = [
       title: 'Test Document',
       description: 'Test description',
       content: 'Test content',
-      url: 'https://example.com/test',
       path: '   ',  // Whitespace-only
       frontMatter: {}
     },
@@ -49,7 +54,6 @@ const testCases = [
       title: 'Another Document',
       description: 'Another description',
       content: 'Another content',
-      url: 'https://example.com/another',
       path: '\t\t\t',  // Tabs-only
       frontMatter: {}
     },
@@ -61,7 +65,6 @@ const testCases = [
       title: 'Mixed Whitespace Doc',
       description: 'Mixed description',
       content: 'Mixed content',
-      url: 'https://example.com/mixed',
       path: ' \t \n ',  // Mixed whitespace
       frontMatter: {}
     },
@@ -73,7 +76,6 @@ const testCases = [
       title: 'Extension Test',
       description: 'Extension description',
       content: 'Extension content',
-      url: 'https://example.com/ext',
       path: '  .md  ',  // Whitespace around .md
       frontMatter: {}
     },
@@ -85,7 +87,6 @@ const testCases = [
       title: 'Normal Path',
       description: 'Normal description',
       content: 'Normal content',
-      url: 'https://example.com/normal',
       path: 'docs/normal-doc.md',
       frontMatter: {}
     },
@@ -97,7 +98,6 @@ const testCases = [
       title: 'Trimmed Path',
       description: 'Trimmed description',
       content: 'Trimmed content',
-      url: 'https://example.com/trimmed',
       path: '  docs/valid-path.md  ',  // Should work after trim
       frontMatter: {}
     },
@@ -109,7 +109,6 @@ const testCases = [
       title: 'Empty Path Doc',
       description: 'Empty description',
       content: 'Empty content',
-      url: 'https://example.com/empty',
       path: '',
       frontMatter: {}
     },
@@ -121,7 +120,6 @@ const testCases = [
       title: 'Null Path With Slug',
       description: 'Null path description',
       content: 'Null path content',
-      url: 'https://example.com/null',
       path: 'docs/original.md',
       frontMatter: {
         slug: '   '  // Whitespace-only slug - should be ignored
@@ -135,7 +133,6 @@ const testCases = [
       title: 'Null Path With ID',
       description: 'Null path id description',
       content: 'Null path id content',
-      url: 'https://example.com/nullid',
       path: 'docs/original.md',
       frontMatter: {
         id: '\t\t'  // Whitespace-only id - should be ignored

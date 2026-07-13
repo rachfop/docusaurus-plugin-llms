@@ -397,7 +397,10 @@ const testCases = [
           {
             title: 'Nested Test',
             content: 'Nested content',
-            url: 'https://example.com/nested',
+            // URL-primary derivation: the resolved route determines the nested
+            // output path (kept consistent with `path` so the intent — that
+            // subdirectories are created — still holds).
+            url: 'https://example.com/deep/nested/path/test',
             path: '/deep/nested/path/test.md',
             description: 'Nested test',
             frontMatter: {}
