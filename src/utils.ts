@@ -741,8 +741,10 @@ export function sanitizeForFilename(
     // Also replace spaces with dashes for better filesystem compatibility
     sanitized = sanitized.replace(/[/\\:*?"<>|\s]+/g, '-');
   } else {
-    // Allow alphanumeric, underscores, hyphens, dots
-    sanitized = sanitized.replace(/[^a-z0-9_.-]+/g, '-');
+    // Allow alphanumeric, underscores, hyphens, dots. Include A-Z so that
+    // preserveCase keeps uppercase letters (when preserveCase is false the
+    // input is already lowercased, so allowing A-Z is a no-op there).
+    sanitized = sanitized.replace(/[^a-zA-Z0-9_.-]+/g, '-');
   }
 
   // Remove leading dots (hidden files on Unix)

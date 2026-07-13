@@ -90,6 +90,7 @@ This page is still being written and should not be published.`
     siteDir: testDir,
     siteUrl: 'https://example.com',
     docsDir: 'docs',
+    docsSections: [{ path: 'docs', routeBasePath: 'docs' }],
     outDir: buildDir,
     options: {
       docsDir: 'docs',
