@@ -530,6 +530,11 @@ export async function generateStandardLLMFiles(
     );
   }
   
+  // Only append `.md` to links when the individual markdown files are actually
+  // generated — otherwise the links point to files that don't exist and 404
+  // (issue #41). When generateMarkdownFiles is off, link to the normal routes.
+  const emitMdLinks = addMdExtension && generateMarkdownFiles;
+
   // Generate llms.txt
   if (generateLLMsTxt) {
     const llmsTxtPath = path.join(outDir, llmsTxtFilename);
@@ -542,7 +547,7 @@ export async function generateStandardLLMFiles(
       version,
       rootContent,
       processingBatchSize,
-      addMdExtension,
+      emitMdLinks,
       useRelativeUrls
     );
   }
@@ -559,7 +564,7 @@ export async function generateStandardLLMFiles(
       version,
       fullRootContent,
       processingBatchSize,
-      addMdExtension,
+      emitMdLinks,
       useRelativeUrls
     );
   }
@@ -628,6 +633,10 @@ export async function generateCustomLLMFiles(
       const customTitle = customFile.title || docTitle;
       const customDescription = customFile.description || docDescription;
       
+      // Only append `.md` to links when the markdown files are actually
+      // generated, so links never point to nonexistent files (issue #41).
+      const emitMdLinks = addMdExtension && generateMarkdownFiles;
+
       // Generate the custom LLM file
       const customFilePath = path.join(outDir, customFile.filename);
       await generateLLMFile(
@@ -639,7 +648,7 @@ export async function generateCustomLLMFiles(
         customFile.version,
         customFile.rootContent,
         processingBatchSize,
-        addMdExtension,
+        emitMdLinks,
         useRelativeUrls
       );
       
