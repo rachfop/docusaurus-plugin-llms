@@ -5,6 +5,13 @@ All notable changes to the docusaurus-plugin-llms will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-07-13
+
+### Fixed
+
+- **baseUrl dropped from generated URLs** (#43) — sites deployed to a subpath (e.g. `baseUrl: '/docs/'`) had the base path silently discarded, producing links to the wrong location. The baseUrl pathname is now preserved on both the resolved-route and fallback code paths, and is added to a route only when not already present (so it's never dropped or duplicated).
+- **Trailing slash in `docsDir`** (#43) — a `docsDir` like `'foo/'` produced a doubled slash that prevented the prefix from being stripped. The prefix is now normalized before use.
+
 ## [0.4.1] - 2026-07-13
 
 ### Added
