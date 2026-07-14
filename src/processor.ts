@@ -16,7 +16,8 @@ import {
   logger,
   getErrorMessage,
   isNonEmptyString,
-  rewriteRelativeImageUrls
+  rewriteRelativeImageUrls,
+  joinSiteUrl
 } from './utils';
 
 /**
@@ -81,27 +82,8 @@ export async function processMarkdownFile(
   let fullUrl: string;
 
   if (isNonEmptyString(resolvedUrl)) {
-    // Use the actual resolved route from Docusaurus. `siteUrl` already includes
-    // the site's baseUrl pathname (e.g. https://host/docs), which must be kept.
-    // `new URL(route, siteUrl)` would discard it whenever `route` is
-    // origin-relative, so assemble the URL manually. Docusaurus routes may or
-    // may not already carry the baseUrl prefix, so prepend it only when missing
-    // — this avoids both dropping it (issue #43) and duplicating it.
-    try {
-      const base = new URL(siteUrl);
-      const basePath = base.pathname.replace(/\/+$/, ''); // '' for root, '/docs' otherwise
-      let routePath = resolvedUrl.startsWith('/') ? resolvedUrl : `/${resolvedUrl}`;
-      if (basePath && routePath !== basePath && !routePath.startsWith(`${basePath}/`)) {
-        routePath = `${basePath}${routePath}`;
-      }
-      fullUrl = `${base.origin}${routePath}`;
-    } catch (error: unknown) {
-      logger.warn(`Invalid URL construction: ${resolvedUrl} with base ${siteUrl}. Using fallback.`);
-      // Fallback to string concatenation. `siteUrl` retains its baseUrl pathname.
-      const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
-      const urlPath = resolvedUrl.startsWith('/') ? resolvedUrl : `/${resolvedUrl}`;
-      fullUrl = baseUrl + urlPath;
-    }
+    // Use the actual resolved route from Docusaurus, preserving siteUrl's baseUrl.
+    fullUrl = joinSiteUrl(siteUrl, resolvedUrl);
   } else {
     // Fallback to the old path construction method
     // Convert .md extension to appropriate path
@@ -162,21 +144,10 @@ export async function processMarkdownFile(
     }).join('/');
 
     // Construct URL by encoding path components, then combine with site URL
-    // We don't use URL constructor for the full path because it decodes some characters
+    // Segments are pre-encoded above (the URL constructor would decode some), so
+    // joinSiteUrl just attaches the baseUrl-aware origin.
     const pathPart = transformedPathPrefix ? `${transformedPathPrefix}/${encodedLinkPath}` : encodedLinkPath;
-    try {
-      // Preserve the baseUrl pathname carried by siteUrl; `.origin` alone would
-      // drop it (e.g. https://host/docs → https://host), breaking subpath
-      // deployments (#43).
-      const base = new URL(siteUrl);
-      const basePath = base.pathname.replace(/\/+$/, ''); // '' for root, '/docs' otherwise
-      fullUrl = `${base.origin}${basePath}/${pathPart}`;
-    } catch (error: unknown) {
-      logger.warn(`Invalid siteUrl: ${siteUrl}. Using fallback.`);
-      // Fallback to string concatenation. `siteUrl` retains its baseUrl pathname.
-      const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
-      fullUrl = `${baseUrl}/${pathPart}`;
-    }
+    fullUrl = joinSiteUrl(siteUrl, pathPart);
   }
 
   // Extract title

@@ -8,210 +8,22 @@ import * as crypto from 'crypto';
 import { minimatch } from 'minimatch';
 import matter from 'gray-matter';
 import * as YAML from 'yaml';
+import { Dirent } from 'fs';
 import { PluginOptions } from './types';
+import {
+  isDefined,
+  isNonEmptyString,
+  isNonEmptyArray,
+  getErrorMessage,
+  ValidationError,
+  validateRequired,
+  validateString
+} from './guards';
+import { LogLevel, logger } from './logger';
 
-/**
- * Null/Undefined Handling Guidelines:
- *
- * 1. For required parameters: Throw early if null/undefined
- * 2. For optional parameters: Use optional chaining `value?.property`
- * 3. For explicit null checks: Use `!== null` and `!== undefined` or the isDefined type guard
- * 4. For string validation: Use isNonEmptyString() type guard
- * 5. For truthy checks on booleans: Use explicit comparison or Boolean(value)
- *
- * Avoid: `if (value)` when value could be 0, '', or false legitimately
- * Use: Type guards for consistent, type-safe checks
- */
-
-/**
- * Type guard to check if a value is defined (not null or undefined)
- * @param value - Value to check
- * @returns True if value is not null or undefined
- */
-export function isDefined<T>(value: T | null | undefined): value is T {
-  return value !== null && value !== undefined;
-}
-
-/**
- * Type guard to check if a value is a non-empty string
- * @param value - Value to check
- * @returns True if value is a string with at least one non-whitespace character
- */
-export function isNonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-/**
- * Type guard to check if a value is a non-empty array
- * @param value - Value to check
- * @returns True if value is an array with at least one element
- */
-export function isNonEmptyArray<T>(value: unknown): value is T[] {
-  return Array.isArray(value) && value.length > 0;
-}
-
-/**
- * Safely extract an error message from an unknown error value
- * @param error - The error value (can be Error, string, or any other type)
- * @returns A string representation of the error
- */
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (typeof error === 'string') {
-    return error;
-  }
-  try {
-    const stringified = JSON.stringify(error);
-    // JSON.stringify returns undefined for undefined values, handle that case
-    return stringified !== undefined ? stringified : 'Unknown error';
-  } catch {
-    return 'Unknown error';
-  }
-}
-
-/**
- * Extract stack trace from unknown error types
- * @param error - The error value (can be Error or any other type)
- * @returns Stack trace if available, undefined otherwise
- */
-export function getErrorStack(error: unknown): string | undefined {
-  if (error instanceof Error) {
-    return error.stack;
-  }
-  return undefined;
-}
-
-/**
- * Custom error class for validation errors
- */
-export class ValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ValidationError';
-  }
-}
-
-/**
- * Validates that a value is not null or undefined
- * @param value - The value to validate
- * @param paramName - The parameter name for error messages
- * @returns The validated value
- * @throws ValidationError if the value is null or undefined
- */
-export function validateRequired<T>(
-  value: T | null | undefined,
-  paramName: string
-): T {
-  if (value === null || value === undefined) {
-    throw new ValidationError(`Required parameter '${paramName}' is null or undefined`);
-  }
-  return value;
-}
-
-/**
- * Validates that a value is a string and optionally checks its properties
- * @param value - The value to validate
- * @param paramName - The parameter name for error messages
- * @param options - Validation options for min/max length and pattern
- * @returns The validated string
- * @throws ValidationError if validation fails
- */
-export function validateString(
-  value: unknown,
-  paramName: string,
-  options: { minLength?: number; maxLength?: number; pattern?: RegExp } = {}
-): string {
-  if (typeof value !== 'string') {
-    throw new ValidationError(`Parameter '${paramName}' must be a string, got ${typeof value}`);
-  }
-
-  if (options.minLength !== undefined && value.length < options.minLength) {
-    throw new ValidationError(`Parameter '${paramName}' must be at least ${options.minLength} characters`);
-  }
-
-  if (options.maxLength !== undefined && value.length > options.maxLength) {
-    throw new ValidationError(`Parameter '${paramName}' exceeds maximum length of ${options.maxLength}`);
-  }
-
-  if (options.pattern && !options.pattern.test(value)) {
-    throw new ValidationError(`Parameter '${paramName}' does not match required pattern`);
-  }
-
-  return value;
-}
-
-/**
- * Validates that a value is an array and optionally validates elements
- * @param value - The value to validate
- * @param paramName - The parameter name for error messages
- * @param elementValidator - Optional function to validate each element
- * @returns The validated array
- * @throws ValidationError if validation fails
- */
-export function validateArray<T>(
-  value: unknown,
-  paramName: string,
-  elementValidator?: (item: unknown) => boolean
-): T[] {
-  if (!Array.isArray(value)) {
-    throw new ValidationError(`Parameter '${paramName}' must be an array`);
-  }
-
-  if (elementValidator) {
-    value.forEach((item, index) => {
-      if (!elementValidator(item)) {
-        throw new ValidationError(`Element at index ${index} in '${paramName}' failed validation`);
-      }
-    });
-  }
-
-  return value as T[];
-}
-
-/**
- * Logging level enumeration
- */
-export enum LogLevel {
-  QUIET = 0,
-  NORMAL = 1,
-  VERBOSE = 2
-}
-
-let currentLogLevel = LogLevel.NORMAL;
-
-/**
- * Set the logging level for the plugin
- * @param level - The logging level to use
- */
-export function setLogLevel(level: LogLevel): void {
-  currentLogLevel = level;
-}
-
-/**
- * Logger utility for consistent logging across the plugin
- */
-export const logger = {
-  error: (message: string) => {
-    console.error(`[docusaurus-plugin-llms] ERROR: ${message}`);
-  },
-  warn: (message: string) => {
-    if (currentLogLevel >= LogLevel.NORMAL) {
-      console.warn(`[docusaurus-plugin-llms] ${message}`);
-    }
-  },
-  info: (message: string) => {
-    if (currentLogLevel >= LogLevel.NORMAL) {
-      console.log(`[docusaurus-plugin-llms] ${message}`);
-    }
-  },
-  verbose: (message: string) => {
-    if (currentLogLevel >= LogLevel.VERBOSE) {
-      console.log(`[docusaurus-plugin-llms] ${message}`);
-    }
-  }
-};
+// Re-export the leaf modules so existing `./utils` imports keep working.
+export * from './guards';
+export * from './logger';
 
 /**
  * Constants for path length limits
@@ -436,7 +248,7 @@ export async function readMarkdownFiles(
 export function maskCodeSegments(content: string): { masked: string; restore: (s: string) => string } {
   const segments: string[] = [];
   const store = (code: string): string => {
-    const token = ` CODE${segments.length} `;
+    const token = `￼CODE${segments.length}￼`;
     segments.push(code);
     return token;
   };
@@ -454,7 +266,7 @@ export function maskCodeSegments(content: string): { masked: string; restore: (s
   masked = masked.replace(/(`+)(?:(?!\1)[^\n])+?\1/g, (m) => store(m));
 
   const restore = (s: string): string =>
-    s.replace(/ CODE(\d+) /g, (_t, i) => segments[Number(i)] ?? '');
+    s.replace(/￼CODE(\d+)￼/g, (_t, i) => segments[Number(i)] ?? '');
 
   return { masked, restore };
 }
@@ -848,6 +660,35 @@ export function ensureUniqueIdentifier(
 }
 
 /**
+ * Join a route path onto `siteUrl`, preserving the baseUrl pathname that
+ * `siteUrl` already carries (e.g. `https://host/docs`). The route is prepended
+ * with the baseUrl only when it doesn't already start with it, so the baseUrl is
+ * neither dropped nor duplicated regardless of whether Docusaurus routes include
+ * it. `routePath` is used as-is (already URL-encoded by the caller when needed).
+ *
+ * @param siteUrl - Site URL including baseUrl pathname
+ * @param routePath - Route path, with or without a leading slash / baseUrl prefix
+ * @returns Absolute URL string
+ */
+export function joinSiteUrl(siteUrl: string, routePath: string): string {
+  const path = routePath.startsWith('/') ? routePath : `/${routePath}`;
+  try {
+    const base = new URL(siteUrl);
+    const basePath = base.pathname.replace(/\/+$/, ''); // '' for root, '/docs' otherwise
+    const full = basePath && path !== basePath && !path.startsWith(`${basePath}/`)
+      ? `${basePath}${path}`
+      : path;
+    return `${base.origin}${full}`;
+  } catch {
+    // Malformed siteUrl — string-concatenate; siteUrl retains its baseUrl.
+    return `${siteUrl.replace(/\/+$/, '')}${path}`;
+  }
+}
+
+/** Image extensions recognised by Docusaurus / browsers (regex alternation). */
+const IMAGE_EXTENSIONS = 'png|jpe?g|gif|svg|webp|bmp|ico|avif|tiff?';
+
+/**
  * Scan `{outDir}/assets/images/` and build a reverse-lookup map used to
  * rewrite relative image references to their hashed build-output URLs.
  *
@@ -865,18 +706,18 @@ export async function buildImageAssetMap(outDir: string): Promise<Map<string, st
   const map = new Map<string, string[]>();
   const imagesDir = path.join(outDir, 'assets', 'images');
 
-  let entries: { name: string; isFile: () => boolean }[];
+  let entries: Dirent[];
   try {
-    entries = await fs.readdir(imagesDir, { withFileTypes: true }) as any;
+    entries = await fs.readdir(imagesDir, { withFileTypes: true });
   } catch {
     return map; // Directory doesn't exist — no images
   }
 
   // Match `{original-name}-{16..64 hex chars}.{ext}` produced by webpack/Rspack
-  const hashSuffixRe = /^(.+)-([0-9a-f]{16,64})(\.(?:png|jpe?g|gif|svg|webp|bmp|ico|avif|tiff?))$/i;
+  const hashSuffixRe = new RegExp(`^(.+)-([0-9a-f]{16,64})(\\.(?:${IMAGE_EXTENSIONS}))$`, 'i');
 
   for (const entry of entries) {
-    if (!(entry as any).isFile()) continue;
+    if (!entry.isFile()) continue;
     const name = entry.name;
     const m = name.match(hashSuffixRe);
     // key = original filename without the hash suffix, e.g. "diagram.png"
@@ -932,8 +773,7 @@ export async function rewriteRelativeImageUrls(
   // Mask code so image syntax shown inside code blocks isn't rewritten.
   const { masked, restore } = maskCodeSegments(content);
 
-  // Common image extensions recognised by Docusaurus / browsers
-  const imgExtRe = /\.(png|jpe?g|gif|svg|webp|bmp|ico|avif|tiff?)$/i;
+  const imgExtRe = new RegExp(`\\.(?:${IMAGE_EXTENSIONS})$`, 'i');
 
   // Matches relative image references regardless of how many `../` levels deep.
   //   Group 1+2: Markdown  `![alt](./rel/path.ext)`     prefix + path

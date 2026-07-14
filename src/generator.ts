@@ -18,7 +18,8 @@ import {
   getErrorMessage,
   isNonEmptyString,
   isNonEmptyArray,
-  isDefined
+  isDefined,
+  joinSiteUrl
 } from './utils';
 import { processFilesWithPatterns } from './processor';
 
@@ -446,12 +447,10 @@ export async function generateIndividualMarkdownFiles(
     // Create updated DocInfo with new URL pointing to the generated markdown file
     // Convert file path to URL path (use forward slashes)
     const urlPath = normalizePath(uniquePath);
-    const baseUrlNormalized = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
-    const newUrl = `${baseUrlNormalized}/${urlPath}`;
-    
+
     updatedDocs.push({
       ...doc,
-      url: newUrl,
+      url: joinSiteUrl(siteUrl, urlPath),
       path: `/${urlPath}` // Update path to the new markdown file
     });
     
