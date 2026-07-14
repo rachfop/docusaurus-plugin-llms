@@ -73,6 +73,20 @@ async function run() {
   expect('relative link in sectioned output', relSection.includes('(/thunder/docs/two.md)'), relSection);
   expect('sectioned output has heading', relSection.includes('## Guides'), relSection);
 
+  // Query string and fragment are preserved (addMdExtension off to isolate)
+  const queryDocs = [
+    { title: 'Page Q', url: 'https://thunder.dev/thunder/docs/one?tab=a#frag', description: 'q', content: '' },
+  ];
+  const relQuery = await emit(queryDocs, { useRelativeUrls: true, addMdExtension: false });
+  expect('relative link preserves query + fragment', relQuery.includes('(/thunder/docs/one?tab=a#frag)'), relQuery);
+
+  // Already-relative URLs pass through unchanged (catch branch)
+  const alreadyRelDocs = [
+    { title: 'Page R', url: '/thunder/docs/one', description: 'r', content: '' },
+  ];
+  const relPassthrough = await emit(alreadyRelDocs, { useRelativeUrls: true, addMdExtension: false });
+  expect('already-relative URL passes through unchanged', relPassthrough.includes('(/thunder/docs/one)'), relPassthrough);
+
   console.log(`\n========================================`);
   console.log(`Relative URL Tests Summary:`);
   console.log(`Passed: ${passed}, Failed: ${failed}, Total: ${passed + failed}`);
