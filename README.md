@@ -126,7 +126,7 @@ module.exports = {
 | Option                           | Type     | Default           | Description                                                   |
 |----------------------------------|----------|-------------------|---------------------------------------------------------------|
 | `description`                    | string   | Site tagline      | Custom description to use in generated files                  |
-| `docsDir`                        | string   | `'docs'`          | Base directory for documentation files                        |
+| `docsDir`                        | string \| object[] | `'docs'`          | Documentation source. A string base directory, or an array of section objects for multi-instance setups (see [Multiple documentation sections](#multiple-documentation-sections)) |
 | `excludeImports`                 | boolean  | `false`           | Remove import statements from generated content                |
 | `generateLLMsFullTxt`            | boolean  | `true`            | Whether to generate the full content file                     |
 | `generateLLMsTxt`                | boolean  | `true`            | Whether to generate the links file                            |
@@ -153,6 +153,36 @@ module.exports = {
 | `fullRootContent`                | string   | (see below)       | Custom content to include at the root level of llms-full.txt  |
 | `logLevel`                       | string   | `'normal'`        | Logging level for plugin output: `'quiet'`, `'normal'`, or `'verbose'` |
 | `useRelativeUrls`                | boolean  | `false`           | Emit origin-relative links in `llms.txt` (e.g. `/docs/page.md`) instead of absolute URLs — useful for subpath deployments where the site `url` can't be pinned |
+
+### Multiple documentation sections
+
+`docsDir` accepts either a string (a single base directory) or an array of section objects. Use the array form for multi-instance setups — for example, a main `docs` instance alongside a separate `api` instance — so each section resolves against its own route base path and can carry its own heading in `llms.txt`.
+
+Each section object has the following shape:
+
+| Field           | Type   | Required | Description                                                              |
+| --------------- | ------ | -------- | ------------------------------------------------------------------------ |
+| `path`          | string | yes      | Filesystem path to the section, relative to the site directory (e.g. `'docs'`, `'api'`) |
+| `routeBasePath` | string | yes      | The Docusaurus `routeBasePath` the section is served under (e.g. `'docs'`, `'api'`)     |
+| `label`         | string | no       | Optional heading shown for the section in `llms.txt`                     |
+
+```js
+module.exports = {
+  plugins: [
+    [
+      'docusaurus-plugin-llms',
+      {
+        docsDir: [
+          { path: 'docs', routeBasePath: 'docs', label: 'Guides' },
+          { path: 'api', routeBasePath: 'api', label: 'API Reference' },
+        ],
+      },
+    ],
+  ],
+};
+```
+
+When `docsDir` is a string, it's treated as a single section whose `routeBasePath` matches the directory name.
 
 ### Custom Root Content
 
