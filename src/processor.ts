@@ -80,12 +80,23 @@ export async function processMarkdownFile(
   let fullUrl: string;
 
   if (isNonEmptyString(resolvedUrl)) {
-    // Use the actual resolved URL from Docusaurus if provided
+    // Use the actual resolved route from Docusaurus. `siteUrl` already includes
+    // the site's baseUrl pathname (e.g. https://host/docs), which must be kept.
+    // `new URL(route, siteUrl)` would discard it whenever `route` is
+    // origin-relative, so assemble the URL manually. Docusaurus routes may or
+    // may not already carry the baseUrl prefix, so prepend it only when missing
+    // — this avoids both dropping it (issue #43) and duplicating it.
     try {
-      fullUrl = new URL(resolvedUrl, siteUrl).toString();
+      const base = new URL(siteUrl);
+      const basePath = base.pathname.replace(/\/+$/, ''); // '' for root, '/docs' otherwise
+      let routePath = resolvedUrl.startsWith('/') ? resolvedUrl : `/${resolvedUrl}`;
+      if (basePath && routePath !== basePath && !routePath.startsWith(`${basePath}/`)) {
+        routePath = `${basePath}${routePath}`;
+      }
+      fullUrl = `${base.origin}${routePath}`;
     } catch (error: unknown) {
       logger.warn(`Invalid URL construction: ${resolvedUrl} with base ${siteUrl}. Using fallback.`);
-      // Fallback to string concatenation with proper path joining
+      // Fallback to string concatenation. `siteUrl` retains its baseUrl pathname.
       const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
       const urlPath = resolvedUrl.startsWith('/') ? resolvedUrl : `/${resolvedUrl}`;
       fullUrl = baseUrl + urlPath;
@@ -100,21 +111,25 @@ export async function processMarkdownFile(
       ? linkPathBase.replace(/\/index$/, '') 
       : linkPathBase;
     
+    // pathPrefix may carry a trailing slash (e.g. docsDir: 'foo/'); normalize it
+    // so prefix matching and URL assembly never produce a doubled slash (#43).
+    const cleanPrefix = pathPrefix ? pathPrefix.replace(/\/+$/, '') : pathPrefix;
+
     // linkPath might include the pathPrefix (e.g., "docs/api/core")
     // We need to remove the pathPrefix before applying transformations, then add it back later
-    if (pathPrefix && linkPath.startsWith(`${pathPrefix}/`)) {
-      linkPath = linkPath.substring(`${pathPrefix}/`.length);
-    } else if (pathPrefix && linkPath === pathPrefix) {
+    if (cleanPrefix && linkPath.startsWith(`${cleanPrefix}/`)) {
+      linkPath = linkPath.substring(`${cleanPrefix}/`.length);
+    } else if (cleanPrefix && linkPath === cleanPrefix) {
       linkPath = '';
     }
-    
+
     // Apply path transformations to the clean link path (without pathPrefix)
     const transformedLinkPath = applyPathTransformations(linkPath, pathTransformation);
-    
+
     // Also apply path transformations to the pathPrefix if it's not empty
     // This allows removing 'docs' from the path when specified in ignorePaths
-    let transformedPathPrefix = pathPrefix;
-    if (pathPrefix && pathTransformation?.ignorePaths?.includes(pathPrefix)) {
+    let transformedPathPrefix = cleanPrefix;
+    if (cleanPrefix && pathTransformation?.ignorePaths?.includes(cleanPrefix)) {
       transformedPathPrefix = '';
     }
     
@@ -146,11 +161,15 @@ export async function processMarkdownFile(
     // We don't use URL constructor for the full path because it decodes some characters
     const pathPart = transformedPathPrefix ? `${transformedPathPrefix}/${encodedLinkPath}` : encodedLinkPath;
     try {
-      const baseUrl = new URL(siteUrl);
-      fullUrl = `${baseUrl.origin}/${pathPart}`;
+      // Preserve the baseUrl pathname carried by siteUrl; `.origin` alone would
+      // drop it (e.g. https://host/docs → https://host), breaking subpath
+      // deployments (#43).
+      const base = new URL(siteUrl);
+      const basePath = base.pathname.replace(/\/+$/, ''); // '' for root, '/docs' otherwise
+      fullUrl = `${base.origin}${basePath}/${pathPart}`;
     } catch (error: unknown) {
       logger.warn(`Invalid siteUrl: ${siteUrl}. Using fallback.`);
-      // Fallback to string concatenation with proper path joining
+      // Fallback to string concatenation. `siteUrl` retains its baseUrl pathname.
       const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
       fullUrl = `${baseUrl}/${pathPart}`;
     }
