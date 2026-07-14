@@ -612,7 +612,7 @@ export async function generateCustomLLMFiles(
       customFile.includePatterns,
       combinedIgnores,
       customFile.orderPatterns || [],
-      customFile.includeUnmatchedLast ?? false
+      customFile.includeUnmatchedLast ?? true
     );
     
     if (customDocs.length > 0) {

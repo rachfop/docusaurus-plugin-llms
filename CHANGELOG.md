@@ -5,6 +5,18 @@ All notable changes to the docusaurus-plugin-llms will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-07-13
+
+### Fixed
+
+- **Code samples were corrupted by content cleaning.** HTML/JSX tag stripping, `import` removal (`excludeImports`), image-URL rewriting, and title detection now skip fenced code blocks and inline code, so examples shown in code blocks are preserved verbatim.
+- **Global `version` option was ignored.** It's now threaded through to `llms.txt`/`llms-full.txt` (previously only per-custom-file `version` worked).
+- **`draft: "true"`** (quoted string in frontmatter) is now skipped like the boolean `true`.
+- **MDX/JSX component tags** (e.g. `<Tabs>`, `<TabItem>`) are now stripped from generated text (their inner content is kept).
+- Custom LLM files now default `includeUnmatchedLast` to `true` (matching the standard files), so `includePatterns`-selected docs aren't silently dropped when `orderPatterns` doesn't list them.
+- `pathTransformation.ignorePaths` no longer leaves a trailing slash when removing a terminal path segment, and tolerates entries written with a trailing slash.
+- `buildImageAssetMap` no longer indexes non-image build assets.
+
 ## [0.4.4] - 2026-07-13
 
 ### Fixed

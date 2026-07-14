@@ -46,8 +46,9 @@ export async function processMarkdownFile(
   const content = await readFile(filePath);
   const { data, content: markdownContent } = matter(content);
 
-  // Skip draft files
-  if (data.draft === true) {
+  // Skip draft files (accept both boolean true and the string "true", which
+  // some editors emit as quoted frontmatter).
+  if (data.draft === true || data.draft === 'true') {
     return null;
   }
 
@@ -129,7 +130,10 @@ export async function processMarkdownFile(
     // Also apply path transformations to the pathPrefix if it's not empty
     // This allows removing 'docs' from the path when specified in ignorePaths
     let transformedPathPrefix = cleanPrefix;
-    if (cleanPrefix && pathTransformation?.ignorePaths?.includes(cleanPrefix)) {
+    if (
+      cleanPrefix &&
+      pathTransformation?.ignorePaths?.some(p => p.replace(/\/+$/, '') === cleanPrefix)
+    ) {
       transformedPathPrefix = '';
     }
     

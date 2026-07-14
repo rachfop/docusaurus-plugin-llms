@@ -428,6 +428,38 @@ export async function readMarkdownFiles(
 
 
 /**
+ * Mask fenced code blocks (``` / ~~~) and inline code spans with opaque
+ * placeholder tokens so that content transforms — HTML/JSX stripping, import
+ * removal, image-URL rewriting, heading detection — never alter code samples.
+ * Returns the masked string plus a `restore()` that swaps the code back in.
+ */
+export function maskCodeSegments(content: string): { masked: string; restore: (s: string) => string } {
+  const segments: string[] = [];
+  const store = (code: string): string => {
+    const token = ` CODE${segments.length} `;
+    segments.push(code);
+    return token;
+  };
+
+  // Fenced code blocks first: opening fence (>=3 backticks or tildes) through a
+  // closing fence of the same character (>=3, count need not match, per
+  // CommonMark). The leading newline (if any) stays outside the token so line
+  // structure is unchanged.
+  let masked = content.replace(
+    /(^|\n)([ \t]*(?:`{3,}[^\n]*\n[\s\S]*?\n[ \t]*`{3,}|~{3,}[^\n]*\n[\s\S]*?\n[ \t]*~{3,})[ \t]*)(?=\n|$)/g,
+    (_match, lead, block) => `${lead}${store(block)}`
+  );
+
+  // Then inline code spans (`code`, ``co`de``) — a span never crosses a line.
+  masked = masked.replace(/(`+)(?:(?!\1)[^\n])+?\1/g, (m) => store(m));
+
+  const restore = (s: string): string =>
+    s.replace(/ CODE(\d+) /g, (_t, i) => segments[Number(i)] ?? '');
+
+  return { masked, restore };
+}
+
+/**
  * Extract title from content or use the filename
  * @param data - Frontmatter data
  * @param content - Markdown content
@@ -440,10 +472,13 @@ export function extractTitle(data: any, content: string, filePath: string): stri
     return data.title;
   }
 
-  // Then try first heading
-  const headingMatch = content.match(/^#\s+(.*)/m);
+  // Then try first heading — but ignore `#` lines inside code blocks (e.g. a
+  // shell/python comment), which are not document titles. Restore any inline
+  // code in the matched heading so the title isn't left with placeholder tokens.
+  const { masked, restore } = maskCodeSegments(content);
+  const headingMatch = masked.match(/^#\s+(.*)/m);
   if (isNonEmptyString(headingMatch?.[1])) {
-    return headingMatch![1].trim();
+    return restore(headingMatch![1]).trim();
   }
 
   // Finally use filename
@@ -585,8 +620,11 @@ export async function resolvePartialImports(
  * @returns Cleaned content
  */
 export function cleanMarkdownContent(content: string, excludeImports: boolean = false, removeDuplicateHeadings: boolean = false): string {
-  let cleaned = content;
-  
+  // Mask code blocks / inline code so the strips below never touch code samples
+  // (e.g. an HTML or `import` example shown inside a fenced block).
+  const { masked, restore } = maskCodeSegments(content);
+  let cleaned = masked;
+
   // Remove import statements if requested
   if (excludeImports) {
     // Remove ES6/React import statements
@@ -598,12 +636,14 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
     // - import "..."; (side-effect imports)
     cleaned = cleaned.replace(/^\s*import\s+.*?;?\s*$/gm, '');
   }
-  
-  // Remove HTML tags, but preserve XML content in code blocks
-  // We need to be selective to avoid removing XML content from code blocks
-  // This regex targets common HTML tags while being more conservative about XML
+
+  // Remove common HTML tags (code blocks are already masked out above).
   cleaned = cleaned.replace(/<\/?(?:div|span|p|br|hr|img|a|strong|em|b|i|u|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\b[^>]*>/gi, '');
-  
+
+  // Remove MDX/JSX component tags (PascalCase element names such as <Tabs>,
+  // <TabItem>, <Admonition>), keeping their inner text content.
+  cleaned = cleaned.replace(/<\/?[A-Z][A-Za-z0-9.]*\b[^>]*\/?>/g, '');
+
   // Remove redundant content that just repeats the heading (if requested)
   if (removeDuplicateHeadings) {
     // Split content into lines and process line by line
@@ -650,7 +690,10 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
     
     cleaned = processedLines.join('\n');
   }
-  
+
+  // Restore the masked code blocks / inline code.
+  cleaned = restore(cleaned);
+
   // Normalize whitespace
   cleaned = cleaned.replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
@@ -688,9 +731,10 @@ export function applyPathTransformations(
     
     // Clean up any double slashes that might have been created
     transformedPath = transformedPath.replace(/\/+/g, '/');
-    
-    // Remove leading slash if present
-    transformedPath = transformedPath.replace(/^\//, '');
+
+    // Remove leading and trailing slashes (removing a terminal segment can
+    // leave a trailing slash, e.g. ignorePaths:['intro'] on 'api/intro').
+    transformedPath = transformedPath.replace(/^\/|\/$/g, '');
   }
   
   // Add path segments if they're not already present
@@ -829,7 +873,7 @@ export async function buildImageAssetMap(outDir: string): Promise<Map<string, st
   }
 
   // Match `{original-name}-{16..64 hex chars}.{ext}` produced by webpack/Rspack
-  const hashSuffixRe = /^(.+)-([0-9a-f]{16,64})(\.[\w]+)$/i;
+  const hashSuffixRe = /^(.+)-([0-9a-f]{16,64})(\.(?:png|jpe?g|gif|svg|webp|bmp|ico|avif|tiff?))$/i;
 
   for (const entry of entries) {
     if (!(entry as any).isFile()) continue;
@@ -885,6 +929,9 @@ export async function rewriteRelativeImageUrls(
   const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
   const sourceDir = path.dirname(sourceFilePath);
 
+  // Mask code so image syntax shown inside code blocks isn't rewritten.
+  const { masked, restore } = maskCodeSegments(content);
+
   // Common image extensions recognised by Docusaurus / browsers
   const imgExtRe = /\.(png|jpe?g|gif|svg|webp|bmp|ico|avif|tiff?)$/i;
 
@@ -900,7 +947,7 @@ export async function rewriteRelativeImageUrls(
   // Collect unique relative paths that point to image files
   const uniquePaths = new Set<string>();
   let m: RegExpExecArray | null;
-  while ((m = imageRefRe.exec(content)) !== null) {
+  while ((m = imageRefRe.exec(masked)) !== null) {
     const relPath = m[2] ?? m[4]; // markdown group or HTML group
     if (imgExtRe.test(relPath.split('?')[0].split('#')[0])) {
       uniquePaths.add(relPath);
@@ -944,14 +991,14 @@ export async function rewriteRelativeImageUrls(
     resolved.set(relPath, assetPath ? `${baseUrl}${assetPath}${suffix}` : relPath);
   }
 
-  // Apply all substitutions in a single pass
-  return content.replace(imageRefRe, (match, mdPrefix, mdPath, htmlPrefix, htmlPath) => {
+  // Apply all substitutions in a single pass, then restore masked code.
+  return restore(masked.replace(imageRefRe, (match, mdPrefix, mdPath, htmlPrefix, htmlPath) => {
     const relPath = mdPath ?? htmlPath;
     const target = resolved.get(relPath);
     if (!target || target === relPath) return match; // no change
     if (mdPrefix) return `${mdPrefix}${target}`;
     return `${htmlPrefix}${target}`;
-  });
+  }));
 }
 
 /**
