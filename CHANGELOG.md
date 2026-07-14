@@ -5,6 +5,12 @@ All notable changes to the docusaurus-plugin-llms will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-07-13
+
+### Fixed
+
+- **`.md` links returning 404** (#41) — `addMdExtension` appended `.md` to `llms.txt` links by default, but the `.md` files are only produced when `generateMarkdownFiles` is enabled, so the links pointed to files that didn't exist. `.md` is now appended only when the markdown files are actually generated; otherwise links point to the normal doc routes.
+
 ## [0.4.3] - 2026-07-13
 
 ### Added

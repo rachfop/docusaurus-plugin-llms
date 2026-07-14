@@ -146,7 +146,7 @@ module.exports = {
 | `customLLMFiles`                 | array    | `[]`              | Array of custom LLM file configurations                       |
 | `generateMarkdownFiles`          | boolean  | `false`           | Generate individual markdown files and link to them from llms.txt |
 | `keepFrontMatter`                | string[] | []                | Preserve selected front matter items when generating individual markdown files |
-| `addMdExtension`                 | boolean  | `true`            | Append `.md` to link URLs in `llms.txt` per the llmstxt.org spec |
+| `addMdExtension`                 | boolean  | `true`            | Append `.md` to link URLs in `llms.txt` per the llmstxt.org spec. Only takes effect when `generateMarkdownFiles` is enabled, since the `.md` files must exist to be linked |
 | `preserveDirectoryStructure`     | boolean  | `true`            | Preserve full directory structure in generated markdown files (e.g., `docs/server/config.md` instead of `server/config.md`) |
 | `processingBatchSize`            | number   | `100`             | Batch size for processing documents to prevent out-of-memory errors on large sites |
 | `rootContent`                    | string   | (see below)       | Custom content to include at the root level of llms.txt       |
