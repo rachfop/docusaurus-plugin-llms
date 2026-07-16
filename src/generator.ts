@@ -469,14 +469,16 @@ export async function generateStandardLLMFiles(
   context: PluginContext,
   allDocFiles: string[]
 ): Promise<void> {
-  const { 
-    outDir, 
+  const {
+    outDir,
     siteUrl,
-    docTitle, 
-    docDescription, 
-    options 
+    docTitle,
+    docDescription,
+    options
   } = context;
-  
+  // Version-scoped output lands under a subdirectory of outDir (e.g. 'stable').
+  const versionedOutDir = path.join(outDir, context.outputSubdir || '');
+
   const {
     generateLLMsTxt,
     generateLLMsFullTxt,
@@ -521,14 +523,14 @@ export async function generateStandardLLMFiles(
     logger.info('Generating individual markdown files...');
     processedDocs = await generateIndividualMarkdownFiles(
       processedDocs,
-      outDir,
+      versionedOutDir,
       siteUrl,
       context.docsDir,
       context.options.keepFrontMatter || [],
       context.options.preserveDirectoryStructure !== false // Default to true
     );
   }
-  
+
   // Only append `.md` to links when the individual markdown files are actually
   // generated — otherwise the links point to files that don't exist and 404
   // (issue #41). When generateMarkdownFiles is off, link to the normal routes.
@@ -536,7 +538,7 @@ export async function generateStandardLLMFiles(
 
   // Generate llms.txt
   if (generateLLMsTxt) {
-    const llmsTxtPath = path.join(outDir, llmsTxtFilename);
+    const llmsTxtPath = path.join(versionedOutDir, llmsTxtFilename);
     await generateLLMFile(
       processedDocs,
       llmsTxtPath,
@@ -553,7 +555,7 @@ export async function generateStandardLLMFiles(
 
   // Generate llms-full.txt
   if (generateLLMsFullTxt) {
-    const llmsFullTxtPath = path.join(outDir, llmsFullTxtFilename);
+    const llmsFullTxtPath = path.join(versionedOutDir, llmsFullTxtFilename);
     await generateLLMFile(
       processedDocs,
       llmsFullTxtPath,
@@ -579,6 +581,7 @@ export async function generateCustomLLMFiles(
   allDocFiles: string[]
 ): Promise<void> {
   const { outDir, siteUrl, docTitle, docDescription, options } = context;
+  const versionedOutDir = path.join(outDir, context.outputSubdir || '');
   const {
     customLLMFiles = [],
     ignoreFiles = [],
@@ -620,31 +623,33 @@ export async function generateCustomLLMFiles(
         logger.info(`Generating individual markdown files for custom file: ${customFile.filename}...`);
         customDocs = await generateIndividualMarkdownFiles(
           customDocs,
-          outDir,
+          versionedOutDir,
           siteUrl,
           context.docsDir,
           context.options.keepFrontMatter || [],
           context.options.preserveDirectoryStructure !== false // Default to true
         );
       }
-      
+
       // Use custom title/description or fall back to defaults
       const customTitle = customFile.title || docTitle;
       const customDescription = customFile.description || docDescription;
-      
+
       // Only append `.md` to links when the markdown files are actually
       // generated, so links never point to nonexistent files (issue #41).
       const emitMdLinks = addMdExtension && generateMarkdownFiles;
 
-      // Generate the custom LLM file
-      const customFilePath = path.join(outDir, customFile.filename);
+      // Per-file `version` wins; otherwise a custom file inherits the current
+      // version's label so version-scoped outputs (stable/llms-python.txt) are
+      // labeled like their llms.txt.
+      const customFilePath = path.join(versionedOutDir, customFile.filename);
       await generateLLMFile(
         customDocs,
         customFilePath,
         customTitle,
         customDescription,
         customFile.fullContent,
-        customFile.version,
+        customFile.version ?? options.version,
         customFile.rootContent,
         processingBatchSize,
         emitMdLinks,

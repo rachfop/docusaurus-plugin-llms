@@ -9,8 +9,9 @@
  */
 
 import * as path from 'path';
+import * as fs from 'fs';
 import type { LoadContext, Plugin, Props } from '@docusaurus/types';
-import { PluginOptions, PluginContext, CustomLLMFile, DocsSection } from './types';
+import { PluginOptions, PluginContext, CustomLLMFile, DocsSection, VersionConfig } from './types';
 import { collectDocFiles, generateStandardLLMFiles, generateCustomLLMFiles } from './generator';
 import { setLogLevel, LogLevel, logger, getErrorMessage, isDefined, isNonEmptyString, isNonEmptyArray, buildImageAssetMap } from './utils';
 
@@ -211,6 +212,221 @@ function validatePluginOptions(options: PluginOptions): void {
       }
     });
   }
+
+  // Validate versions
+  if (options.versions !== undefined) {
+    if (options.versions !== 'auto' && !Array.isArray(options.versions)) {
+      throw new Error("versions must be an array of version objects or 'auto'");
+    }
+    if (Array.isArray(options.versions)) {
+      if (options.versions.length === 0) {
+        throw new Error('versions must contain at least one version object');
+      }
+      const seenNames = new Set<string>();
+      const seenPaths = new Set<string>();
+      options.versions.forEach((version, index) => {
+        if (typeof version !== 'object' || version === null) {
+          throw new Error(`versions[${index}] must be an object`);
+        }
+        if (!isNonEmptyString(version.name)) {
+          throw new Error(`versions[${index}].name must be a non-empty string`);
+        }
+        if (seenNames.has(version.name)) {
+          throw new Error(`versions[${index}].name '${version.name}' is duplicated`);
+        }
+        seenNames.add(version.name);
+
+        if (isDefined(version.label) && !isNonEmptyString(version.label)) {
+          throw new Error(`versions[${index}].label must be a non-empty string`);
+        }
+        if (isDefined(version.path) && typeof version.path !== 'string') {
+          throw new Error(`versions[${index}].path must be a string`);
+        }
+        // Two versions writing to the same subdirectory would clobber each other.
+        const normalizedPath = normalizeVersionPath(
+          isDefined(version.path) ? (version.path as string) : version.name
+        );
+        if (seenPaths.has(normalizedPath)) {
+          throw new Error(
+            `versions[${index}] resolves to path '${normalizedPath || '/'}', which collides with another version`
+          );
+        }
+        seenPaths.add(normalizedPath);
+
+        if (
+          isDefined(version.docsDir) &&
+          typeof version.docsDir !== 'string' &&
+          !Array.isArray(version.docsDir)
+        ) {
+          throw new Error(
+            `versions[${index}].docsDir must be a string or an array of section objects`
+          );
+        }
+        if (isDefined(version.customLLMFiles) && !Array.isArray(version.customLLMFiles)) {
+          throw new Error(`versions[${index}].customLLMFiles must be an array`);
+        }
+        if (isDefined(version.includeOrder) && !Array.isArray(version.includeOrder)) {
+          throw new Error(`versions[${index}].includeOrder must be an array`);
+        }
+      });
+    }
+  }
+}
+
+/**
+ * Normalize a version `path` into a bare subdirectory segment with no leading or
+ * trailing slashes. The root version normalizes to '' (the site root).
+ */
+function normalizeVersionPath(rawPath: string): string {
+  return rawPath.replace(/^\/+|\/+$/g, '');
+}
+
+/** A version whose defaults have been resolved against the top-level options. */
+interface ResolvedVersion {
+  name: string;
+  label?: string;
+  docsSections: DocsSection[];
+  /** Bare output subdirectory / route prefix ('' for the site root). */
+  pathPrefix: string;
+  customLLMFiles?: CustomLLMFile[];
+  includeOrder?: string[];
+}
+
+/** Normalize a `docsDir` value into sections, falling back to the top-level one. */
+function toDocsSections(
+  docsDir: string | DocsSection[] | undefined,
+  fallback: DocsSection[]
+): DocsSection[] {
+  if (docsDir === undefined) return fallback;
+  if (Array.isArray(docsDir)) {
+    return docsDir.length > 0 ? docsDir : fallback;
+  }
+  return [{ path: docsDir, routeBasePath: docsDir }];
+}
+
+/**
+ * Resolve the effective list of versions to generate. With no `versions` option
+ * this is a single root version reproducing the plugin's default behavior; an
+ * explicit array is used as-is; `'auto'` is detected from Docusaurus versioning.
+ * Each version inherits any unset field from the top-level options.
+ */
+function resolveVersions(
+  options: PluginOptions,
+  siteDir: string,
+  siteConfig: unknown,
+  defaultDocsSections: DocsSection[],
+  defaultDocsDir: string | DocsSection[] | undefined
+): ResolvedVersion[] {
+  const { versions } = options;
+
+  if (versions === undefined) {
+    return [
+      {
+        name: 'default',
+        label: isNonEmptyString(options.version) ? options.version : undefined,
+        docsSections: defaultDocsSections,
+        pathPrefix: '',
+        customLLMFiles: options.customLLMFiles,
+        includeOrder: options.includeOrder,
+      },
+    ];
+  }
+
+  const configs: VersionConfig[] =
+    versions === 'auto'
+      ? detectVersions(siteDir, siteConfig, defaultDocsDir)
+      : versions;
+
+  return configs.map(version => ({
+    name: version.name,
+    label: isNonEmptyString(version.label) ? version.label : version.name,
+    docsSections: toDocsSections(version.docsDir, defaultDocsSections),
+    pathPrefix: normalizeVersionPath(
+      isDefined(version.path) ? (version.path as string) : version.name
+    ),
+    customLLMFiles: version.customLLMFiles ?? options.customLLMFiles,
+    includeOrder: version.includeOrder ?? options.includeOrder,
+  }));
+}
+
+/**
+ * Read per-version label/path metadata from the Docusaurus docs config. The docs
+ * plugin may be configured via a preset or listed directly in `plugins`; both are
+ * scanned. Returns an empty map when nothing is found (best effort).
+ */
+function readDocsVersionMeta(
+  siteConfig: unknown
+): Record<string, { label?: string; path?: string }> {
+  const meta: Record<string, { label?: string; path?: string }> = {};
+  const collect = (versions: unknown): void => {
+    if (!versions || typeof versions !== 'object') return;
+    for (const [id, cfg] of Object.entries(versions as Record<string, unknown>)) {
+      const c = (cfg ?? {}) as { label?: unknown; path?: unknown };
+      meta[id] = {
+        label: typeof c.label === 'string' ? c.label : undefined,
+        path: typeof c.path === 'string' ? c.path : undefined,
+      };
+    }
+  };
+
+  const cfg = siteConfig as { presets?: unknown[]; plugins?: unknown[] };
+  const scanEntry = (entry: unknown): void => {
+    if (!Array.isArray(entry)) return;
+    const opts = entry[1] as { docs?: { versions?: unknown }; versions?: unknown } | undefined;
+    // Presets nest docs options under `docs`; a standalone content-docs plugin
+    // holds `versions` at the top level of its options object.
+    collect(opts?.docs?.versions);
+    collect(opts?.versions);
+  };
+  (cfg?.presets ?? []).forEach(scanEntry);
+  (cfg?.plugins ?? []).forEach(scanEntry);
+  return meta;
+}
+
+/**
+ * Detect versions from Docusaurus docs versioning: the current (unversioned)
+ * docs plus every entry in `versions.json` (sourced from
+ * `versioned_docs/version-<id>`). Labels and route paths come from the docs
+ * config when available, otherwise sensible defaults.
+ */
+function detectVersions(
+  siteDir: string,
+  siteConfig: unknown,
+  defaultDocsDir: string | DocsSection[] | undefined
+): VersionConfig[] {
+  let versionedIds: string[] = [];
+  try {
+    const raw = fs.readFileSync(path.join(siteDir, 'versions.json'), 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      versionedIds = parsed.filter((id): id is string => typeof id === 'string');
+    }
+  } catch {
+    // No versions.json — only the current (unversioned) docs exist.
+  }
+
+  const versionMeta = readDocsVersionMeta(siteConfig);
+  const configs: VersionConfig[] = [];
+
+  const currentMeta = versionMeta['current'] ?? {};
+  configs.push({
+    name: 'current',
+    label: currentMeta.label,
+    docsDir: defaultDocsDir ?? 'docs',
+    path: normalizeVersionPath(currentMeta.path ?? ''),
+  });
+
+  for (const id of versionedIds) {
+    const idMeta = versionMeta[id] ?? {};
+    configs.push({
+      name: id,
+      label: idMeta.label,
+      docsDir: `versioned_docs/version-${id}`,
+      path: normalizeVersionPath(idMeta.path ?? id),
+    });
+  }
+
+  return configs;
 }
 
 /**
@@ -340,45 +556,84 @@ export default function docusaurusPluginLLMs(
       logger.info('Generating LLM-friendly documentation...');
      
       try {
-        let enhancedContext = pluginContext;
-        
-        // If props are provided (Docusaurus 3.x+), pass the resolved route
-        // paths so route resolution can match files to their actual URLs
-        if (props?.routesPaths) {
-          logger.verbose(`routesPaths available: ${props.routesPaths.length} routes — sample: ${props.routesPaths.slice(0, 5).join(', ')}`);
-          enhancedContext = {
-            ...pluginContext,
-            routesPaths: props.routesPaths,
-          };
+        const routesPaths = props?.routesPaths;
+        if (routesPaths) {
+          logger.verbose(`routesPaths available: ${routesPaths.length} routes — sample: ${routesPaths.slice(0, 5).join(', ')}`);
         } else {
           logger.verbose('routesPaths NOT available in postBuild props — URL resolution will use file-path fallback');
         }
 
-        // Build image asset map when rewriteImageUrls is enabled
+        // Build the image asset map once when rewriteImageUrls is enabled; it is
+        // keyed off the build output and shared across all versions.
+        let imageAssetMap: Map<string, string[]> | undefined;
         if (rewriteImageUrls) {
           logger.verbose('Building image asset map for URL rewriting...');
-          const imageAssetMap = await buildImageAssetMap(enhancedContext.outDir);
+          imageAssetMap = await buildImageAssetMap(pluginContext.outDir);
           logger.verbose(`Image asset map: ${imageAssetMap.size} unique image basenames indexed`);
-          enhancedContext = { ...enhancedContext, imageAssetMap };
         }
-        
-        // Collect all document files
-        const allDocFiles = await collectDocFiles(enhancedContext);
-        
-        // Skip further processing if no documents were found
-        if (!isNonEmptyArray(allDocFiles)) {
-          logger.warn('No documents found to process. Skipping.');
-          return;
+
+        const resolvedVersions = resolveVersions(
+          options,
+          siteDir,
+          siteConfig,
+          docsSections,
+          docsDir
+        );
+        // Non-root versions each own a route-path prefix; the root version
+        // excludes these so its links don't leak into a versioned subtree.
+        const otherPrefixes = resolvedVersions
+          .map(v => v.pathPrefix)
+          .filter(prefix => prefix !== '');
+        const isMultiVersion = options.versions !== undefined;
+
+        for (const version of resolvedVersions) {
+          const routePrefix = version.pathPrefix ? `/${version.pathPrefix}` : '';
+          const versionContext: PluginContext = {
+            ...pluginContext,
+            routesPaths,
+            imageAssetMap,
+            docsSections: version.docsSections,
+            docsDir: version.docsSections[0].path,
+            outputSubdir: version.pathPrefix,
+            // Only scope routes in multi-version mode; the single default
+            // version keeps the original whole-site matching behavior.
+            routePrefix: isMultiVersion ? routePrefix : undefined,
+            siblingPrefixes: isMultiVersion
+              ? otherPrefixes
+                  .filter(prefix => prefix !== version.pathPrefix)
+                  .map(prefix => `/${prefix}`)
+              : undefined,
+            options: {
+              ...pluginContext.options,
+              version: version.label,
+              customLLMFiles: version.customLLMFiles,
+              includeOrder: version.includeOrder,
+            },
+          };
+
+          if (isMultiVersion) {
+            logger.info(
+              `Generating LLM files for version '${version.name}'` +
+                ` -> /${version.pathPrefix}`
+            );
+          }
+
+          const allDocFiles = await collectDocFiles(versionContext);
+          if (!isNonEmptyArray(allDocFiles)) {
+            logger.warn(
+              `No documents found for version '${version.name}'. Skipping.`
+            );
+            continue;
+          }
+
+          await generateStandardLLMFiles(versionContext, allDocFiles);
+          await generateCustomLLMFiles(versionContext, allDocFiles);
+
+          logger.info(
+            `Stats: ${allDocFiles.length} documents processed` +
+              (isMultiVersion ? ` for version '${version.name}'` : '')
+          );
         }
-        
-        // Process standard LLM files (llms.txt and llms-full.txt)
-        await generateStandardLLMFiles(enhancedContext, allDocFiles);
-        
-        // Process custom LLM files
-        await generateCustomLLMFiles(enhancedContext, allDocFiles);
-        
-        // Output overall statistics
-        logger.info(`Stats: ${allDocFiles.length} total available documents processed`);
       } catch (err: unknown) {
         logger.error(`Error generating LLM documentation: ${getErrorMessage(err)}`);
       }

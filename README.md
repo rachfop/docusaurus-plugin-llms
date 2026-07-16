@@ -142,7 +142,8 @@ module.exports = {
 | `removeDuplicateHeadings`        | boolean  | `false`           | Remove redundant content that duplicates heading text         |
 | `rewriteImageUrls`               | boolean  | `false`           | Rewrite relative image paths to absolute hashed build-output URLs |
 | `title`                          | string   | Site title        | Custom title to use in generated files                        |
-| `version`                        | string   | `undefined`       | Global version to include in all generated files              |
+| `version`                        | string   | `undefined`       | Global version label to include in all generated files        |
+| `versions`                       | array \| `'auto'` | `undefined` | Generate version-scoped LLM files, one set per version (see [Multi-version output](#multi-version-output)) |
 | `customLLMFiles`                 | array    | `[]`              | Array of custom LLM file configurations                       |
 | `generateMarkdownFiles`          | boolean  | `false`           | Generate individual markdown files and link to them from llms.txt |
 | `keepFrontMatter`                | string[] | []                | Preserve selected front matter items when generating individual markdown files |
@@ -593,6 +594,75 @@ Version: 1.0.0
 
 This file contains all documentation content in a single document following the llmstxt.org standard.
 ```
+
+##### Multi-version output
+
+The `version` option above only stamps a label into the file body. To publish a
+**separate set of LLM files per documentation version** — each written under its
+own subdirectory and with links scoped to that version's routes — use the
+`versions` option.
+
+This is useful for sites that keep more than one version live at once (for
+example a `nightly` build at the site root and a `stable` build under `/stable`).
+Any field left unset on a version falls back to the matching top-level option
+(`docsDir`, `customLLMFiles`, `includeOrder`).
+
+**Explicit versions.** List each version with its source directory and output
+`path` (the subdirectory *and* the route prefix its links resolve to):
+
+```js
+plugins: [
+  [
+    'docusaurus-plugin-llms',
+    {
+      // Shared defaults inherited by every version:
+      customLLMFiles: [ /* llms-python.txt, ... */ ],
+
+      versions: [
+        // Source dir -> output + route prefix
+        { name: 'nightly', label: 'Nightly', docsDir: 'docs',                    path: '' },      // -> /llms.txt
+        { name: 'stable',  label: 'v26.4',   docsDir: 'versioned_docs/version-1', path: 'stable' }, // -> /stable/llms.txt
+        // Add as many versions as you need (e.g. 'main', '0.0.1', ...)
+      ],
+    }
+  ],
+]
+```
+
+Each version writes `llms.txt` (and any `customLLMFiles`) under `<path>/`, so the
+example above produces `/llms.txt` and `/stable/llms.txt`. Links in the stable
+files resolve to `/stable/...` URLs, and the root version's links stay at the
+root (they never leak into a versioned subtree).
+
+**Automatic detection.** Set `versions: 'auto'` to derive the list from
+Docusaurus docs versioning — the current (unversioned) docs plus every entry in
+`versions.json` (sourced from `versioned_docs/version-<id>/`). Labels and route
+paths are read from your docs config when available:
+
+```js
+plugins: [
+  [
+    'docusaurus-plugin-llms',
+    {
+      customLLMFiles: [ /* ... */ ],
+      versions: 'auto',
+    }
+  ],
+]
+```
+
+Each version entry accepts:
+
+| Field            | Type              | Default              | Description                                                        |
+|------------------|-------------------|----------------------|--------------------------------------------------------------------|
+| `name`           | string (required) | —                    | Version identifier (e.g. `'nightly'`, `'stable'`, `'0.0.1'`)        |
+| `label`          | string            | `name`               | Label written into the `Version:` line of generated files          |
+| `docsDir`        | string \| array   | top-level `docsDir`  | Source docs directory (or sections) for this version               |
+| `path`           | string            | `name`               | Output subdirectory and route prefix (`''` for the site root)      |
+| `customLLMFiles` | array             | top-level value      | Per-version custom LLM files                                       |
+| `includeOrder`   | string[]          | top-level value      | Per-version include order                                          |
+
+Omitting `versions` entirely preserves the default single-root behavior.
 
 ## Logging Configuration
 
