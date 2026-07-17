@@ -42,7 +42,8 @@ export async function processMarkdownFile(
   removeDuplicateHeadings: boolean = false,
   resolvedUrl?: string,
   imageAssetMap?: Map<string, string[]>,
-  outDir?: string
+  outDir?: string,
+  siteDir?: string
 ): Promise<DocInfo | null> {
   const content = await readFile(filePath);
   const { data, content: markdownContent } = matter(content);
@@ -73,7 +74,7 @@ export async function processMarkdownFile(
   }
   
   // Resolve partial imports before processing
-  const resolvedContent = await resolvePartialImports(markdownContent, filePath);
+  const resolvedContent = await resolvePartialImports(markdownContent, filePath, new Set(), siteDir);
   
   const relativePath = path.relative(baseDir, filePath);
   // Convert to URL path format (replace backslashes with forward slashes on Windows)
@@ -520,7 +521,8 @@ export async function processFilesWithPatterns(
           context.options.removeDuplicateHeadings || false,
           resolvedUrl,
           context.imageAssetMap,
-          context.options.rewriteImageUrls ? context.outDir : undefined
+          context.options.rewriteImageUrls ? context.outDir : undefined,
+          siteDir
         );
 
         if (docInfo && sectionLabel) {

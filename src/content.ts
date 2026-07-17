@@ -84,12 +84,14 @@ function escapeRegex(str: string): string {
  * @param content - The markdown content with import statements
  * @param filePath - The path of the file containing the imports
  * @param importChain - Set of file paths in the current import chain (for circular dependency detection)
+ * @param siteDir - Site root, used to resolve `@site/` alias imports (defaults to process.cwd())
  * @returns Content with partials resolved
  */
 export async function resolvePartialImports(
   content: string,
   filePath: string,
-  importChain: Set<string> = new Set()
+  importChain: Set<string> = new Set(),
+  siteDir: string = process.cwd()
 ): Promise<string> {
   let resolved = content;
 
@@ -119,11 +121,10 @@ export async function resolvePartialImports(
   for (const [componentName, importPath] of imports) {
     try {
       // Resolve the partial file path relative to the current file, or
-      // against the site directory for '@site/' alias imports. Docusaurus
-      // runs builds from the site directory, so cwd is the site root.
+      // against the site directory for '@site/' alias imports.
       const dir = path.dirname(filePath);
       const partialPath = importPath.startsWith('@site/')
-        ? path.resolve(process.cwd(), importPath.slice('@site/'.length))
+        ? path.resolve(siteDir, importPath.slice('@site/'.length))
         : path.resolve(dir, importPath);
 
       // Check for circular import
@@ -157,7 +158,7 @@ export async function resolvePartialImports(
       const { content: partialMarkdown } = matter(partialContent);
 
       // Recursively resolve imports in the partial with the updated chain
-      const resolvedPartial = await resolvePartialImports(partialMarkdown, partialPath, newChain);
+      const resolvedPartial = await resolvePartialImports(partialMarkdown, partialPath, newChain, siteDir);
 
       // Escape special regex characters in component name and import path
       const escapedComponentName = escapeRegex(componentName);
