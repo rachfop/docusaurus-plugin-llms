@@ -131,9 +131,7 @@ async function runTest() {
       console.log('✅ Test 4 passed: partial resolved in list context too');
     }
 
-    // Test 5: relative underscore convention still works (regression guard)
-    // — covered by test-partials.js; here we just confirm the doc's own
-    // content survived processing.
+    // Test 5: the surrounding document content survives processing.
     if (!result.content.includes('Make your changes.')) {
       console.log('❌ Test 5 failed: surrounding document content lost');
       allTestsPassed = false;
