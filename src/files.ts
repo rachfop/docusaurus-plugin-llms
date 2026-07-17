@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs/promises';
+import * as path from 'path';
 
 /**
  * Write content to a file
@@ -10,6 +11,9 @@ import * as fs from 'fs/promises';
  * @param data - Content to write
  */
 export async function writeFile(filePath: string, data: string): Promise<void> {
+  // Ensure the parent directory exists so version-scoped outputs (e.g.
+  // stable/llms.txt) can be written even when the subdirectory is new.
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   return fs.writeFile(filePath, data, 'utf8');
 }
 

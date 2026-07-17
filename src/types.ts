@@ -64,6 +64,37 @@ export interface CustomLLMFile {
 }
 
 /**
+ * Configuration for a single documentation version.
+ *
+ * When `versions` is set, the plugin runs its full generation pipeline once per
+ * version, writing each version's files under its own `path` subdirectory and
+ * resolving links against that version's routes. Any field left unset falls back
+ * to the corresponding top-level plugin option.
+ */
+export interface VersionConfig {
+  /** Version identifier (e.g. 'nightly', 'stable', 'main', '0.0.1'). */
+  name: string;
+  /** Human-readable label for the `Version:` metadata line (defaults to `name`). */
+  label?: string;
+  /**
+   * Source docs directory (or sections) for this version, relative to siteDir
+   * (e.g. 'docs' for the current version, 'versioned_docs/version-1' for a
+   * versioned one). Defaults to the top-level `docsDir`.
+   */
+  docsDir?: string | DocsSection[];
+  /**
+   * Output subdirectory and route prefix for this version (e.g. '' for the site
+   * root, 'stable', '0.0.1'). Files are written to `<outDir>/<path>/` and links
+   * resolve to routes under `/<path>/`. Defaults to `name`.
+   */
+  path?: string;
+  /** Per-version custom LLM files (defaults to the top-level `customLLMFiles`). */
+  customLLMFiles?: CustomLLMFile[];
+  /** Per-version include order (defaults to the top-level `includeOrder`). */
+  includeOrder?: string[];
+}
+
+/**
  * Plugin options interface
  */
 export interface PluginOptions {
@@ -158,6 +189,13 @@ export interface PluginOptions {
    *  Useful when the site can't pin a stable `url` (e.g. subpath deployments). */
   useRelativeUrls?: boolean;
 
+  /**
+   * Generate version-scoped LLM files. Provide an explicit array of versions, or
+   * `'auto'` to detect them from Docusaurus docs versioning (versions.json +
+   * versioned_docs/). Omit for the default single-root behavior.
+   */
+  versions?: VersionConfig[] | 'auto';
+
   /** Index signature for Docusaurus plugin compatibility */
   [key: string]: unknown;
 }
@@ -178,4 +216,19 @@ export interface PluginContext {
    *  Built once per postBuild run when rewriteImageUrls is true. */
   imageAssetMap?: Map<string, string[]>;
   docsSections: DocsSection[];
-} 
+  /**
+   * Output subdirectory (relative to outDir) for the version being generated.
+   * Empty/undefined writes to the site root (the default).
+   */
+  outputSubdir?: string;
+  /**
+   * Route prefix (e.g. '/stable') the current version's URLs must fall under.
+   * Empty/undefined means the root version.
+   */
+  routePrefix?: string;
+  /**
+   * Route prefixes owned by other versions. When resolving the root version's
+   * URLs, routes under these prefixes are excluded so links stay at the root.
+   */
+  siblingPrefixes?: string[];
+}

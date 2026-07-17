@@ -235,6 +235,39 @@ export async function processMarkdownFile(
 }
 
 /**
+ * Restrict a route list to the subtree owned by the current version.
+ *
+ * - With no prefix info (single-version default), returns routes unchanged.
+ * - A non-empty `routePrefix` (e.g. '/stable') keeps only routes under it.
+ * - The root version (empty prefix) drops routes owned by sibling versions,
+ *   so its links don't resolve into a versioned subtree.
+ */
+function scopeRoutesToVersion(
+  routesPaths: string[],
+  routePrefix?: string,
+  siblingPrefixes?: string[]
+): string[] {
+  const prefix = routePrefix ? routePrefix.replace(/\/+$/, '') : '';
+  if (prefix) {
+    return routesPaths.filter(
+      route => route === prefix || route.startsWith(`${prefix}/`)
+    );
+  }
+
+  const siblings = (siblingPrefixes ?? [])
+    .map(sibling => sibling.replace(/\/+$/, ''))
+    .filter(Boolean);
+  if (siblings.length === 0) return routesPaths;
+
+  return routesPaths.filter(
+    route =>
+      !siblings.some(
+        sibling => route === sibling || route.startsWith(`${sibling}/`)
+      )
+  );
+}
+
+/**
  * Find the best matching route for a given path tail using suffix matching.
  * This avoids needing to know about version prefixes, baseUrl, or other
  * routing details — any route ending with the tail is a match.
@@ -304,6 +337,16 @@ async function resolveDocumentUrl(
 
   const { docsDir } = context;
 
+  // In multi-version mode, restrict matching to routes owned by this version so
+  // links resolve within the correct subtree (e.g. a 'stable' doc links to
+  // /stable/... and the root version's links avoid versioned subtrees).
+  const scopedRoutes = scopeRoutesToVersion(
+    context.routesPaths,
+    context.routePrefix,
+    context.siblingPrefixes
+  );
+  if (!scopedRoutes.length) return undefined;
+
   const relative = normalizePath(path.relative(baseDir, filePath))
     .replace(/\.mdx?$/, '')
     .replace(/\/index$/, '');
@@ -325,7 +368,7 @@ async function resolveDocumentUrl(
   if (stripped !== tail) tails.add(stripped);
 
   for (const t of tails) {
-    const match = findMatchingRoute(context.routesPaths, t);
+    const match = findMatchingRoute(scopedRoutes, t);
     if (match) return match;
   }
 
@@ -366,7 +409,7 @@ async function resolveDocumentUrl(
       if (!isNonEmptyString(slug)) continue;
       const parentDir = path.dirname(tail);
       const overriddenTail = parentDir === '.' ? slug : `${parentDir}/${slug}`;
-      const match = findMatchingRoute(context.routesPaths, overriddenTail);
+      const match = findMatchingRoute(scopedRoutes, overriddenTail);
       if (match) return match;
     }
   } catch {

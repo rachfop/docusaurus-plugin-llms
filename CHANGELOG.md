@@ -5,6 +5,18 @@ All notable changes to the docusaurus-plugin-llms will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-07-17
+
+### Added
+
+- **Multi-version output** via a new `versions` option. Generate a separate set
+  of LLM files per documentation version, each written under its own
+  subdirectory with links scoped to that version's routes. Accepts an explicit
+  array of versions (`{ name, label, docsDir, path, customLLMFiles, includeOrder }`)
+  or `'auto'` to detect them from Docusaurus docs versioning (`versions.json` +
+  `versioned_docs/`). Omitting `versions` preserves the existing single-root
+  behavior. Unset per-version fields fall back to the top-level options.
+
 ## [0.4.5] - 2026-07-13
 
 ### Fixed
