@@ -96,8 +96,9 @@ export async function resolvePartialImports(
   // Match import statements for partials and JSX usage
   // Pattern 1: import PartialName from './_partial.mdx'
   // Pattern 2: import { PartialName } from './_partial.mdx'
+  // Pattern 3: import PartialName from '@site/src/partials/partial.mdx'
   // Create a fresh regex for each invocation to avoid lastIndex state leakage
-  const createImportRegex = () => /^\s*import\s+(?:(\w+)|{\s*(\w+)\s*})\s+from\s+['"]([^'"]+_[^'"]+\.mdx?)['"];?\s*$/gm;
+  const createImportRegex = () => /^\s*import\s+(?:(\w+)|{\s*(\w+)\s*})\s+from\s+['"]([^'"]+\.mdx?)['"];?\s*$/gm;
   const imports = new Map<string, string>();
 
   // First pass: collect all imports
@@ -107,8 +108,9 @@ export async function resolvePartialImports(
     const componentName = match[1] || match[2];
     const importPath = match[3];
 
-    // Only process imports for partial files (containing underscore)
-    if (importPath.includes('_')) {
+    // Process imports for partial files (containing underscore) or files
+    // living in a partials directory (e.g. '@site/src/partials/foo.mdx')
+    if (importPath.includes('_') || importPath.includes('/partials/')) {
       imports.set(componentName, importPath);
     }
   }
@@ -116,9 +118,13 @@ export async function resolvePartialImports(
   // Resolve each partial import
   for (const [componentName, importPath] of imports) {
     try {
-      // Resolve the partial file path relative to the current file
+      // Resolve the partial file path relative to the current file, or
+      // against the site directory for '@site/' alias imports. Docusaurus
+      // runs builds from the site directory, so cwd is the site root.
       const dir = path.dirname(filePath);
-      const partialPath = path.resolve(dir, importPath);
+      const partialPath = importPath.startsWith('@site/')
+        ? path.resolve(process.cwd(), importPath.slice('@site/'.length))
+        : path.resolve(dir, importPath);
 
       // Check for circular import
       if (importChain.has(partialPath)) {
@@ -167,7 +173,14 @@ export async function resolvePartialImports(
       // Handle both self-closing tags and tags with content
       // <PartialName /> or <PartialName></PartialName> or <PartialName>...</PartialName>
       const jsxRegex = new RegExp(`<${escapedComponentName}\\s*(?:[^>]*?)(?:/>|>[^<]*</${escapedComponentName}>)`, 'g');
-      resolved = resolved.replace(jsxRegex, resolvedPartial.trim());
+      // Drop the partial's own import lines before splicing: they reference
+      // components (e.g. '@theme/Tabs') that are meaningless in plain
+      // markdown, and inside list context they would leak as literal text.
+      const partialInlined = resolvedPartial
+        .replace(/^\s*import\s+.*$/gm, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+      resolved = resolved.replace(jsxRegex, partialInlined);
 
     } catch (error: unknown) {
       logger.warn(`Failed to resolve partial import from ${importPath}: ${getErrorMessage(error)}`);
