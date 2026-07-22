@@ -307,13 +307,29 @@ function collapseMatchingTrailingSegment(urlPath: string): string {
   return urlPath;
 }
 
+// Mirror Docusaurus's DefaultNumberPrefixParser semantics so the candidate
+// tails matched against Docusaurus's real routes use the same clean names it
+// produces. The separator between the number and the rest is one-or-more of
+// `-`, `_`, `.` (so a compound prefix like "03--1.6.X" resolves to "1.6.X",
+// not "-1.6.X"), and a prefix is not stripped when the remainder itself looks
+// like a version/date number (e.g. "7.0-foo" stays "7.0-foo").
+// See: packages/docusaurus-plugin-content-docs/src/numberPrefix.ts
+const IGNORED_NUMBER_PREFIX_PATTERN = /^\d+[-_.]\d+/;
+const NUMBER_PREFIX_PATTERN = /^(\d+)\s*[-_.]+\s*([^-_.\s].*)$/;
+
+function stripNumberPrefix(segment: string): string {
+  if (IGNORED_NUMBER_PREFIX_PATTERN.test(segment)) {
+    return segment;
+  }
+  const match = NUMBER_PREFIX_PATTERN.exec(segment);
+  return match ? match[2] : segment;
+}
+
 /**
  * Remove numbered prefixes from path segments (e.g., "01-intro" -> "intro")
  */
 function removeNumberedPrefixes(pathStr: string): string {
-  return pathStr.split('/').map(segment => {
-    return segment.replace(/^\d+-/, '');
-  }).join('/');
+  return pathStr.split('/').map(stripNumberPrefix).join('/');
 }
 
 /**

@@ -21,10 +21,22 @@ function findMatchingRoute(routesPaths, tail) {
   return matches.sort((a, b) => a.length - b.length)[0];
 }
 
+// Mirrors src/processor.ts — Docusaurus's DefaultNumberPrefixParser semantics:
+// separator is one-or-more of [-_.], and version/date-like remainders are left
+// intact (so "03--1.6.X" → "1.6.X" but "7.0-foo" stays "7.0-foo").
+const IGNORED_NUMBER_PREFIX_PATTERN = /^\d+[-_.]\d+/;
+const NUMBER_PREFIX_PATTERN = /^(\d+)\s*[-_.]+\s*([^-_.\s].*)$/;
+
+function stripNumberPrefix(segment) {
+  if (IGNORED_NUMBER_PREFIX_PATTERN.test(segment)) {
+    return segment;
+  }
+  const match = NUMBER_PREFIX_PATTERN.exec(segment);
+  return match ? match[2] : segment;
+}
+
 function removeNumberedPrefixes(pathStr) {
-  return pathStr.split('/').map(segment => {
-    return segment.replace(/^\d+-/, '');
-  }).join('/');
+  return pathStr.split('/').map(stripNumberPrefix).join('/');
 }
 
 function resolveWithCandidates(routesPaths, tail) {
@@ -166,6 +178,34 @@ function testShortestMatchPreference() {
   console.log('');
 }
 
+// Test 8: Compound ordering prefix on version-like folder names
+function testCompoundNumberPrefix() {
+  console.log('Test 8: Compound ordering prefix on version-like folder names');
+
+  const routesPaths = ['/docs/1.6.X/intro', '/docs/1.6.2/notes'];
+
+  // "03--1.6.X" = ordering prefix "03-" + literal "-1.6.X"; both dashes are the
+  // separator, so the clean name is "1.6.X" (matching Docusaurus's route).
+  const resolved1 = resolveWithCandidates(routesPaths, '03--1.6.X/intro');
+  console.log(resolved1 === '/docs/1.6.X/intro'
+    ? '  ✅ PASS: "03--1.6.X/intro" resolved to "/docs/1.6.X/intro"'
+    : `  ❌ FAIL: Expected "/docs/1.6.X/intro", got "${resolved1}"`);
+
+  const resolved2 = resolveWithCandidates(routesPaths, '01--1.6.2/notes');
+  console.log(resolved2 === '/docs/1.6.2/notes'
+    ? '  ✅ PASS: "01--1.6.2/notes" resolved to "/docs/1.6.2/notes"'
+    : `  ❌ FAIL: Expected "/docs/1.6.2/notes", got "${resolved2}"`);
+
+  // "7.0-foo" is a version-like name with no separate ordering prefix, so the
+  // ignored-prefix rule keeps it intact.
+  const kept = stripNumberPrefix('7.0-foo');
+  console.log(kept === '7.0-foo'
+    ? '  ✅ PASS: version-like "7.0-foo" preserved (not stripped)'
+    : `  ❌ FAIL: Expected "7.0-foo", got "${kept}"`);
+
+  console.log('');
+}
+
 function runAllTests() {
   console.log('='.repeat(70));
   console.log('Testing suffix-based numbered prefix route resolution');
@@ -179,6 +219,7 @@ function runAllTests() {
   testMixedNumberedSegments();
   testTrailingSlashHandling();
   testShortestMatchPreference();
+  testCompoundNumberPrefix();
 
   console.log('='.repeat(70));
   console.log('All numbered prefix tests completed!');

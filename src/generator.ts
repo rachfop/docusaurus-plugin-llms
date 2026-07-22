@@ -235,6 +235,24 @@ ${doc.content}`;
   logger.info(`Generated: ${outputPath}`);
 }
 
+// Mirror Docusaurus's DefaultNumberPrefixParser semantics so generated file
+// paths match the routes/slugs Docusaurus itself produces. The separator
+// between the number and the rest of the name is one-or-more of `-`, `_`, `.`
+// (so a compound prefix like "03--1.6.X" resolves to "1.6.X", not "-1.6.X"),
+// and a prefix is deliberately not stripped when the remainder itself looks
+// like a version/date number (e.g. "7.0-foo" stays "7.0-foo").
+// See: packages/docusaurus-plugin-content-docs/src/numberPrefix.ts
+const IGNORED_NUMBER_PREFIX_PATTERN = /^\d+[-_.]\d+/;
+const NUMBER_PREFIX_PATTERN = /^(\d+)\s*[-_.]+\s*([^-_.\s].*)$/;
+
+function stripNumberPrefix(segment: string): string {
+  if (IGNORED_NUMBER_PREFIX_PATTERN.test(segment)) {
+    return segment;
+  }
+  const match = NUMBER_PREFIX_PATTERN.exec(segment);
+  return match ? match[2] : segment;
+}
+
 /**
  * Build a fallback output file path from the source file path when URL resolution
  * is unavailable. Strips the docsDir prefix (when preserveDirectoryStructure is
@@ -255,7 +273,7 @@ function buildFallbackPath(docPath: string, docsDir: string, preserveDirectorySt
   // Strip numeric ordering prefixes (e.g. "01-intro" → "intro") from each segment
   rel = rel
     .split('/')
-    .map(segment => segment.replace(/^\d+-/, ''))
+    .map(stripNumberPrefix)
     .join('/');
 
   return rel;
@@ -332,7 +350,7 @@ export async function generateIndividualMarkdownFiles(
           // constructed from the source file path may still contain them.
           let cleanPathname = urlPathname
             .split('/')
-            .map(segment => segment.replace(/^\d+-/, ''))
+            .map(stripNumberPrefix)
             .join('/')
             // Strip an existing markdown extension so we don't produce
             // double extensions like "config.md.md" when doc.url already
