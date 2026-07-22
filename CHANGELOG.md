@@ -5,6 +5,22 @@ All notable changes to the docusaurus-plugin-llms will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-07-22
+
+### Fixed
+
+- **`baseUrl` applied twice on disk** — with a non-root `baseUrl`, individual
+  `.md` files were written nested under the baseUrl segment, so their links
+  404'd. The baseUrl path is now stripped before deriving the physical file
+  location. ([#59](https://github.com/rachfop/docusaurus-plugin-llms/pull/59))
+- **Compound numeric prefixes** — ordering prefixes are now parsed like
+  Docusaurus's `DefaultNumberPrefixParser` (e.g. `03--1.6.X` → `1.6.X`), and
+  version-like names such as `7.0-foo` are preserved. ([#59](https://github.com/rachfop/docusaurus-plugin-llms/pull/59))
+- **Explicit frontmatter `slug`/`id` overridden by a coincidental route** — an
+  authoritative `slug`/`id` (including `slug: "/"`) is now consulted before the
+  filename-tail heuristic, so a root page no longer loses its route to an
+  unrelated file. ([#59](https://github.com/rachfop/docusaurus-plugin-llms/pull/59))
+
 ## [0.5.0] - 2026-07-17
 
 ### Added
