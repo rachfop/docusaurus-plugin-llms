@@ -173,10 +173,45 @@ async function testQuotedNumericSlug() {
   }
 }
 
+// Test 4: unquoted numeric title is used, not dropped to the fallback.
+async function testNumericTitle() {
+  const name = 'unquoted numeric title (2025) → used as label, not fallback';
+  const { tmpDir, outDir } = makeSite();
+  try {
+    fs.mkdirSync(path.join(tmpDir, 'docs'), { recursive: true });
+    // Numeric title with a distinct H1: a fallback would surface "Recap
+    // heading" (or the filename) instead of "2025", so the label discriminates.
+    fs.writeFileSync(
+      path.join(tmpDir, 'docs', 'recap.md'),
+      `---\ntitle: 2025\ndescription: Recap page.\nslug: recap\n---\n\n# Recap heading\n\nBody.`
+    );
+
+    const p = plugin(makeMockContext(tmpDir, outDir), {
+      generateLLMsFullTxt: false,
+      generateMarkdownFiles: true,
+      docsDir: 'docs',
+    });
+    await p.postBuild({ routesPaths: ['/recap'] });
+
+    const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
+    assert.ok(
+      llms.includes('[2025]'),
+      `numeric title should be the link label; got:\n${llms}`
+    );
+
+    pass(name);
+  } catch (err) {
+    fail(name, err.message);
+  } finally {
+    cleanup(tmpDir);
+  }
+}
+
 async function main() {
   await testNumericSlug();
   await testNumericId();
   await testQuotedNumericSlug();
+  await testNumericTitle();
 
   console.log('\n' + '='.repeat(50));
   console.log(`Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`);

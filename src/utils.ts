@@ -20,6 +20,7 @@ import { logger } from './logger';
 
 // Re-export the focused modules so existing `./utils` imports keep working.
 export * from './guards';
+export * from './numberPrefix';
 export * from './logger';
 export * from './files';
 export * from './content';

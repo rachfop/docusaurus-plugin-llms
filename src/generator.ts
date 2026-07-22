@@ -19,7 +19,8 @@ import {
   isNonEmptyString,
   isNonEmptyArray,
   isDefined,
-  joinSiteUrl
+  joinSiteUrl,
+  stripNumberPrefix
 } from './utils';
 import { processFilesWithPatterns } from './processor';
 
@@ -233,24 +234,6 @@ ${doc.content}`;
   }
 
   logger.info(`Generated: ${outputPath}`);
-}
-
-// Mirror Docusaurus's DefaultNumberPrefixParser semantics so generated file
-// paths match the routes/slugs Docusaurus itself produces. The separator
-// between the number and the rest of the name is one-or-more of `-`, `_`, `.`
-// (so a compound prefix like "03--1.6.X" resolves to "1.6.X", not "-1.6.X"),
-// and a prefix is deliberately not stripped when the remainder itself looks
-// like a version/date number (e.g. "7.0-foo" stays "7.0-foo").
-// See: packages/docusaurus-plugin-content-docs/src/numberPrefix.ts
-const IGNORED_NUMBER_PREFIX_PATTERN = /^\d+[-_.]\d+/;
-const NUMBER_PREFIX_PATTERN = /^(\d+)\s*[-_.]+\s*([^-_.\s].*)$/;
-
-function stripNumberPrefix(segment: string): string {
-  if (IGNORED_NUMBER_PREFIX_PATTERN.test(segment)) {
-    return segment;
-  }
-  const match = NUMBER_PREFIX_PATTERN.exec(segment);
-  return match ? match[2] : segment;
 }
 
 /**
