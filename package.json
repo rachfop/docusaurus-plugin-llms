@@ -43,6 +43,7 @@
   "dependencies": {
     "gray-matter": "4.0.3",
     "minimatch": "9.0.3",
+    "shell-quote": "^1.8.4",
     "yaml": "2.8.1"
   },
   "peerDependencies": {
