@@ -235,6 +235,24 @@ ${doc.content}`;
   logger.info(`Generated: ${outputPath}`);
 }
 
+// Mirror Docusaurus's DefaultNumberPrefixParser semantics so generated file
+// paths match the routes/slugs Docusaurus itself produces. The separator
+// between the number and the rest of the name is one-or-more of `-`, `_`, `.`
+// (so a compound prefix like "03--1.6.X" resolves to "1.6.X", not "-1.6.X"),
+// and a prefix is deliberately not stripped when the remainder itself looks
+// like a version/date number (e.g. "7.0-foo" stays "7.0-foo").
+// See: packages/docusaurus-plugin-content-docs/src/numberPrefix.ts
+const IGNORED_NUMBER_PREFIX_PATTERN = /^\d+[-_.]\d+/;
+const NUMBER_PREFIX_PATTERN = /^(\d+)\s*[-_.]+\s*([^-_.\s].*)$/;
+
+function stripNumberPrefix(segment: string): string {
+  if (IGNORED_NUMBER_PREFIX_PATTERN.test(segment)) {
+    return segment;
+  }
+  const match = NUMBER_PREFIX_PATTERN.exec(segment);
+  return match ? match[2] : segment;
+}
+
 /**
  * Build a fallback output file path from the source file path when URL resolution
  * is unavailable. Strips the docsDir prefix (when preserveDirectoryStructure is
@@ -255,7 +273,7 @@ function buildFallbackPath(docPath: string, docsDir: string, preserveDirectorySt
   // Strip numeric ordering prefixes (e.g. "01-intro" → "intro") from each segment
   rel = rel
     .split('/')
-    .map(segment => segment.replace(/^\d+-/, ''))
+    .map(stripNumberPrefix)
     .join('/');
 
   return rel;
@@ -282,6 +300,19 @@ export async function generateIndividualMarkdownFiles(
   const updatedDocs: DocInfo[] = [];
   const usedPaths = new Set<string>();
 
+  // Derive the site's baseUrl path segment (e.g. "some/subpath") from siteUrl,
+  // which already equals siteConfig.url + siteConfig.baseUrl. This segment must
+  // be stripped from each doc's URL pathname before deriving the physical file
+  // location, since Docusaurus writes its own build output relative to the
+  // output root *without* the baseUrl segment and relies on the hosting platform
+  // to mount the whole output under baseUrl. Leaving it in would nest generated
+  // files one level too deep, effectively applying baseUrl twice on disk.
+  let siteBasePath = '';
+  try {
+    siteBasePath = new URL(siteUrl).pathname.replace(/^\/+|\/+$/g, '');
+  } catch {
+    // Malformed siteUrl — leave siteBasePath empty, nothing to strip.
+  }
 
   for (const doc of docs) {
     // Derive output path from the resolved page URL (already stripped of numeric
@@ -292,9 +323,23 @@ export async function generateIndividualMarkdownFiles(
     if (isNonEmptyString(doc.url)) {
       try {
         // Extract clean pathname: "https://site.com/guides/start" → "guides/start.md"
-        const urlPathname = new URL(doc.url).pathname
+        let urlPathname = new URL(doc.url).pathname
           .replace(/^\/+/, '') // remove leading slash
           .replace(/\/+$/, ''); // remove trailing slash
+
+        // Strip the site's baseUrl segment before deriving the physical path, so
+        // the file lands relative to the output root (matching Docusaurus's own
+        // HTML build output) rather than nested under a duplicated baseUrl dir.
+        if (siteBasePath) {
+          if (urlPathname === siteBasePath) {
+            urlPathname = '';
+          } else {
+            const baseUrlPrefix = `${siteBasePath}/`;
+            if (urlPathname.startsWith(baseUrlPrefix)) {
+              urlPathname = urlPathname.slice(baseUrlPrefix.length);
+            }
+          }
+        }
 
         if (urlPathname === '') {
           // Root page (slug: /) → serve as index.md
@@ -305,7 +350,7 @@ export async function generateIndividualMarkdownFiles(
           // constructed from the source file path may still contain them.
           let cleanPathname = urlPathname
             .split('/')
-            .map(segment => segment.replace(/^\d+-/, ''))
+            .map(stripNumberPrefix)
             .join('/')
             // Strip an existing markdown extension so we don't produce
             // double extensions like "config.md.md" when doc.url already

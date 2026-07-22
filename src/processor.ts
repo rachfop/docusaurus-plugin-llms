@@ -307,26 +307,43 @@ function collapseMatchingTrailingSegment(urlPath: string): string {
   return urlPath;
 }
 
+// Mirror Docusaurus's DefaultNumberPrefixParser semantics so the candidate
+// tails matched against Docusaurus's real routes use the same clean names it
+// produces. The separator between the number and the rest is one-or-more of
+// `-`, `_`, `.` (so a compound prefix like "03--1.6.X" resolves to "1.6.X",
+// not "-1.6.X"), and a prefix is not stripped when the remainder itself looks
+// like a version/date number (e.g. "7.0-foo" stays "7.0-foo").
+// See: packages/docusaurus-plugin-content-docs/src/numberPrefix.ts
+const IGNORED_NUMBER_PREFIX_PATTERN = /^\d+[-_.]\d+/;
+const NUMBER_PREFIX_PATTERN = /^(\d+)\s*[-_.]+\s*([^-_.\s].*)$/;
+
+function stripNumberPrefix(segment: string): string {
+  if (IGNORED_NUMBER_PREFIX_PATTERN.test(segment)) {
+    return segment;
+  }
+  const match = NUMBER_PREFIX_PATTERN.exec(segment);
+  return match ? match[2] : segment;
+}
+
 /**
  * Remove numbered prefixes from path segments (e.g., "01-intro" -> "intro")
  */
 function removeNumberedPrefixes(pathStr: string): string {
-  return pathStr.split('/').map(segment => {
-    return segment.replace(/^\d+-/, '');
-  }).join('/');
+  return pathStr.split('/').map(stripNumberPrefix).join('/');
 }
 
 /**
  * Resolve the URL for a document by matching its file path against
  * Docusaurus's resolved routes using suffix matching.
  *
- * The approach: strip the docsDir prefix and file extension to get a "tail"
- * (e.g. "docs/manual/get-started"), then find any route ending with that
- * tail. This naturally handles version prefixes (/nightly/...), custom
- * baseUrl, and routeBasePath without needing to know about them.
- *
- * Falls back to reading frontmatter when the file's `id` or `slug` differs
- * from its filename (e.g. python_to_mojo.mdx with id: python-to-mojo).
+ * An explicit `slug`/`id` in frontmatter is authoritative and is consulted
+ * first (e.g. python_to_mojo.mdx with id: python-to-mojo, or `slug: "/"` for a
+ * section root page). Only when no such override resolves does it fall back to
+ * a filename-based heuristic: strip the docsDir prefix and file extension to
+ * get a "tail" (e.g. "manual/get-started"), then find any route ending with
+ * that tail. The heuristic naturally handles version prefixes (/nightly/...),
+ * custom baseUrl, and routeBasePath, but is a suffix-match guess — hence
+ * frontmatter takes precedence to avoid coincidental cross-file collisions.
  */
 async function resolveDocumentUrl(
   filePath: string,
@@ -358,22 +375,12 @@ async function resolveDocumentUrl(
     tail = tail.substring(`${docsDir}/`.length);
   }
 
-  // Build candidate tails: original, directory-collapsed, numbered-prefix-stripped
-  const tails = new Set<string>([tail]);
-
-  const collapsed = collapseMatchingTrailingSegment(tail);
-  if (collapsed !== tail) tails.add(collapsed);
-
-  const stripped = removeNumberedPrefixes(tail);
-  if (stripped !== tail) tails.add(stripped);
-
-  for (const t of tails) {
-    const match = findMatchingRoute(scopedRoutes, t);
-    if (match) return match;
-  }
-
-  // When frontmatter `id` or `slug` differs from the filename, the
-  // path-based lookups above will miss. Read frontmatter and retry.
+  // An explicit `slug`/`id` in frontmatter unambiguously declares the document's
+  // real route, so it must take priority over the filename-tail heuristic below.
+  // The heuristic is a suffix-match guess against *every* route and can otherwise
+  // coincidentally steal an unrelated document's route (most damagingly for
+  // `slug: "/"` root pages, whose bare filename tail can end up matching some
+  // other file's nested route). Checking frontmatter first prevents that.
   try {
     const content = await readFile(filePath);
     const { data } = matter(content);
@@ -413,7 +420,22 @@ async function resolveDocumentUrl(
       if (match) return match;
     }
   } catch {
-    // Frontmatter read failed; fall through
+    // Frontmatter read failed or absent; fall through to filename-based matching.
+  }
+
+  // Fall back to the filename-derived tail heuristic: build candidate tails
+  // (original, directory-collapsed, numbered-prefix-stripped) and suffix-match.
+  const tails = new Set<string>([tail]);
+
+  const collapsed = collapseMatchingTrailingSegment(tail);
+  if (collapsed !== tail) tails.add(collapsed);
+
+  const stripped = removeNumberedPrefixes(tail);
+  if (stripped !== tail) tails.add(stripped);
+
+  for (const t of tails) {
+    const match = findMatchingRoute(scopedRoutes, t);
+    if (match) return match;
   }
 
   return undefined;
