@@ -16,6 +16,7 @@ import {
   logger,
   getErrorMessage,
   isNonEmptyString,
+  coerceFrontMatterString,
   rewriteRelativeImageUrls,
   joinSiteUrl
 } from './utils';
@@ -53,6 +54,13 @@ export async function processMarkdownFile(
   if (data.draft === true || data.draft === 'true') {
     return null;
   }
+
+  // YAML parses an unquoted numeric slug/id/title as a number; Docusaurus
+  // coerces these to strings for routing, so mirror that before the string
+  // guards below (otherwise a numeric slug is dropped and its route is lost).
+  data.title = coerceFrontMatterString(data.title);
+  data.slug = coerceFrontMatterString(data.slug);
+  data.id = coerceFrontMatterString(data.id);
 
   // Validate and clean empty frontmatter fields
   // Empty strings should be treated as undefined to allow fallback logic
@@ -385,7 +393,7 @@ async function resolveDocumentUrl(
     const content = await readFile(filePath);
     const { data } = matter(content);
 
-    for (const override of [data.slug, data.id]) {
+    for (const override of [coerceFrontMatterString(data.slug), coerceFrontMatterString(data.id)]) {
       if (!isNonEmptyString(override)) continue;
       const rawSlug = override.trim();
 

@@ -21,6 +21,20 @@ export function isNonEmptyString(value: unknown): value is string {
 }
 
 /**
+ * Coerce a finite numeric frontmatter value to its string form, mirroring how
+ * Docusaurus (Joi `convert`) treats numeric `slug`/`id`/`title`. YAML parses an
+ * unquoted `slug: 2025` as the number 2025, which would otherwise fail the
+ * string guards and lose the numeric route.
+ * @param value - Raw frontmatter value
+ * @returns The value as a string when it is a finite number, otherwise unchanged
+ */
+export function coerceFrontMatterString(value: unknown): unknown {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? String(value)
+    : value;
+}
+
+/**
  * Type guard to check if a value is a non-empty array
  * @param value - Value to check
  * @returns True if value is an array with at least one element

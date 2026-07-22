@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Numeric frontmatter `slug`/`id` ignored** — an unquoted numeric `slug`/`id`
+  (YAML parses `slug: 2025` as a number) is now coerced to a string, matching how
+  Docusaurus routes it, so the `.md` is written at the correct route instead of a
+  fallback filename. ([#58](https://github.com/rachfop/docusaurus-plugin-llms/issues/58))
 - **`baseUrl` applied twice on disk** — with a non-root `baseUrl`, individual
   `.md` files were written nested under the baseUrl segment, so their links
   404'd. The baseUrl path is now stripped before deriving the physical file
