@@ -282,6 +282,19 @@ export async function generateIndividualMarkdownFiles(
   const updatedDocs: DocInfo[] = [];
   const usedPaths = new Set<string>();
 
+  // Derive the site's baseUrl path segment (e.g. "some/subpath") from siteUrl,
+  // which already equals siteConfig.url + siteConfig.baseUrl. This segment must
+  // be stripped from each doc's URL pathname before deriving the physical file
+  // location, since Docusaurus writes its own build output relative to the
+  // output root *without* the baseUrl segment and relies on the hosting platform
+  // to mount the whole output under baseUrl. Leaving it in would nest generated
+  // files one level too deep, effectively applying baseUrl twice on disk.
+  let siteBasePath = '';
+  try {
+    siteBasePath = new URL(siteUrl).pathname.replace(/^\/+|\/+$/g, '');
+  } catch {
+    // Malformed siteUrl — leave siteBasePath empty, nothing to strip.
+  }
 
   for (const doc of docs) {
     // Derive output path from the resolved page URL (already stripped of numeric
@@ -292,9 +305,23 @@ export async function generateIndividualMarkdownFiles(
     if (isNonEmptyString(doc.url)) {
       try {
         // Extract clean pathname: "https://site.com/guides/start" → "guides/start.md"
-        const urlPathname = new URL(doc.url).pathname
+        let urlPathname = new URL(doc.url).pathname
           .replace(/^\/+/, '') // remove leading slash
           .replace(/\/+$/, ''); // remove trailing slash
+
+        // Strip the site's baseUrl segment before deriving the physical path, so
+        // the file lands relative to the output root (matching Docusaurus's own
+        // HTML build output) rather than nested under a duplicated baseUrl dir.
+        if (siteBasePath) {
+          if (urlPathname === siteBasePath) {
+            urlPathname = '';
+          } else {
+            const baseUrlPrefix = `${siteBasePath}/`;
+            if (urlPathname.startsWith(baseUrlPrefix)) {
+              urlPathname = urlPathname.slice(baseUrlPrefix.length);
+            }
+          }
+        }
 
         if (urlPathname === '') {
           // Root page (slug: /) → serve as index.md
