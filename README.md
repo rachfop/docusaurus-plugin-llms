@@ -18,7 +18,7 @@ During a production build, this plugin scans your Docusaurus docs and writes an 
 - Rewrites relative image paths to absolute build-output URLs.
 - Supports custom LLM files, multi-instance docs, and multi-version output.
 
-## Quick start
+## Getting started
 
 Install the plugin as a dev dependency:
 
@@ -38,7 +38,7 @@ module.exports = {
 };
 ```
 
-On your next `npm run build`, the plugin writes `llms.txt` and `llms-full.txt` into the build output.
+On your next `npm run build`, the plugin writes `llms.txt` and `llms-full.txt` into the build output. That's the whole zero-config setup — see [installation](./docs/installation.md) to confirm it worked, then [configuration options](./docs/configuration.md) when you're ready to customize.
 
 ## Documentation
 
