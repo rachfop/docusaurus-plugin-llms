@@ -398,8 +398,17 @@ async function resolveDocumentUrl(
 
       const slug = rawSlug.replace(/^\/+|\/+$/g, '');
       if (!isNonEmptyString(slug)) continue;
+      // A leading-slash slug is *absolute*: Docusaurus resolves it against the
+      // docs instance's routeBasePath, independent of where the file lives, so
+      // it must not be prefixed with the file's parent directory. Prefixing
+      // would break pages deliberately flattened out of their folder (e.g.
+      // `slug: /page` in docs/section/page.md routes to /page, not
+      // /section/page). A slug without a leading slash stays relative to the
+      // file's directory.
       const parentDir = path.dirname(tail);
-      const overriddenTail = parentDir === '.' ? slug : `${parentDir}/${slug}`;
+      const isAbsoluteSlug = rawSlug.startsWith('/');
+      const overriddenTail =
+        isAbsoluteSlug || parentDir === '.' ? slug : `${parentDir}/${slug}`;
       const match = findMatchingRoute(scopedRoutes, overriddenTail);
       if (match) return match;
     }

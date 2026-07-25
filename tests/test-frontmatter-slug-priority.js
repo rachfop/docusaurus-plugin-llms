@@ -169,7 +169,55 @@ async function testExplicitSlugWins() {
   }
 }
 
-// Test 3: documents without slug/id still resolve via the filename heuristic
+// Test 3: an absolute slug (leading "/") that flattens a page out of its folder
+// resolves to the flat route, not <parentDir>/<slug>.
+async function testAbsoluteSlugFlattening() {
+  const name = 'absolute slug flattening a nested page resolves to the flat route';
+  const { tmpDir, outDir } = makeSite();
+  try {
+    fs.mkdirSync(path.join(tmpDir, 'docs', 'section'), { recursive: true });
+    // Nested file, but its absolute slug lifts it to the site root (/flat-page).
+    fs.writeFileSync(
+      path.join(tmpDir, 'docs', 'section', 'nested-page.md'),
+      page('Flat Page', 'Body.', { slug: '/flat-page' })
+    );
+
+    const p = plugin(makeMockContext(tmpDir, outDir), {
+      generateLLMsFullTxt: false,
+      generateMarkdownFiles: true,
+      docsDir: [{ path: 'docs', routeBasePath: '/' }],
+    });
+    // Real Docusaurus route: the page is at "/flat-page", not
+    // "/section/nested-page".
+    await p.postBuild({ routesPaths: ['/flat-page'] });
+
+    const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
+    const files = walk(outDir).map(f => path.relative(outDir, f).split(path.sep).join('/'));
+
+    // The markdown lands at the flat route, and llms.txt links it there — no
+    // stray /section/ prefix and no raw docs/ fallback path.
+    assert.ok(
+      files.includes('flat-page.md'),
+      `page should produce flat-page.md at the root; got ${files.join(', ')}`
+    );
+    assert.ok(
+      llms.includes('https://example.com/flat-page.md'),
+      'page should be linked at its absolute slug /flat-page.md'
+    );
+    assert.ok(
+      !llms.includes('/section/'),
+      'link must not carry the source folder it was flattened out of'
+    );
+
+    pass(name);
+  } catch (err) {
+    fail(name, err.message);
+  } finally {
+    cleanup(tmpDir);
+  }
+}
+
+// Test 4: documents without slug/id still resolve via the filename heuristic
 async function testNoOverrideUnaffected() {
   const name = 'documents without slug/id still resolve via filename heuristic';
   const { tmpDir, outDir } = makeSite();
@@ -204,6 +252,7 @@ async function testNoOverrideUnaffected() {
 async function main() {
   await testRootSlugWins();
   await testExplicitSlugWins();
+  await testAbsoluteSlugFlattening();
   await testNoOverrideUnaffected();
 
   console.log('\n' + '='.repeat(50));
