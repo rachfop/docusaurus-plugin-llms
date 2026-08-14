@@ -5,7 +5,7 @@
 import * as path from 'path';
 import matter from 'gray-matter';
 import { minimatch } from 'minimatch';
-import { DocInfo, PluginContext } from './types';
+import { DocInfo, DocsSection, PluginContext } from './types';
 import {
   readFile,
   extractTitle,
@@ -45,7 +45,8 @@ export async function processMarkdownFile(
   resolvedUrl?: string,
   imageAssetMap?: Map<string, string[]>,
   outDir?: string,
-  siteDir?: string
+  siteDir?: string,
+  sectionPath?: string
 ): Promise<DocInfo | null> {
   const content = await readFile(filePath);
   const { data, content: markdownContent } = matter(content);
@@ -100,10 +101,21 @@ export async function processMarkdownFile(
     const linkPathBase = normalizedPath.replace(/\.mdx?$/, '');
     
     // Handle index files specially
-    let linkPath = linkPathBase.endsWith('index') 
-      ? linkPathBase.replace(/\/index$/, '') 
+    let linkPath = linkPathBase.endsWith('index')
+      ? linkPathBase.replace(/\/index$/, '')
       : linkPathBase;
-    
+
+    // linkPath is filesystem-relative while pathPrefix is a route, so strip
+    // the section's own filesystem path first when the two differ.
+    if (isNonEmptyString(sectionPath)) {
+      const cleanSectionPath = sectionPath.replace(/^\/+|\/+$/g, '');
+      if (cleanSectionPath && linkPath.startsWith(`${cleanSectionPath}/`)) {
+        linkPath = linkPath.substring(`${cleanSectionPath}/`.length);
+      } else if (cleanSectionPath && linkPath === cleanSectionPath) {
+        linkPath = '';
+      }
+    }
+
     // pathPrefix may carry a trailing slash (e.g. docsDir: 'foo/'); normalize it
     // so prefix matching and URL assembly never produce a doubled slash (#43).
     const cleanPrefix = pathPrefix ? pathPrefix.replace(/\/+$/, '') : pathPrefix;
@@ -336,27 +348,54 @@ async function resolveDocumentUrl(
 ): Promise<string | undefined> {
   if (!context.routesPaths?.length) return undefined;
 
-  const { docsDir } = context;
+  // context.docsDir is only ever the first section's path, so find the
+  // section that actually owns this file instead.
+  const matchedSection = context.docsSections?.find(s => {
+    const abs = path.resolve(baseDir, s.path);
+    return filePath.startsWith(abs + path.sep) || filePath.startsWith(abs + '/');
+  });
+  const { blogDir = 'blog', blogRouteBasePath = 'blog' } = context.options;
+  const isBlogFile = !matchedSection && filePath.includes(path.join(baseDir, blogDir));
+  const sectionFsPath = matchedSection?.path ?? (isBlogFile ? blogDir : context.docsDir);
 
   // In multi-version mode, restrict matching to routes owned by this version so
   // links resolve within the correct subtree (e.g. a 'stable' doc links to
   // /stable/... and the root version's links avoid versioned subtrees).
-  const scopedRoutes = scopeRoutesToVersion(
+  let scopedRoutes = scopeRoutesToVersion(
     context.routesPaths,
     context.routePrefix,
     context.siblingPrefixes
   );
+
+  // Also restrict to this file's own section (or the blog), so a same-named
+  // file elsewhere (e.g. two docsDir entries each with a faq.md) can't
+  // suffix-match this file's tail and steal its route. Skipped for a single
+  // implicit docs section (e.g. a plain string docsDir), whose routeBasePath
+  // is defaulted to its filesystem path and doesn't necessarily reflect the
+  // real route.
+  const routeBase = isBlogFile
+    ? blogRouteBasePath
+    : matchedSection && (context.docsSections?.length ?? 0) > 1
+      ? matchedSection.routeBasePath
+      : undefined;
+  if (routeBase && routeBase !== '/') {
+    const versionPrefix = context.routePrefix ? context.routePrefix.replace(/\/+$/, '') : '';
+    const scopedRouteBase = `${versionPrefix}/${routeBase}`.replace(/\/+$/, '');
+    scopedRoutes = scopedRoutes.filter(
+      r => r === scopedRouteBase || r.startsWith(`${scopedRouteBase}/`)
+    );
+  }
   if (!scopedRoutes.length) return undefined;
 
   const relative = normalizePath(path.relative(baseDir, filePath))
     .replace(/\.mdx?$/, '')
     .replace(/\/index$/, '');
 
-  // Strip the docsDir prefix — docsDir is the filesystem root for the docs
-  // plugin, which Docusaurus removes when computing routes
+  // Strip the matched section's filesystem path — this is the filesystem root
+  // Docusaurus removes when computing routes for files under this section.
   let tail = relative;
-  if (docsDir && tail.startsWith(`${docsDir}/`)) {
-    tail = tail.substring(`${docsDir}/`.length);
+  if (sectionFsPath && tail.startsWith(`${sectionFsPath}/`)) {
+    tail = tail.substring(`${sectionFsPath}/`.length);
   }
 
   // An explicit `slug`/`id` in frontmatter unambiguously declares the document's
@@ -377,16 +416,10 @@ async function resolveDocumentUrl(
       // A plain slug strip would produce "" and skip; instead find the section this
       // file belongs to and use its routeBasePath to locate the correct route.
       if (/^\/+$/.test(rawSlug)) {
-        // Determine which section owns this file to get the correct base route.
+        // Use the section already matched above to get the correct base route.
         let sectionBase = '/';
-        if (context.docsSections?.length > 0) {
-          const matched = context.docsSections.find(s => {
-            const abs = path.resolve(baseDir, s.path);
-            return filePath.startsWith(abs + path.sep) || filePath.startsWith(abs + '/');
-          });
-          if (matched && matched.routeBasePath !== '/') {
-            sectionBase = `/${matched.routeBasePath}`;
-          }
+        if (matchedSection && matchedSection.routeBasePath !== '/') {
+          sectionBase = `/${matchedSection.routeBasePath}`;
         }
         // Look for an exact or trailing-slash-equivalent route in routesPaths.
         const rootMatch = context.routesPaths.find(r => {
@@ -439,31 +472,28 @@ async function resolveDocumentUrl(
  * Helper function to check if a file matches a pattern
  * Tries matching against multiple path variants for better usability
  */
-function matchesPattern(file: string, pattern: string, siteDir: string, docsDir: string): boolean {
+function matchesPattern(file: string, pattern: string, siteDir: string, docsDir: string, docsSections?: DocsSection[]): boolean {
   const minimatchOptions = { matchBase: true };
 
   // Get site-relative path (e.g., "docs/quickstart/file.md")
   const siteRelativePath = normalizePath(path.relative(siteDir, file));
-
-  // Get docs-relative path (e.g., "quickstart/file.md")
-  // Normalize both paths to handle different path separators and resolve any .. or .
-  const docsBaseDir = path.resolve(path.join(siteDir, docsDir));
-  const resolvedFile = path.resolve(file);
-  const docsRelativePath = resolvedFile.startsWith(docsBaseDir)
-    ? normalizePath(path.relative(docsBaseDir, resolvedFile))
-    : null;
 
   // Try matching against site-relative path
   if (minimatch(siteRelativePath, pattern, minimatchOptions)) {
     return true;
   }
 
-  // Try matching against docs-relative path if available
-  if (docsRelativePath && minimatch(docsRelativePath, pattern, minimatchOptions)) {
-    return true;
-  }
+  // Get docs-relative path (e.g., "quickstart/file.md") against every
+  // configured section, not just the first.
+  const resolvedFile = path.resolve(file);
+  const sectionPaths = docsSections?.length ? docsSections.map(s => s.path) : [docsDir];
 
-  return false;
+  return sectionPaths.some(sectionPath => {
+    const docsBaseDir = path.resolve(path.join(siteDir, sectionPath));
+    if (!resolvedFile.startsWith(docsBaseDir)) return false;
+    const docsRelativePath = normalizePath(path.relative(docsBaseDir, resolvedFile));
+    return minimatch(docsRelativePath, pattern, minimatchOptions);
+  });
 }
 
 export async function processFilesWithPatterns(
@@ -474,38 +504,39 @@ export async function processFilesWithPatterns(
   orderPatterns: string[] = [],
   includeUnmatched: boolean = false
 ): Promise<DocInfo[]> {
-  const { siteDir, siteUrl, docsDir } = context;
-  
+  const { siteDir, siteUrl, docsDir, docsSections } = context;
+  const { blogDir = 'blog', blogRouteBasePath = 'blog' } = context.options;
+
   // Filter files based on include patterns
   let filteredFiles = allFiles;
-  
+
   if (includePatterns.length > 0) {
     filteredFiles = allFiles.filter(file => {
       return includePatterns.some(pattern =>
-        matchesPattern(file, pattern, siteDir, docsDir)
+        matchesPattern(file, pattern, siteDir, docsDir, docsSections)
       );
     });
   }
-  
+
   // Apply ignore patterns
   if (ignorePatterns.length > 0) {
     filteredFiles = filteredFiles.filter(file => {
       return !ignorePatterns.some(pattern =>
-        matchesPattern(file, pattern, siteDir, docsDir)
+        matchesPattern(file, pattern, siteDir, docsDir, docsSections)
       );
     });
   }
-  
+
   // Order files according to orderPatterns
   let filesToProcess: string[] = [];
-  
+
   if (orderPatterns.length > 0) {
     const matchedFiles = new Set<string>();
-    
+
     // Process files according to orderPatterns
     for (const pattern of orderPatterns) {
       const matchingFiles = filteredFiles.filter(file => {
-        return matchesPattern(file, pattern, siteDir, docsDir) && !matchedFiles.has(file);
+        return matchesPattern(file, pattern, siteDir, docsDir, docsSections) && !matchedFiles.has(file);
       });
       
       for (const file of matchingFiles) {
@@ -528,14 +559,17 @@ export async function processFilesWithPatterns(
     filesToProcess.map(async (filePath) => {
       try {
         const baseDir = siteDir;
-        const isBlogFile = filePath.includes(path.join(siteDir, 'blog'));
+        const isBlogFile = filePath.includes(path.join(siteDir, blogDir));
 
         // Determine which section this file belongs to
         let pathPrefix: string;
         let sectionLabel: string | undefined;
+        // The section's filesystem path, as opposed to pathPrefix (its route).
+        let sectionFsPath: string | undefined;
 
         if (isBlogFile) {
-          pathPrefix = 'blog';
+          pathPrefix = blogRouteBasePath;
+          sectionFsPath = blogDir;
         } else if (context.docsSections && context.docsSections.length > 0) {
           const matchedSection = context.docsSections.find(s => {
             const sectionDir = path.join(siteDir, s.path);
@@ -544,6 +578,7 @@ export async function processFilesWithPatterns(
 
           if (matchedSection) {
             pathPrefix = matchedSection.routeBasePath;
+            sectionFsPath = matchedSection.path;
             if (context.docsSections.length > 1) {
               sectionLabel = matchedSection.label || matchedSection.path;
             }
@@ -571,7 +606,8 @@ export async function processFilesWithPatterns(
           resolvedUrl,
           context.imageAssetMap,
           context.options.rewriteImageUrls ? context.outDir : undefined,
-          siteDir
+          siteDir,
+          sectionFsPath
         );
 
         if (docInfo && sectionLabel) {

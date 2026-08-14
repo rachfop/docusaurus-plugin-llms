@@ -55,6 +55,31 @@ function cleanup(tmpDir) {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
+/**
+ * Create a temp site with two sections whose filesystem `path` differs from
+ * their `routeBasePath` (e.g. { path: 'team-a/docs', routeBasePath: 'docs/team-a' }).
+ */
+function createMismatchedPathSite() {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-llms-test-'));
+  const outDir = path.join(tmpDir, 'out');
+
+  fs.mkdirSync(path.join(tmpDir, 'team-a', 'docs'), { recursive: true });
+  fs.mkdirSync(path.join(tmpDir, 'team-b', 'docs'), { recursive: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(tmpDir, 'team-a', 'docs', 'getting-started.md'),
+    '---\ntitle: Getting Started\ndescription: Start here.\n---\n\n# Getting Started\n\nStart here.'
+  );
+
+  fs.writeFileSync(
+    path.join(tmpDir, 'team-b', 'docs', 'faq.md'),
+    '---\ntitle: FAQ\ndescription: Team B FAQ.\n---\n\n# FAQ\n\nTeam B FAQ.'
+  );
+
+  return { tmpDir, outDir };
+}
+
 function makeMockContext(tmpDir, outDir) {
   return {
     siteDir: tmpDir,
@@ -255,6 +280,150 @@ async function testFullTxtContainsBothSections() {
   }
 }
 
+// Test 7: Every section's own filesystem path is stripped, not just the first
+async function testAllSectionsWithMismatchedPaths() {
+  const name = 'All sections with diverging path/routeBasePath get correct URLs';
+  const { tmpDir, outDir } = createMismatchedPathSite();
+  try {
+    const p = plugin(makeMockContext(tmpDir, outDir), {
+      docsDir: [
+        { path: 'team-a/docs', routeBasePath: 'docs/team-a' },
+        { path: 'team-b/docs', routeBasePath: 'docs/team-b' },
+      ],
+      llmsTxtFilename: 'llms-test7.txt',
+      llmsFullTxtFilename: 'llms-full-test7.txt',
+    });
+    await p.postBuild({ routesPaths: ['/docs/team-a/getting-started', '/docs/team-b/faq'] });
+
+    const content = fs.readFileSync(path.join(outDir, 'llms-test7.txt'), 'utf8');
+
+    assert.ok(
+      content.includes('(https://example.com/docs/team-a/getting-started)'),
+      `Expected clean URL for first section, got:\n${content}`
+    );
+    assert.ok(
+      content.includes('(https://example.com/docs/team-b/faq)'),
+      `Expected clean URL for second section, got:\n${content}`
+    );
+    // The heading legitimately falls back to the raw path as a label — only
+    // the URL itself must never contain it.
+    assert.ok(
+      !content.includes('docs/team-b/team-b'),
+      `URL must not leak the second section's filesystem path, got:\n${content}`
+    );
+
+    pass(name);
+  } catch (err) {
+    fail(name, err.message);
+  } finally {
+    cleanup(tmpDir);
+  }
+}
+
+// Test 8: generateMarkdownFiles flattens every section, not just the first
+async function testFlattenedMarkdownFilesForAllSections() {
+  const name = 'generateMarkdownFiles flattens every section, not just the first';
+  const { tmpDir, outDir } = createMismatchedPathSite();
+  try {
+    const p = plugin(makeMockContext(tmpDir, outDir), {
+      docsDir: [
+        { path: 'team-a/docs', routeBasePath: 'docs/team-a' },
+        { path: 'team-b/docs', routeBasePath: 'docs/team-b' },
+      ],
+      generateMarkdownFiles: true,
+      preserveDirectoryStructure: false,
+      llmsTxtFilename: 'llms-test8.txt',
+      llmsFullTxtFilename: 'llms-full-test8.txt',
+    });
+    await p.postBuild({ routesPaths: ['/docs/team-a/getting-started', '/docs/team-b/faq'] });
+
+    assert.ok(fs.existsSync(path.join(outDir, 'getting-started.md')), 'Expected first section file flattened to getting-started.md');
+    assert.ok(fs.existsSync(path.join(outDir, 'faq.md')), 'Expected second section file flattened to faq.md');
+    assert.ok(!fs.existsSync(path.join(outDir, 'team-b')), 'Second section filesystem directory must not leak into the flattened output');
+
+    pass(name);
+  } catch (err) {
+    fail(name, err.message);
+  } finally {
+    cleanup(tmpDir);
+  }
+}
+
+// Test 9: docs-relative include patterns match files in every section, not just the first
+async function testDocsRelativePatternMatchesAllSections() {
+  const name = 'docs-relative include patterns match files in every section';
+  const { tmpDir, outDir } = createMismatchedPathSite();
+  try {
+    fs.mkdirSync(path.join(tmpDir, 'team-b', 'docs', 'guides'), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, 'team-b', 'docs', 'guides', 'setup.md'),
+      '---\ntitle: Setup Guide\ndescription: Team B setup guide.\n---\n\n# Setup Guide\n\nTeam B setup guide.'
+    );
+
+    const p = plugin(makeMockContext(tmpDir, outDir), {
+      docsDir: [
+        { path: 'team-a/docs', routeBasePath: 'docs/team-a' },
+        { path: 'team-b/docs', routeBasePath: 'docs/team-b' },
+      ],
+      customLLMFiles: [
+        {
+          filename: 'llms-guides-test9.txt',
+          includePatterns: ['guides/*.md'],
+          fullContent: false,
+        },
+      ],
+    });
+    await p.postBuild({ routesPaths: ['/docs/team-a/getting-started', '/docs/team-b/faq', '/docs/team-b/guides/setup'] });
+
+    const content = fs.readFileSync(path.join(outDir, 'llms-guides-test9.txt'), 'utf8');
+    assert.ok(content.includes('Setup Guide'), `Expected team-b's guides/setup.md to match "guides/*.md", got:\n${content}`);
+
+    pass(name);
+  } catch (err) {
+    fail(name, err.message);
+  } finally {
+    cleanup(tmpDir);
+  }
+}
+
+// Test 10: A file with the same relative path in two sections (e.g. faq.md in
+// both) must not resolve to the same route — each keeps its own section's URL.
+async function testSameBasenameAcrossSectionsDoesNotCollide() {
+  const name = 'Same-named files in different sections resolve to distinct URLs';
+  const { tmpDir, outDir } = createMismatchedPathSite();
+  try {
+    fs.writeFileSync(
+      path.join(tmpDir, 'team-a', 'docs', 'faq.md'),
+      '---\ntitle: FAQ\ndescription: Team A FAQ.\n---\n\n# FAQ\n\nTeam A FAQ.'
+    );
+
+    const p = plugin(makeMockContext(tmpDir, outDir), {
+      docsDir: [
+        { path: 'team-a/docs', routeBasePath: 'docs/team-a' },
+        { path: 'team-b/docs', routeBasePath: 'docs/team-b' },
+      ],
+      generateMarkdownFiles: true,
+      llmsTxtFilename: 'llms-test10.txt',
+      llmsFullTxtFilename: 'llms-full-test10.txt',
+    });
+    await p.postBuild({ routesPaths: ['/docs/team-a/getting-started', '/docs/team-a/faq', '/docs/team-b/faq'] });
+
+    const content = fs.readFileSync(path.join(outDir, 'llms-test10.txt'), 'utf8');
+
+    assert.ok(content.includes('(https://example.com/docs/team-a/faq.md)'), `Expected team-a's faq at its own URL, got:\n${content}`);
+    assert.ok(content.includes('(https://example.com/docs/team-b/faq.md)'), `Expected team-b's faq at its own URL, got:\n${content}`);
+    assert.ok(!content.includes('faq-2'), `No file should need a "-2" suffix to disambiguate, got:\n${content}`);
+    assert.ok(fs.existsSync(path.join(outDir, 'docs', 'team-a', 'faq.md')), 'Expected team-a/faq.md written to its own section directory');
+    assert.ok(fs.existsSync(path.join(outDir, 'docs', 'team-b', 'faq.md')), 'Expected team-b/faq.md written to its own section directory');
+
+    pass(name);
+  } catch (err) {
+    fail(name, err.message);
+  } finally {
+    cleanup(tmpDir);
+  }
+}
+
 async function main() {
   await testTwoLabeledSections();
   await testLabelFallbackToPath();
@@ -262,6 +431,10 @@ async function main() {
   await testSingleArrayEntry();
   await testValidationRejectsInvalidArray();
   await testFullTxtContainsBothSections();
+  await testAllSectionsWithMismatchedPaths();
+  await testFlattenedMarkdownFilesForAllSections();
+  await testDocsRelativePatternMatchesAllSections();
+  await testSameBasenameAcrossSectionsDoesNotCollide();
 
   console.log('\n' + '='.repeat(50));
   console.log(`Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`);

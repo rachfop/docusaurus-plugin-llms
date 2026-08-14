@@ -125,6 +125,8 @@ module.exports = {
 
 | Option                           | Type     | Default           | Description                                                   |
 |----------------------------------|----------|-------------------|---------------------------------------------------------------|
+| `blogDir`                        | string   | `'blog'`          | Filesystem path to the blog content directory, relative to the site root |
+| `blogRouteBasePath`              | string   | `'blog'`          | Docusaurus routeBasePath for the blog plugin — set this to match `presets.blog.routeBasePath` if you've customized it (e.g. `'news'`) |
 | `description`                    | string   | Site tagline      | Custom description to use in generated files                  |
 | `docsDir`                        | string \| object[] | `'docs'`          | Documentation source. A string base directory, or an array of section objects for multi-instance setups (see [Multiple documentation sections](#multiple-documentation-sections)) |
 | `excludeImports`                 | boolean  | `false`           | Remove import statements from generated content                |

@@ -118,7 +118,9 @@ function validatePluginOptions(options: PluginOptions): void {
     'llmsFullTxtFilename',
     'version',
     'rootContent',
-    'fullRootContent'
+    'fullRootContent',
+    'blogDir',
+    'blogRouteBasePath'
   ] as const;
 
   for (const option of stringOptions) {
@@ -454,6 +456,8 @@ export default function docusaurusPluginLLMs(
     llmsTxtFilename = 'llms.txt',
     llmsFullTxtFilename = 'llms-full.txt',
     includeBlog = false,
+    blogDir = 'blog',
+    blogRouteBasePath = 'blog',
     pathTransformation,
     includeOrder = [],
     includeUnmatchedLast = true,
@@ -526,6 +530,8 @@ export default function docusaurusPluginLLMs(
       llmsTxtFilename,
       llmsFullTxtFilename,
       includeBlog,
+      blogDir,
+      blogRouteBasePath,
       pathTransformation,
       includeOrder,
       includeUnmatchedLast,
