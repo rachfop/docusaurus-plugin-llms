@@ -189,10 +189,17 @@ export async function resolvePartialImports(
       // Drop the partial's own import lines before splicing: they reference
       // components (e.g. '@theme/Tabs') that are meaningless in plain
       // markdown, and inside list context they would leak as literal text.
-      const partialInlined = resolvedPartial
-        .replace(/^\s*import\s+.*$/gm, '')
-        .replace(/\n{3,}/g, '\n\n')
-        .trim();
+      //
+      // Mask code first: a Swift or Kotlin sample inside the partial can open
+      // with `import Foundation`, which the line-based strip below would
+      // otherwise delete from the middle of the fence.
+      const { masked: maskedPartial, restore: restorePartial } =
+        maskCodeSegments(resolvedPartial);
+      const partialInlined = restorePartial(
+        maskedPartial
+          .replace(/^\s*import\s+.*$/gm, '')
+          .replace(/\n{3,}/g, '\n\n')
+      ).trim();
       resolved = resolved.replace(jsxRegex, partialInlined);
 
     } catch (error: unknown) {
