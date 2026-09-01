@@ -23,6 +23,7 @@ import {
   stripNumberPrefix
 } from './utils';
 import { processFilesWithPatterns } from './processor';
+import { demoteHeadings, stripDuplicateTitleHeading, stripDuplicateDescriptionParagraph } from './content';
 
 /**
  * Clean a description for use in a TOC item
@@ -122,19 +123,10 @@ export async function generateLLMFile(
       }
 
       const batchSections = batch.map(doc => {
-      // Check if content already starts with the same heading to avoid duplication
-      const trimmedContent = doc.content.trim();
-      const contentLines = trimmedContent.split('\n');
-      const firstLine = contentLines.length > 0 ? contentLines[0] : '';
-
-      // Check if the first line is a heading that matches our title
-      const headingMatch = firstLine.match(/^#+\s+(.+)$/);
-      const firstHeadingText = headingMatch ? headingMatch[1].trim() : null;
-      
       // Generate unique header using the utility function
       const uniqueHeader = ensureUniqueIdentifier(
-        doc.title, 
-        usedHeaders, 
+        doc.title,
+        usedHeaders,
         (counter, base) => {
           // Try to make it more descriptive by adding the file path info if available
           if (isNonEmptyString(doc.path) && counter === 2) {
@@ -147,19 +139,14 @@ export async function generateLLMFile(
           return `(${counter})`;
         }
       );
-      
-      if (firstHeadingText === doc.title) {
-        // Content already has the same heading, replace it with our unique header
-        const restOfContent = trimmedContent.split('\n').slice(1).join('\n');
-        return `## ${uniqueHeader}
 
-${restOfContent}`;
-      } else {
-        // Content doesn't have the same heading, add our unique H2 header
-        return `## ${uniqueHeader}
+      // Drop the body's own H1 when it repeats the title (the `## {header}`
+      // above already names the document), then demote every remaining heading
+      // one level so the document's inner structure stays nested under its
+      // parent section header instead of colliding with it.
+      const body = demoteHeadings(stripDuplicateTitleHeading(doc.content, doc.title)).trim();
 
-${doc.content}`;
-      }
+      return `## ${uniqueHeader}\n\n${body}`;
     });
 
       fullContentSections.push(...batchSections);
@@ -468,11 +455,22 @@ export async function generateIndividualMarkdownFiles(
       }
     }
 
+    // The file header already emits `# {title}` and the description blockquote,
+    // so strip the body's own identical H1 and its identical first paragraph
+    // (docs without frontmatter get their intro paragraph extracted as the
+    // description); leaving either in would duplicate content the header just
+    // provided. The paragraph strip is an exact-match removal, so it is safe
+    // at any description length.
+    let bodyContent = stripDuplicateTitleHeading(doc.content, doc.title);
+    if (isNonEmptyString(doc.description)) {
+      bodyContent = stripDuplicateDescriptionParagraph(bodyContent, doc.description);
+    }
+
     // Create markdown content using the utility function
     const markdownContent = createMarkdownContent(
       doc.title,
       doc.description,
-      doc.content,
+      bodyContent,
       true, // includeMetadata
       Object.keys(preservedFrontMatter).length > 0 ? preservedFrontMatter : undefined
     );

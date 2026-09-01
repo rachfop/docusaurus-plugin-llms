@@ -400,9 +400,84 @@ export function createMarkdownContent(
   // the heading.
   const blockquoted = description.split('\n').map(l => `> ${l}`).join('\n');
   const descriptionLine = includeMetadata && description ? `\n\n${blockquoted}\n` : '\n';
-  
+
   result += `# ${title}${descriptionLine}
 ${content}`.trim() + '\n';
 
   return result;
-} 
+}
+
+/**
+ * Strip a paragraph line that exactly matches `description` — used when a
+ * generated file already emits the description as a blockquote header, so a
+ * body paragraph identical to it is not emitted twice. Comparison is
+ * line-by-line with code fences skipped, so inline code stays literal: a
+ * description containing `backticks` still matches (a regex run over masked
+ * text would fail here, because masking also hides inline code). Only an
+ * exact, standalone match is removed; anything else is left as written.
+ */
+export function stripDuplicateDescriptionParagraph(content: string, description: string): string {
+  if (!isNonEmptyString(description)) return content;
+  const descLines = description.trim().split('\n').map((l) => l.trim());
+  const lines = content.split('\n');
+  let inFence = false;
+  let fenceChar = '';
+  for (let i = 0; i + descLines.length <= lines.length; i++) {
+    const line = lines[i];
+    const fenceMatch = /^([ \t]*)(`{3,}|~{3,})/.exec(line);
+    if (fenceMatch) {
+      if (!inFence) { inFence = true; fenceChar = fenceMatch[2][0]; }
+      else if (fenceChar === fenceMatch[2][0]) { inFence = false; fenceChar = ''; }
+      continue;
+    }
+    if (inFence) continue;
+    // The description's lines must match consecutive body lines verbatim
+    // (single- or multi-line paragraph), and the block must end at a blank
+    // line or end of content so a prefix of a longer paragraph never matches.
+    const candidate = lines.slice(i, i + descLines.length).map((l) => l.trim());
+    const blockEnd = lines[i + descLines.length];
+    if (candidate.join('\n') === descLines.join('\n')
+      && (blockEnd === undefined || blockEnd.trim() === '')) {
+      // Remove the paragraph block plus the blank lines that follow it, so
+      // the gap does not double; a mid-body match keeps one blank-line gap
+      // between the surviving neighbors instead of joining their paragraphs.
+      let j = i + descLines.length;
+      while (j < lines.length && lines[j].trim() === '') j++;
+      const wasMidBody = i > 0;
+      lines.splice(i, j - i);
+      let out = lines.join('\n');
+      if (wasMidBody) out = out.replace(/\n{3,}/g, '\n\n');
+      return out.replace(/^[ \t\n]+/, '');
+    }
+  }
+  return content;
+}
+
+/**
+ * Demote every markdown heading by one level (H1 -> H2, H2 -> H3, ...), leaving
+ * code fences and inline code untouched. Used when a document is embedded
+ * under a parent heading (llms-full.txt), so the document's own structure
+ * stays nested under the parent instead of colliding with it.
+ */
+export function demoteHeadings(content: string): string {
+  const { masked, restore } = maskCodeSegments(content);
+  const demoted = masked.replace(/^(#{1,5})(\s)/gm, '$1#$2');
+  return restore(demoted);
+}
+
+/**
+ * Strip a leading heading line when its text matches `title` exactly — used
+ * when a generated file already emits `# {title}` as its header, so the body's
+ * own identical H1 is not emitted twice. Code fences are masked first, so a
+ * sample beginning with the same heading is left as written.
+ */
+export function stripDuplicateTitleHeading(content: string, title: string): string {
+  if (!isNonEmptyString(title)) return content;
+  const { masked, restore } = maskCodeSegments(content);
+  // Build the regex from the title with regex metacharacters escaped, since
+  // titles routinely contain `.`, `(`, `)`, `*`, and other markup characters.
+  const escapedTitle = title.replace(/[.*+?^${}()|[\]\\#]/g, '\\$&');
+  const re = new RegExp(`^#{1,6}\\s+${escapedTitle}[ \\t]*$`, 'm');
+  const stripped = masked.replace(re, '');
+  return restore(stripped).replace(/^\n+/, '').trimStart();
+}

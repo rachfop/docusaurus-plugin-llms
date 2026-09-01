@@ -38,6 +38,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Blog detection misclassified sibling sections**: any directory whose name
   merely started with the blog dir (e.g. a `blog-api` docs section next to
   `blog`) was treated as the blog for fallback URL construction.
+- **Code-fence samples containing `import` statements were rewritten**: a
+  fenced sample of an import line was resolved as a real partial import and
+  spliced the partial's content into the code sample (or dropped the line when
+  the target did not exist). Partial-import resolution now runs on fence-masked
+  content.
+- **`llms-full.txt` flattened heading hierarchy**: each document's inner
+  `## Foo` stayed at `##`, colliding with the `## {title}` document header, and
+  the document's own title H1 appeared again under its header. Inner headings
+  are now demoted one level under the document header, and the duplicate title
+  heading is removed.
+- **Individual `.md` files duplicated their title and intro**: the file header
+  emitted `# {title}` plus the description blockquote, then the body repeated
+  the identical H1 and (for pages whose description was auto-extracted from
+  the first paragraph) the identical paragraph. Both duplicates are now
+  stripped from the body.
+- **Triple blank lines in `llms-full.txt`**: stripping a body's duplicate
+  title heading left its surrounding blank lines behind. Gaps now collapse to
+  a single blank line.
 - **Numeric frontmatter `description` dropped**: an unquoted YAML number
   (`description: 2024`) was silently discarded instead of used as text; it is
   now coerced like `title`/`slug`/`id`.
