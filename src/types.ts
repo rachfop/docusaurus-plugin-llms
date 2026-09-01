@@ -53,7 +53,7 @@ export interface CustomLLMFile {
   /** Order patterns for controlling file ordering (similar to includeOrder) */
   orderPatterns?: string[];
   
-  /** Whether to include unmatched files last (default: false) */
+  /** Whether to include unmatched files last (default: true) */
   includeUnmatchedLast?: boolean;
   
   /** Version information for this LLM file */
