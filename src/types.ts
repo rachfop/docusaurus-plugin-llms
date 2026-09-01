@@ -156,7 +156,17 @@ export interface PluginOptions {
   
   /** Whether to remove redundant content that duplicates heading text (default: false) */
   removeDuplicateHeadings?: boolean;
-  
+
+  /**
+   * PascalCase JSX component names to leave untouched in the generated
+   * markdown instead of stripping their tags (default: []). Use this for
+   * components whose props carry content the plugin cannot meaningfully
+   * flatten — e.g. `<PackageManagerTabs command="npm install x" />`. The
+   * tags stay in the output; the site accepts the JSX or flattens the
+   * components into plain markdown before this plugin runs.
+   */
+  preserveComponents?: string[];
+
   /** Whether to generate individual markdown files and link to them from llms.txt instead of original docs (default: false) */
   generateMarkdownFiles?: boolean;
 

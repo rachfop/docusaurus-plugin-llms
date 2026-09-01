@@ -70,6 +70,7 @@ These options strip noise from the source markdown before it's written.
 | --- | --- | --- | --- |
 | `excludeImports` | `boolean` | `false` | Remove `import` statements from generated content. |
 | `removeDuplicateHeadings` | `boolean` | `false` | Remove content that just repeats the heading text immediately below it. |
+| `preserveComponents` | `string[]` | `[]` | Component names whose JSX tags pass through untouched instead of being stripped. See [preserving component tags](content-cleaning.md#preserving-component-tags-preservecomponents). |
 
 ## URL construction
 

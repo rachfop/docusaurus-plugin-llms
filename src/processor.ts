@@ -42,6 +42,7 @@ export async function processMarkdownFile(
   },
   excludeImports: boolean = false,
   removeDuplicateHeadings: boolean = false,
+  preserveComponents: string[] = [],
   resolvedUrl?: string,
   imageAssetMap?: Map<string, string[]>,
   outDir?: string,
@@ -238,7 +239,7 @@ export async function processMarkdownFile(
   }
   
   // Clean and process content (now with partials already resolved)
-  const cleanedContent = cleanMarkdownContent(resolvedContent, excludeImports, removeDuplicateHeadings);
+  const cleanedContent = cleanMarkdownContent(resolvedContent, excludeImports, removeDuplicateHeadings, preserveComponents);
   
   // Rewrite relative image URLs to absolute build-output URLs when requested
   const finalContent = (imageAssetMap && outDir)
@@ -612,6 +613,7 @@ export async function processFilesWithPatterns(
           context.options.pathTransformation,
           context.options.excludeImports || false,
           context.options.removeDuplicateHeadings || false,
+          context.options.preserveComponents || [],
           resolvedUrl,
           context.imageAssetMap,
           context.options.rewriteImageUrls ? context.outDir : undefined,

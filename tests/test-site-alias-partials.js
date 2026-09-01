@@ -90,6 +90,7 @@ async function runTest() {
       undefined,
       true, // excludeImports
       false, // removeDuplicateHeadings
+      [], // preserveComponents
       undefined, // resolvedUrl
       undefined, // imageAssetMap
       undefined, // outDir

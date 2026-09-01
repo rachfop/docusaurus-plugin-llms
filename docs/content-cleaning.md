@@ -2,7 +2,7 @@
 
 Documentation written for humans often carries markup that adds noise for a language model: MDX import statements, HTML wrappers, and auto-generated content that just echoes its own heading. The plugin can strip these before writing `llms.txt`, `llms-full.txt`, and any individual markdown files, so the output stays compact and readable.
 
-Some cleaning always happens. Regardless of your options, the plugin removes common HTML tags (`<div>`, `<span>`, `<img>`, and so on) and MDX/JSX component tags (PascalCase elements like `<Tabs>` or `<TabItem>`), keeping their inner text. Two opt-in options handle the rest, and a third rewrites image URLs. All three default to `false`, so existing configurations keep their current output until you enable them.
+Some cleaning always happens. Regardless of your options, the plugin removes common HTML tags (`<div>`, `<span>`, `<img>`, and so on) and MDX/JSX component tags (PascalCase elements like `<Tabs>` or `<Admonition>`), keeping their inner text. Docusaurus's `<TabItem>` gets special handling: its `label` (or `value`, when no label is set) is emitted as a bold line before the tab body, so tabbed sections keep their structure in the generated markdown. Other PascalCase tags you can exempt from stripping with the `preserveComponents` option, described below. Two opt-in options handle the rest of the cleaning, and a third rewrites image URLs. All three default to `false`, so existing configurations keep their current output until you enable them.
 
 Cleaning runs after code blocks are masked out, so fenced code and inline code are never touched. An `import` line or an HTML snippet shown inside a code sample stays exactly as written.
 
@@ -80,6 +80,36 @@ To enable it:
   removeDuplicateHeadings: true,
 }
 ```
+
+## Preserving component tags (`preserveComponents`)
+
+`preserveComponents` is a `string[]` (default `[]`). By default the plugin strips every MDX/JSX component tag (PascalCase elements) and keeps only the inner text. For components that render meaningful content on their own — a swizzled `<PackageManagerTabs>`, a custom `<ModelDownload>` that expands into real instructions — stripping loses information. List those component names and their tags (and the props on them) pass through untouched:
+
+```js
+module.exports = {
+  plugins: [
+    [
+      'docusaurus-plugin-llms',
+      {
+        preserveComponents: ['PackageManagerTabs', 'ModelDownload'],
+      },
+    ],
+  ],
+};
+```
+
+Given MDX like:
+
+```markdown
+<PackageManagerTabs command="add my-package" />
+```
+
+The generated output keeps the tag as-is, so an LLM reading it still sees the command the component would render. Matching is exact on the component name (opening and closing tags), so `<Keep>` is preserved without affecting `<KeepAll>`.
+
+Two special cases run regardless of this option:
+
+- `<TabItem>` is never preserved as a raw tag. Instead, its `label` (or `value` when no label is set) is emitted as a bold line before the tab body, so a tabbed section degrades into a readable plain-markdown outline. This needs no configuration.
+- Tags inside fenced code blocks or inline code spans are never touched by any cleaning step, including this one.
 
 ## Combined content cleaning
 

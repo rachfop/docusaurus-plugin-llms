@@ -122,22 +122,32 @@ export async function resolvePartialImports(
     const componentName = match[1] || match[2];
     const importPath = match[3];
 
-    // Process imports for partial files (containing underscore) or files
-    // living in a partials directory (e.g. '@site/src/partials/foo.mdx')
-    if (importPath.includes('_') || importPath.includes('/partials/')) {
-      imports.set(componentName, importPath);
-    }
+    // The regex only matches .mdx/.md specifiers, so React/component imports
+    // are never collected. Any markdown import — partial or whole page body —
+    // is inlined (#65: the previous '_'/'/partials/' gate silently dropped
+    // page bodies imported as normally-named .mdx components).
+    imports.set(componentName, importPath);
   }
 
   // Resolve each partial import
   for (const [componentName, importPath] of imports) {
     try {
-      // Resolve the partial file path relative to the current file, or
-      // against the site directory for '@site/' alias imports.
+      // Resolve the partial file path relative to the current file, against
+      // the site directory for '@site/' alias imports, or — for other
+      // webpack-style aliases like '@global/components/x.mdx' — against the
+      // site directory using the convention that an alias points at a
+      // top-level site directory (#65).
       const dir = path.dirname(filePath);
-      const partialPath = importPath.startsWith('@site/')
-        ? path.resolve(siteDir, importPath.slice('@site/'.length))
-        : path.resolve(dir, importPath);
+      let partialPath: string;
+      if (importPath.startsWith('@site/')) {
+        partialPath = path.resolve(siteDir, importPath.slice('@site/'.length));
+      } else if (/^@[\w-]+\//.test(importPath)) {
+        const withoutAt = importPath.slice(1);
+        const [aliasName, ...rest] = withoutAt.split('/');
+        partialPath = path.resolve(siteDir, aliasName, ...rest);
+      } else {
+        partialPath = path.resolve(dir, importPath);
+      }
 
       // Check for circular import
       if (importChain.has(partialPath)) {
@@ -203,7 +213,7 @@ export async function resolvePartialImports(
       resolved = resolved.replace(jsxRegex, partialInlined);
 
     } catch (error: unknown) {
-      logger.warn(`Failed to resolve partial import from ${importPath}: ${getErrorMessage(error)}`);
+      logger.warn(`Failed to resolve partial import '${importPath}' (imported by ${filePath}): ${getErrorMessage(error)}`);
 
       // Remove both the import statement AND the JSX usage even if partial can't be resolved
       // This prevents leaving broken references in the output
@@ -229,13 +239,24 @@ export async function resolvePartialImports(
 }
 
 /**
+ * Extract an attribute value from a JSX tag's attribute run: the value of
+ * `name`, whether double-quoted, single-quoted, or a brace expression.
+ */
+function extractTagAttr(tag: string, name: string): string | undefined {
+  const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|\\{([^{}]*)\\})`));
+  const raw = m?.[1] ?? m?.[2] ?? m?.[3];
+  return isNonEmptyString(raw) ? raw : undefined;
+}
+
+/**
  * Clean markdown content for LLM consumption
  * @param content - Raw markdown content
  * @param excludeImports - Whether to exclude import statements
  * @param removeDuplicateHeadings - Whether to remove redundant content that duplicates heading text
+ * @param preserveComponents - PascalCase component names whose tags are left untouched
  * @returns Cleaned content
  */
-export function cleanMarkdownContent(content: string, excludeImports: boolean = false, removeDuplicateHeadings: boolean = false): string {
+export function cleanMarkdownContent(content: string, excludeImports: boolean = false, removeDuplicateHeadings: boolean = false, preserveComponents: string[] = []): string {
   // Mask code blocks / inline code so the strips below never touch code samples
   // (e.g. an HTML or `import` example shown inside a fenced block).
   const { masked, restore } = maskCodeSegments(content);
@@ -259,9 +280,27 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
     ''
   );
 
+  // Emit the label of Docusaurus's <TabItem> as a bold line before the tab
+  // body (with a `value` fallback, matching what Docusaurus renders). Without
+  // this, tab bodies concatenate with nothing distinguishing them and the
+  // label prop is silently lost (#64).
+  const tabItemOpen = /<TabItem\b[^>]*>/g;
+  cleaned = cleaned.replace(tabItemOpen, (tag) => {
+    const label = extractTagAttr(tag, 'label') ?? extractTagAttr(tag, 'value');
+    return label ? `\n\n**${label}**\n\n` : '';
+  });
+
   // Remove MDX/JSX component tags (PascalCase element names such as <Tabs>,
-  // <TabItem>, <Admonition>), keeping their inner text content.
-  cleaned = cleaned.replace(new RegExp(`</?[A-Z][A-Za-z0-9.]*\\b${TAG_ATTRS}/?>`, 'g'), '');
+  // <TabItem>, <Admonition>), keeping their inner text content — except for
+  // components the site explicitly opted out of via preserveComponents,
+  // whose tags are left untouched in the output.
+  const preserve = new Set(preserveComponents);
+  const jsxTag = new RegExp(`<(/?)([A-Z][A-Za-z0-9.]*)\\b((?:${TAG_ATTRS}))(/?)>`, 'g');
+  cleaned = cleaned.replace(jsxTag, (tag, slash, name, attrs) => {
+    if (preserve.has(name)) return tag;
+    void attrs;
+    return '';
+  });
 
   // Remove redundant content that just repeats the heading (if requested)
   if (removeDuplicateHeadings) {

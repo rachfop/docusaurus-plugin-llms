@@ -5,6 +5,54 @@ All notable changes to the docusaurus-plugin-llms will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-08-31
+
+### Added
+
+- **`preserveComponents` option** — an array of MDX/JSX component names whose
+  tags pass through untouched instead of being stripped, for components that
+  render meaningful content themselves (e.g. a swizzled
+  `<PackageManagerTabs command="add my-package" />`). Matching is exact on
+  the component name, and tags inside code fences are still left alone.
+  ([#64](https://github.com/rachfop/docusaurus-plugin-llms/issues/64))
+- **CI workflow** — the repository now runs build + unit + integration tests on
+  Node 18/20/22 for every pull request and push to `main`.
+
+### Fixed
+
+- **Prop content lost in JSX stripping** — the attribute-aware stripper
+  (0.5.0) dropped non-`children` prop values wholesale, deleting content like
+  the command inside `<PackageManagerTabs command="..." />`. Attribute values
+  are now parsed and their text is preserved. ([#68](https://github.com/rachfop/docusaurus-plugin-llms/pull/68),
+  [#64](https://github.com/rachfop/docusaurus-plugin-llms/issues/64))
+- **`<TabItem>` collapsed its label** — `<TabItem>` tags now degrade to a
+  readable outline instead of a bare body: the `label` (or `value`) is emitted
+  as a bold line before the tab body. ([#64](https://github.com/rachfop/docusaurus-plugin-llms/issues/64))
+- **Imported MDX page bodies silently dropped** — only imports whose path
+  contained `_` or `/partials/` were inlined; a normally-named `.mdx` page body
+  imported as a component was stripped without its content. Every `.mdx`/`.md`
+  import is now inlined, and imports using webpack-style aliases other than
+  `@site` (e.g. `@global/components/x.mdx`) resolve against the site directory.
+  Failed resolutions warn with the specifier and importing file. ([#65](https://github.com/rachfop/docusaurus-plugin-llms/issues/65))
+- **Imports inside partial code fences stripped** — when a partial was inlined,
+  `import` lines inside its fenced code samples were removed. Code fences are
+  masked before partial splicing, so samples survive verbatim. ([#69](https://github.com/rachfop/docusaurus-plugin-llms/pull/69))
+- **Absolute slugs double-prefixed** — a frontmatter `slug` starting with `/`
+  was prefixed with the route base path again, producing URLs like
+  `.../docs/team-b/docs/faq.md`. Absolute slugs are now used as-is. ([#63](https://github.com/rachfop/docusaurus-plugin-llms/pull/63))
+- **Multiple `docsDir` entries collapsed to the first** — with
+  `docsDir: ['docs', 'blog']`, every page resolved to the first matching
+  section, mis-routing pages and leaking `blog` URLs into `docs` output.
+  Sections now resolve per-file, routes are scoped per-section, and the new
+  `blogDir`/`blogRouteBasePath` options configure a blog alongside docs. ([#67](https://github.com/rachfop/docusaurus-plugin-llms/pull/67))
+
+### Documentation
+
+- README restructured into a full `docs/` site: installation, configuration,
+  output files, content cleaning, best practices, and per-feature guides. ([#61](https://github.com/rachfop/docusaurus-plugin-llms/pull/61))
+- Corrected the JSDoc default for `generateMarkdownFiles`. ([#62](https://github.com/rachfop/docusaurus-plugin-llms/pull/62))
+- New "Validating the deployed output" section in best practices. ([#66](https://github.com/rachfop/docusaurus-plugin-llms/pull/66))
+
 ## [0.5.1] - 2026-07-22
 
 ### Fixed

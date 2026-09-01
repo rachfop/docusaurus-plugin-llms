@@ -139,6 +139,16 @@ function validatePluginOptions(options: PluginOptions): void {
     }
   }
 
+  // Validate preserveComponents
+  if (options.preserveComponents !== undefined) {
+    if (!Array.isArray(options.preserveComponents)) {
+      throw new Error('preserveComponents must be an array');
+    }
+    if (!options.preserveComponents.every(item => typeof item === 'string')) {
+      throw new Error('preserveComponents must contain only strings');
+    }
+  }
+
   // Validate logLevel
   if (options.logLevel !== undefined) {
     const validLogLevels = ['quiet', 'normal', 'verbose'];
@@ -465,6 +475,7 @@ export default function docusaurusPluginLLMs(
     customLLMFiles = [],
     excludeImports = false,
     removeDuplicateHeadings = false,
+    preserveComponents = [],
     generateMarkdownFiles = false,
     keepFrontMatter = [],
     rootContent,
@@ -539,6 +550,7 @@ export default function docusaurusPluginLLMs(
       customLLMFiles,
       excludeImports,
       removeDuplicateHeadings,
+      preserveComponents,
       generateMarkdownFiles,
       keepFrontMatter,
       rootContent,
