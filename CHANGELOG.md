@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.0] - 2026-08-31
 
+### Fixed
+
+- **`$` sequences corrupted partial content** — partial files were spliced
+  with a string replacement, so shell/perl patterns like `echo $1`, `kill $$`,
+  or `$&` in a partial's code samples were silently rewritten (attr values
+  substituted, tags re-inserted, document fragments duplicated). The splice
+  now ignores replacement patterns.
+- **CRLF line endings corrupted output** — files authored or checked out with
+  Windows line endings had their fenced code blocks unmasked (imports and HTML
+  inside code samples were stripped) and their descriptions mis-extracted (a
+  heading-only file got the heading as description; a heading-less file got
+  the entire document). `readFile` now normalizes CRLF/CR to LF.
+- **Root slug (`slug: "/"`) crossed version subtrees** — in multi-version
+  mode, a section-root page linked to the current version's route (e.g.
+  `/docs`) instead of its own version's (`/stable/docs`). Root-slug resolution
+  now honors version and section scoping.
+- **`siteConfig.url` with a trailing slash** produced `//baseUrl` in every
+  generated URL, mismatching sitemap.xml.
+- **`routeBasePath` with a leading/trailing slash** (e.g. `'/docs'`) silently
+  disabled route scoping for that section, falling every doc back to
+  heuristic URLs. Slashes are now normalized.
+- **Blog detection misclassified sibling sections** — any directory whose name
+  merely started with the blog dir (e.g. a `blog-api` docs section next to
+  `blog`) was treated as the blog for fallback URL construction.
+- **Numeric frontmatter `description` dropped** — an unquoted YAML number
+  (`description: 2024`) was silently discarded instead of used as text; it is
+  now coerced like `title`/`slug`/`id`.
+- **`applyMdExtension` mangled bare origins** — a bare site URL would become
+  `https://site.com.md`; the trailing slash is now preserved.
+
 ### Added
 
 - **`preserveComponents` option** — an array of MDX/JSX component names whose

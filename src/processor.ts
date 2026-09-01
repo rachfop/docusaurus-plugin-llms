@@ -64,6 +64,10 @@ export async function processMarkdownFile(
   data.title = coerceFrontMatterString(data.title);
   data.slug = coerceFrontMatterString(data.slug);
   data.id = coerceFrontMatterString(data.id);
+  // Same coercion as above: an unquoted numeric description (e.g.
+  // `description: 2024`) would otherwise be silently dropped instead of
+  // used as text.
+  data.description = coerceFrontMatterString(data.description);
 
   // Validate and clean empty frontmatter fields
   // Empty strings should be treated as undefined to allow fallback logic
@@ -356,7 +360,9 @@ async function resolveDocumentUrl(
     return filePath.startsWith(abs + path.sep) || filePath.startsWith(abs + '/');
   });
   const { blogDir = 'blog', blogRouteBasePath = 'blog' } = context.options;
-  const isBlogFile = !matchedSection && filePath.includes(path.join(baseDir, blogDir));
+  const isBlogFile = !matchedSection && filePath.startsWith(
+    path.join(baseDir, blogDir) + path.sep
+  );
   const sectionFsPath = matchedSection?.path ?? (isBlogFile ? blogDir : context.docsDir);
 
   // In multi-version mode, restrict matching to routes owned by this version so
@@ -380,11 +386,16 @@ async function resolveDocumentUrl(
       ? matchedSection.routeBasePath
       : undefined;
   if (routeBase && routeBase !== '/') {
-    const versionPrefix = context.routePrefix ? context.routePrefix.replace(/\/+$/, '') : '';
-    const scopedRouteBase = `${versionPrefix}/${routeBase}`.replace(/\/+$/, '');
-    scopedRoutes = scopedRoutes.filter(
-      r => r === scopedRouteBase || r.startsWith(`${scopedRouteBase}/`)
-    );
+    // Tolerate leading/trailing slashes in routeBasePath ('/docs' or 'docs/')
+    // so scoping doesn't silently fail and fall every doc back to heuristic URLs.
+    const cleanRouteBase = routeBase.replace(/^\/+|\/+$/g, '');
+    if (cleanRouteBase) {
+      const versionPrefix = context.routePrefix ? context.routePrefix.replace(/^\/+|\/+$/g, '') : '';
+      const scopedRouteBase = `/${versionPrefix}/${cleanRouteBase}`.replace(/\/+$/, '');
+      scopedRoutes = scopedRoutes.filter(
+        r => r === scopedRouteBase || r.startsWith(`${scopedRouteBase}/`)
+      );
+    }
   }
   if (!scopedRoutes.length) return undefined;
 
@@ -417,13 +428,24 @@ async function resolveDocumentUrl(
       // A plain slug strip would produce "" and skip; instead find the section this
       // file belongs to and use its routeBasePath to locate the correct route.
       if (/^\/+$/.test(rawSlug)) {
-        // Use the section already matched above to get the correct base route.
-        let sectionBase = '/';
+        // Use the section already matched above to get the correct base route,
+        // prefixed with this version's route prefix so multi-version sites
+        // resolve within their own subtree (a 'stable' root-slug page must
+        // link to /stable/docs, not the current version's /docs).
+        const versionPrefix = context.routePrefix
+          ? context.routePrefix.replace(/^\/+|\/+$/g, '')
+          : '';
+        let sectionBase = versionPrefix || '/';
         if (matchedSection && matchedSection.routeBasePath !== '/') {
-          sectionBase = `/${matchedSection.routeBasePath}`;
+          const routeBase = matchedSection.routeBasePath.replace(/^\/+|\/+$/g, '');
+          sectionBase = versionPrefix
+            ? `/${versionPrefix}/${routeBase}`
+            : `/${routeBase}`;
         }
-        // Look for an exact or trailing-slash-equivalent route in routesPaths.
-        const rootMatch = context.routesPaths.find(r => {
+        // Look for an exact or trailing-slash-equivalent route, scoped to
+        // this version and section (scopedRoutes was built above exactly for
+        // this; searching all routesPaths would cross version subtrees).
+        const rootMatch = scopedRoutes.find(r => {
           const clean = r.replace(/\/+$/, '') || '/';
           return clean === sectionBase;
         });
@@ -569,7 +591,12 @@ export async function processFilesWithPatterns(
     filesToProcess.map(async (filePath) => {
       try {
         const baseDir = siteDir;
-        const isBlogFile = filePath.includes(path.join(siteDir, blogDir));
+        // Directory-boundary match: a plain substring test would also fire
+        // for sibling sections whose path merely starts with the blog dir
+        // name (e.g. a 'blog-api' docs section vs blogDir 'blog').
+        const isBlogFile = filePath.startsWith(
+          path.join(siteDir, blogDir) + path.sep
+        );
 
         // Determine which section this file belongs to
         let pathPrefix: string;

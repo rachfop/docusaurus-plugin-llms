@@ -520,7 +520,11 @@ export default function docusaurusPluginLLMs(
   if (normalizedBaseUrl !== '/' && normalizedBaseUrl.endsWith('/')) {
     normalizedBaseUrl = normalizedBaseUrl.slice(0, -1);
   }
-  const siteUrl = siteConfig.url + normalizedBaseUrl;
+  // A trailing slash on siteConfig.url would double up with baseUrl
+  // ('https://site.com/' + '/docs' → 'https://site.com//docs') and leak '//'
+  // into every generated URL, mismatching sitemap.xml.
+  const normalizedSiteUrl = (siteConfig.url || '').replace(/\/+$/, '');
+  const siteUrl = normalizedSiteUrl + normalizedBaseUrl;
   
   // Create a plugin context object with processed options
   const pluginContext: PluginContext = {

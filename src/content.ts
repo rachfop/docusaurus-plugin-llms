@@ -210,7 +210,11 @@ export async function resolvePartialImports(
           .replace(/^\s*import\s+.*$/gm, '')
           .replace(/\n{3,}/g, '\n\n')
       ).trim();
-      resolved = resolved.replace(jsxRegex, partialInlined);
+      // Function form: a string replacement would interpret `$` sequences
+      // ($&, $1, $$, $' ...) in the partial's content — corrupting shell
+      // samples like `echo $1` or `kill $$` that are extremely common in
+      // documentation code blocks.
+      resolved = resolved.replace(jsxRegex, () => partialInlined);
 
     } catch (error: unknown) {
       logger.warn(`Failed to resolve partial import '${importPath}' (imported by ${filePath}): ${getErrorMessage(error)}`);

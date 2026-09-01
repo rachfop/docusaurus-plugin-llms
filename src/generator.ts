@@ -52,6 +52,9 @@ function cleanDescriptionForToc(description: string): string {
 function applyMdExtension(url: string): string {
   const stripped = url.replace(/\/+$/, '');
   if (stripped.endsWith('.md')) return stripped;
+  // A bare origin ('https://site.com/') must keep its slash: appending .md
+  // would produce 'https://site.com.md'.
+  if (/^[a-z][a-z0-9+.-]*:\/\/[^/]+$/i.test(stripped)) return `${stripped}/`;
   return `${stripped}.md`;
 }
 
@@ -380,34 +383,25 @@ export async function generateIndividualMarkdownFiles(
       relativePath = buildFallbackPath(doc.path, sectionFsPath, preserveDirectoryStructure);
     }
 
-    // If frontmatter has slug, use that.
-    if (isNonEmptyString(doc.frontMatter?.slug)) {
-      const slug = doc.frontMatter!.slug.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
+    // An explicit frontmatter slug (or id, the next-best authority) wins over
+    // the path derived from the resolved URL: it declares the page's real route
+    // even when route resolution failed and doc.url was unavailable.
+    const frontMatterOverride = isNonEmptyString(doc.frontMatter?.slug)
+      ? String(doc.frontMatter!.slug)
+      : isNonEmptyString(doc.frontMatter?.id)
+        ? String(doc.frontMatter!.id)
+        : undefined;
 
-      if (isNonEmptyString(slug)) { // Only process if slug is not empty after trimming
-        if (slug.includes('/')) {
-          // Nested slug: create directory structure
-          relativePath = slug + '.md';
+    if (frontMatterOverride !== undefined) {
+      const override = frontMatterOverride.trim().replace(/^\/+|\/+$/g, '');
+      if (isNonEmptyString(override)) {
+        if (override.includes('/')) {
+          // Nested: mirror the slug's own directory structure.
+          relativePath = override + '.md';
         } else {
-          // Simple slug: replace just the filename
+          // Simple: replace just the filename, keeping the directory.
           const pathParts = relativePath.replace(/\.md$/, '').split('/');
-          pathParts[pathParts.length - 1] = slug;
-          relativePath = pathParts.join('/') + '.md';
-        }
-      }
-    }
-    // Otherwise, if frontmatter has id, use that.
-    else if (isNonEmptyString(doc.frontMatter?.id)) {
-      const id = doc.frontMatter!.id.trim().replace(/^\/+|\/+$/g, ''); // Trim whitespace and slashes
-
-      if (isNonEmptyString(id)) { // Only process if id is not empty after trimming
-        if (id.includes('/')) {
-          // Nested id: create directory structure
-          relativePath = id + '.md';
-        } else {
-          // Simple id: replace just the filename
-          const pathParts = relativePath.replace(/\.md$/, '').split('/');
-          pathParts[pathParts.length - 1] = id;
+          pathParts[pathParts.length - 1] = override;
           relativePath = pathParts.join('/') + '.md';
         }
       }

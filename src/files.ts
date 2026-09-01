@@ -31,5 +31,11 @@ export async function readFile(filePath: string): Promise<string> {
     content = content.slice(1);
   }
 
+  // Normalize CRLF (and lone CR) to LF. Windows-authored or
+  // core.autocrlf-checked-out files otherwise break line-anchored processing:
+  // fence masking (closing-fence lookahead requires a bare \n), description
+  // extraction (split('\n\n')), and heading/import line regexes all assume LF.
+  content = content.replace(/\r\n?/g, '\n');
+
   return content;
 }
