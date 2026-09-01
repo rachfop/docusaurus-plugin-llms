@@ -77,6 +77,24 @@ clean file per language with `customLLMFiles`. Each entry needs a `filename`, an
 files](./content-generation.md) for the full field reference, including
 `ignorePatterns`, `orderPatterns`, and per-file `version`.
 
+## Validating the deployed output
+
+This plugin generates a correct `llms.txt` at build time, but serving-layer
+config can break it in production: host redirect rules, `trailingSlash`
+interactions, and docs restructures all bite after the build goes green.
+Docusaurus sites have shipped zero-byte llms.txt files and dead links this way.
+
+[llms-txt-check](https://github.com/portdeveloper/llms-txt-check) verifies the
+deployed file against what your site actually serves:
+
+```yaml
+- run: npx llms-txt-check https://your-docs-site.com
+```
+
+It exits nonzero when the file or any listed URL stops serving, so the deploy
+that breaks a route goes red. Run it as a final step in your deploy pipeline,
+after the site is live.
+
 ## Performance considerations
 
 Content cleaning is cheap. A few things worth knowing:
