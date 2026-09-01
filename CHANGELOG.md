@@ -108,6 +108,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected the JSDoc default for `generateMarkdownFiles`. ([#62](https://github.com/rachfop/docusaurus-plugin-llms/pull/62))
 - New "Validating the deployed output" section in best practices. ([#66](https://github.com/rachfop/docusaurus-plugin-llms/pull/66))
 
+### Thanks
+
+This release exists because of its contributors. Thanks to everyone who
+opened pull requests: [adeelehsan](https://github.com/adeelehsan),
+[AlexAdiaconitei](https://github.com/AlexAdiaconitei),
+[anupamme](https://github.com/anupamme), [canuto](https://github.com/canuto),
+[deka0106](https://github.com/deka0106), [F-OBrien](https://github.com/F-OBrien),
+[ilanazholobovsky](https://github.com/ilanazholobovsky),
+[kingsword09](https://github.com/kingsword09), [Konkrad](https://github.com/Konkrad),
+[nicolasiscoding](https://github.com/nicolasiscoding),
+[portdeveloper](https://github.com/portdeveloper),
+[puehringer](https://github.com/puehringer), [scottamain](https://github.com/scottamain),
+[smol-ninja](https://github.com/smol-ninja), [statico](https://github.com/statico),
+and [svrnm](https://github.com/svrnm).
+
+Thanks to everyone who filed issues that shaped this release:
+[allxsmith](https://github.com/allxsmith), [anvme](https://github.com/anvme),
+[benfoster](https://github.com/benfoster), [canuto](https://github.com/canuto),
+[critesjosh](https://github.com/critesjosh), [ctauchen](https://github.com/ctauchen),
+[cyrusmith](https://github.com/cyrusmith), [dineshpinto](https://github.com/dineshpinto),
+[emertechie](https://github.com/emertechie), [fflaten](https://github.com/fflaten),
+[ilanazholobovsky](https://github.com/ilanazholobovsky),
+[johngrimes](https://github.com/johngrimes), [manuelmeurer](https://github.com/manuelmeurer),
+[nicolasiscoding](https://github.com/nicolasiscoding), [PaulRBerg](https://github.com/PaulRBerg),
+[prdai](https://github.com/prdai), [quangdusk](https://github.com/quangdusk),
+[Rajesh11082005](https://github.com/Rajesh11082005), [ratansen](https://github.com/ratansen),
+[Rob-Purbrick](https://github.com/Rob-Purbrick), [scottamain](https://github.com/scottamain),
+[smol-ninja](https://github.com/smol-ninja),
+[sujanmoi-kasm](https://github.com/sujanmoi-kasm), [thomhurst](https://github.com/thomhurst),
+[wparad](https://github.com/wparad), and [yada](https://github.com/yada).
+If you reported a problem, tested a pre-release, or shared feedback along
+the way, that work made 0.6.0 better. Thank you.
+
 ## [0.5.1] - 2026-07-22
 
 ### Fixed
