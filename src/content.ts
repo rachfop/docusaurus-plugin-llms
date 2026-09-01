@@ -80,6 +80,18 @@ function escapeRegex(str: string): string {
 }
 
 /**
+ * Regex source matching a tag's attribute run. `[^>]*` is not enough here:
+ * `>` legally appears inside JSX expression attributes (`onClick={() => ...}`)
+ * and quoted values (`title="a > b"`), so a naive scan cuts the tag short and
+ * leaks the remainder into the output as prose. Values may be double-quoted,
+ * single-quoted, a JSX brace expression, or bare.
+ * Brace expressions are matched to one nesting level only; a deeper expression
+ * makes the whole tag fail to match and stay intact in the output, which is
+ * the safe failure direction (visible leftover rather than silent corruption).
+ */
+const TAG_ATTRS = /(?:\s+[^\s=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\}|[^\s>]+))?)*\s*/.source;
+
+/**
  * Resolve and inline partial imports in markdown content
  * @param content - The markdown content with import statements
  * @param filePath - The path of the file containing the imports
@@ -143,7 +155,7 @@ export async function resolvePartialImports(
         );
 
         // Remove JSX usage of this component
-        const jsxRegex = new RegExp(`<${escapedComponentName}(?:\\s+[^>]*)?\\s*\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`, 'gm');
+        const jsxRegex = new RegExp(`<${escapedComponentName}${TAG_ATTRS}\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`, 'gm');
         resolved = resolved.replace(jsxRegex, '');
 
         continue;
@@ -173,7 +185,7 @@ export async function resolvePartialImports(
       // Replace JSX usage with the partial content
       // Handle both self-closing tags and tags with content
       // <PartialName /> or <PartialName></PartialName> or <PartialName>...</PartialName>
-      const jsxRegex = new RegExp(`<${escapedComponentName}\\s*(?:[^>]*?)(?:/>|>[^<]*</${escapedComponentName}>)`, 'g');
+      const jsxRegex = new RegExp(`<${escapedComponentName}${TAG_ATTRS}(?:/>|>[^<]*</${escapedComponentName}>)`, 'g');
       // Drop the partial's own import lines before splicing: they reference
       // components (e.g. '@theme/Tabs') that are meaningless in plain
       // markdown, and inside list context they would leak as literal text.
@@ -201,7 +213,7 @@ export async function resolvePartialImports(
 
       // Remove JSX usage of this component
       // Handle both self-closing tags (<Component />) and regular tags with content (<Component>...</Component>)
-      const jsxRegex = new RegExp(`<${escapedComponentName}(?:\\s+[^>]*)?\\s*\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`, 'gm');
+      const jsxRegex = new RegExp(`<${escapedComponentName}${TAG_ATTRS}\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`, 'gm');
       resolved = resolved.replace(jsxRegex, '');
     }
   }
@@ -235,11 +247,14 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
   }
 
   // Remove common HTML tags (code blocks are already masked out above).
-  cleaned = cleaned.replace(/<\/?(?:div|span|p|br|hr|img|a|strong|em|b|i|u|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\b[^>]*>/gi, '');
+  cleaned = cleaned.replace(
+    new RegExp(`</?(?:div|span|p|br|hr|img|a|strong|em|b|i|u|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\\b${TAG_ATTRS}/?>`, 'gi'),
+    ''
+  );
 
   // Remove MDX/JSX component tags (PascalCase element names such as <Tabs>,
   // <TabItem>, <Admonition>), keeping their inner text content.
-  cleaned = cleaned.replace(/<\/?[A-Z][A-Za-z0-9.]*\b[^>]*\/?>/g, '');
+  cleaned = cleaned.replace(new RegExp(`</?[A-Z][A-Za-z0-9.]*\\b${TAG_ATTRS}/?>`, 'g'), '');
 
   // Remove redundant content that just repeats the heading (if requested)
   if (removeDuplicateHeadings) {
