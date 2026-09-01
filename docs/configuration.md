@@ -83,7 +83,7 @@ These options control the links the plugin emits.
 | `rewriteImageUrls` | `boolean` | `false` | Rewrite relative image references to absolute hashed build-output URLs so LLMs can resolve them. |
 | `pathTransformation` | `object` | `undefined` | Fallback path rewriting for URL construction. See [Path transformation](#path-transformation). |
 
-The `pathTransformation` object accepts the following fields:
+The `pathTransformation` object accepts these fields:
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |

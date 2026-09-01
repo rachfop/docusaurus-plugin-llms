@@ -8,7 +8,7 @@ All of these run during the Docusaurus build (`npm run build`), since the plugin
 
 The `docsDir` option accepts either a `string` (a single base directory, default `'docs'`) or an array of `DocsSection` objects. Use the array form for multi-instance setups, for example a main `docs` instance alongside a separate `api` instance, so each section resolves against its own route base path and can carry its own heading in `llms.txt`.
 
-Each `DocsSection` object has the following fields:
+Each `DocsSection` object accepts these fields:
 
 | Field           | Type     | Required | Description                                                                             |
 | --------------- | -------- | -------- | --------------------------------------------------------------------------------------- |

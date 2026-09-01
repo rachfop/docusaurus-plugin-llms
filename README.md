@@ -4,6 +4,8 @@ A Docusaurus plugin for generating LLM-friendly documentation following the [llm
 
 [![npm version](https://img.shields.io/npm/v/docusaurus-plugin-llms.svg)](https://www.npmjs.com/package/docusaurus-plugin-llms)
 [![npm downloads](https://img.shields.io/npm/dm/docusaurus-plugin-llms.svg)](https://www.npmjs.com/package/docusaurus-plugin-llms)
+[![CI](https://github.com/rachfop/docusaurus-plugin-llms/actions/workflows/ci.yml/badge.svg)](https://github.com/rachfop/docusaurus-plugin-llms/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/website?url=https%3A%2F%2Frachfop.github.io%2Fdocusaurus-plugin-llms%2Fdocs%2Foverview&label=docs)](https://rachfop.github.io/docusaurus-plugin-llms/)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/rachfop?style=flat&logo=githubsponsors&label=Sponsor&labelColor=gray&color=pink)](https://github.com/sponsors/rachfop)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 

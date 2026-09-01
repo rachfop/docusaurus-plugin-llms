@@ -97,7 +97,7 @@ after the site is live.
 
 ## Performance considerations
 
-Content cleaning is cheap. A few things worth knowing:
+Content cleaning is cheap:
 
 - Both cleaning options add minimal processing overhead.
 - Cleaning runs on the content after HTML tag removal.

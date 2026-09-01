@@ -14,7 +14,7 @@ Don't confuse `versions` with the top-level `version` option. `version` only sta
 
 The `versions` option accepts either an explicit array of version objects or the string `'auto'`. Its type is `VersionConfig[] | 'auto'`, and it defaults to `undefined`.
 
-Each version object in the array has the following shape:
+Each version object accepts these fields:
 
 | Field            | Type              | Default              | Description                                                   |
 |------------------|-------------------|----------------------|---------------------------------------------------------------|
@@ -31,7 +31,7 @@ The `path` field does double duty: it's both the output subdirectory under the b
 
 ## Explicit versions
 
-List each version with its source directory and output `path`. The following config generates `/llms.txt` from the current docs and `/stable/llms.txt` from a versioned snapshot:
+List each version with its source directory and output `path`. This config generates `/llms.txt` from the current docs and `/stable/llms.txt` from a versioned snapshot:
 
 ```js
 plugins: [

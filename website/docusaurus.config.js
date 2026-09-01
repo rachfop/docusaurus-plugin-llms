@@ -14,7 +14,7 @@ const config = {
   baseUrl: '/docusaurus-plugin-llms/',
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+  onBrokenLinks: 'warn',
 
   i18n: {
     defaultLocale: 'en',
