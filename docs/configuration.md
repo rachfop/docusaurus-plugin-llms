@@ -44,6 +44,8 @@ These options select which files the plugin reads and in what order.
 | `docsDir` | `string \| DocsSection[]` | `'docs'` | Documentation source. A string base directory, or an array of section objects for multi-instance setups. See [Documentation sections](#documentation-sections). |
 | `ignoreFiles` | `string[]` | `[]` | Glob patterns for files to skip. |
 | `includeBlog` | `boolean` | `false` | Whether to include blog content. |
+| `blogDir` | `string` | `'blog'` | Filesystem path to the blog content directory, relative to the site root. |
+| `blogRouteBasePath` | `string` | `'blog'` | Docusaurus `routeBasePath` for the blog plugin — set this to match `presets.blog.routeBasePath` if you've customized it (e.g. `'news'`). |
 | `includeOrder` | `string[]` | `[]` | Glob patterns controlling the order files are processed in. |
 | `includeUnmatchedLast` | `boolean` | `true` | Whether to append files that match no `includeOrder` pattern at the end. Set to `false` to make `includeOrder` a strict inclusion list. |
 | `processingBatchSize` | `number` | `100` | Batch size for processing large document sets, to bound memory use on big sites. |

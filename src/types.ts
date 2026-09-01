@@ -124,7 +124,13 @@ export interface PluginOptions {
   
   /** Whether to include blog content (default: false) */
   includeBlog?: boolean;
-  
+
+  /** Filesystem path to the blog content directory, relative to siteDir (default: 'blog') */
+  blogDir?: string;
+
+  /** Docusaurus routeBasePath for the blog plugin (default: 'blog'). Set this to match `presets.blog.routeBasePath` if you've customized it (e.g. 'news'). */
+  blogRouteBasePath?: string;
+
   /** Path transformation options for URL construction */
   pathTransformation?: {
     /** Path segments to ignore when constructing URLs (will be removed if found) */

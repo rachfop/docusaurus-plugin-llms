@@ -4,7 +4,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { DocInfo, PluginContext, CustomLLMFile } from './types';
+import { DocInfo, DocsSection, PluginContext, CustomLLMFile } from './types';
 import {
   writeFile,
   readMarkdownFiles,
@@ -263,13 +263,25 @@ function buildFallbackPath(docPath: string, docsDir: string, preserveDirectorySt
 }
 
 /**
+ * Find the docsDir section that owns a doc by matching its filesystem path
+ * against each section's `path`.
+ */
+function findSectionForDoc(doc: DocInfo, docsSections?: DocsSection[]): DocsSection | undefined {
+  return docsSections?.find(s => {
+    const sectionPath = s.path.replace(/^\/+|\/+$/g, '');
+    return doc.path === sectionPath || doc.path.startsWith(`${sectionPath}/`);
+  });
+}
+
+/**
  * Generate individual markdown files for each document
  * @param docs - Processed document information
  * @param outputDir - Directory to write the markdown files
  * @param siteUrl - Base site URL
- * @param docsDir - The configured docs directory name (e.g., 'docs', 'documentation', etc.)
+ * @param docsDir - The configured docs directory name (e.g., 'docs', 'documentation', etc.); used as a fallback for docs that don't match any entry in `docsSections`
  * @param keepFrontMatter - Array of frontmatter keys to preserve in generated files
  * @param preserveDirectoryStructure - Whether to preserve the full directory structure (default: true)
+ * @param docsSections - Configured docsDir sections, used to resolve each doc's own filesystem path and routeBasePath
  * @returns Updated docs with new URLs pointing to generated markdown files
  */
 export async function generateIndividualMarkdownFiles(
@@ -278,7 +290,8 @@ export async function generateIndividualMarkdownFiles(
   siteUrl: string,
   docsDir: string = 'docs',
   keepFrontMatter: string[] = [],
-  preserveDirectoryStructure: boolean = true
+  preserveDirectoryStructure: boolean = true,
+  docsSections?: DocsSection[]
 ): Promise<DocInfo[]> {
   const updatedDocs: DocInfo[] = [];
   const usedPaths = new Set<string>();
@@ -298,6 +311,11 @@ export async function generateIndividualMarkdownFiles(
   }
 
   for (const doc of docs) {
+    // Resolve this doc's own section rather than just using the first section's docsDir.
+    const matchedSection = findSectionForDoc(doc, docsSections);
+    const sectionFsPath = matchedSection?.path ?? docsDir;
+    const sectionRouteBasePath = matchedSection?.routeBasePath ?? docsDir;
+
     // Derive output path from the resolved page URL (already stripped of numeric
     // prefixes like "01-" by Docusaurus). Fallback to doc.path when URL is
     // unavailable or malformed.
@@ -340,12 +358,12 @@ export async function generateIndividualMarkdownFiles(
             // ends in .md/.mdx (e.g. in tests or external usage).
             .replace(/\.mdx?$/i, '');
 
-          // When not preserving directory structure, drop the leading docsDir
+          // When not preserving directory structure, drop the leading route-base
           // segment so paths are flattened relative to the docs root — matching
           // buildFallbackPath and the pre-existing preserveDirectoryStructure
-          // contract (the URL pathname otherwise retains the "docs/" route base).
-          if (!preserveDirectoryStructure && isNonEmptyString(docsDir)) {
-            const prefix = `${docsDir.replace(/^\/+|\/+$/g, '')}/`;
+          // contract (the URL pathname otherwise retains the route base).
+          if (!preserveDirectoryStructure && isNonEmptyString(sectionRouteBasePath)) {
+            const prefix = `${sectionRouteBasePath.replace(/^\/+|\/+$/g, '')}/`;
             if (cleanPathname.startsWith(prefix)) {
               cleanPathname = cleanPathname.slice(prefix.length);
             }
@@ -355,11 +373,11 @@ export async function generateIndividualMarkdownFiles(
         }
       } catch {
         // Malformed URL — fall back to file path with prefix stripping
-        relativePath = buildFallbackPath(doc.path, docsDir, preserveDirectoryStructure);
+        relativePath = buildFallbackPath(doc.path, sectionFsPath, preserveDirectoryStructure);
       }
     } else {
       // No URL available — fall back to file path (legacy behaviour)
-      relativePath = buildFallbackPath(doc.path, docsDir, preserveDirectoryStructure);
+      relativePath = buildFallbackPath(doc.path, sectionFsPath, preserveDirectoryStructure);
     }
 
     // If frontmatter has slug, use that.
@@ -555,7 +573,8 @@ export async function generateStandardLLMFiles(
       siteUrl,
       context.docsDir,
       context.options.keepFrontMatter || [],
-      context.options.preserveDirectoryStructure !== false // Default to true
+      context.options.preserveDirectoryStructure !== false, // Default to true
+      context.docsSections
     );
   }
 
@@ -655,7 +674,8 @@ export async function generateCustomLLMFiles(
           siteUrl,
           context.docsDir,
           context.options.keepFrontMatter || [],
-          context.options.preserveDirectoryStructure !== false // Default to true
+          context.options.preserveDirectoryStructure !== false, // Default to true
+          context.docsSections
         );
       }
 
@@ -698,7 +718,7 @@ export async function generateCustomLLMFiles(
  */
 export async function collectDocFiles(context: PluginContext): Promise<string[]> {
   const { siteDir, options, docsSections } = context;
-  const { ignoreFiles = [], includeBlog = false, warnOnIgnoredFiles = false } = options;
+  const { ignoreFiles = [], includeBlog = false, blogDir: blogDirOption = 'blog', warnOnIgnoredFiles = false } = options;
 
   const allDocFiles: string[] = [];
 
@@ -720,13 +740,13 @@ export async function collectDocFiles(context: PluginContext): Promise<string[]>
 
   // Process blog if enabled
   if (includeBlog) {
-    const blogDir = path.join(siteDir, 'blog');
+    const blogDir = path.join(siteDir, blogDirOption);
 
     try {
       await fs.access(blogDir);
 
       // Collect all markdown files from blog directory
-      const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles, context.docsDir, warnOnIgnoredFiles);
+      const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles, blogDirOption, warnOnIgnoredFiles);
       allDocFiles.push(...blogFiles);
 
     } catch (err: unknown) {
