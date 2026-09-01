@@ -6,6 +6,7 @@ import * as path from 'path';
 import matter from 'gray-matter';
 import { minimatch } from 'minimatch';
 import { DocInfo, DocsSection, PluginContext } from './types';
+import { maskCodeSegments } from './content';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -135,8 +136,11 @@ export async function processMarkdownFile(
     data.id = undefined;
   }
   
-  // Resolve partial imports before processing
-  const resolvedContent = await resolvePartialImports(markdownContent, filePath, new Set(), siteDir);
+  // Resolve partial imports before processing. Code fences are masked first so
+  // an `import` shown inside a code sample is left as written: partial
+  // resolution treats only imports outside fences as real.
+  const { masked, restore } = maskCodeSegments(markdownContent);
+  const resolvedContent = restore(await resolvePartialImports(masked, filePath, new Set(), siteDir));
   
   const relativePath = path.relative(baseDir, filePath);
   // Convert to URL path format (replace backslashes with forward slashes on Windows)
