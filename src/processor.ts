@@ -6,6 +6,10 @@ import * as path from 'path';
 import matter from 'gray-matter';
 import { minimatch } from 'minimatch';
 import { DocInfo, DocsSection, PluginContext } from './types';
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 import {
   readFile,
   extractTitle,
@@ -23,12 +27,36 @@ import {
 } from './utils';
 
 /**
+ * Optional per-file settings for `processMarkdownFile`, accepted as a final
+ * options argument. Provided as an object so new settings can be added
+ * without extending the (already long) positional parameter list.
+ */
+export interface ProcessFileOptions {
+  pathTransformation?: {
+    ignorePaths?: string[];
+    addPaths?: string[];
+  };
+  excludeImports?: boolean;
+  removeDuplicateHeadings?: boolean;
+  preserveComponents?: string[];
+  resolvedUrl?: string;
+  imageAssetMap?: Map<string, string[]>;
+  outDir?: string;
+  siteDir?: string;
+  sectionPath?: string;
+}
+
+/**
  * Process a markdown file and extract its metadata and content
  * @param filePath - Path to the markdown file
  * @param baseDir - Base directory
  * @param siteUrl - Base URL of the site
  * @param pathPrefix - Path prefix for URLs (e.g., 'docs' or 'blog')
- * @param pathTransformation - Path transformation configuration
+ * @param opts - Optional settings; see ProcessFileOptions. Accepts the
+ *               legacy positional tail (pathTransformation, excludeImports,
+ *               removeDuplicateHeadings, preserveComponents, resolvedUrl,
+ *               imageAssetMap, outDir, siteDir, sectionPath) for callers
+ *               written before the object form existed.
  * @returns Processed file data
  */
 export async function processMarkdownFile(
@@ -36,19 +64,38 @@ export async function processMarkdownFile(
   baseDir: string,
   siteUrl: string,
   pathPrefix: string = 'docs',
-  pathTransformation?: {
-    ignorePaths?: string[];
-    addPaths?: string[];
-  },
-  excludeImports: boolean = false,
-  removeDuplicateHeadings: boolean = false,
-  preserveComponents: string[] = [],
-  resolvedUrl?: string,
-  imageAssetMap?: Map<string, string[]>,
-  outDir?: string,
-  siteDir?: string,
-  sectionPath?: string
+  ...rest: unknown[]
 ): Promise<DocInfo | null> {
+  // Normalize the legacy positional tail into the options object.
+  let opts: ProcessFileOptions = {};
+  if (rest.length === 1 && isPlainObject(rest[0])) {
+    opts = rest[0] as ProcessFileOptions;
+  } else if (rest.length > 0) {
+    opts = {
+      pathTransformation: rest[0] as ProcessFileOptions['pathTransformation'],
+      excludeImports: rest[1] as boolean | undefined,
+      removeDuplicateHeadings: rest[2] as boolean | undefined,
+      preserveComponents: rest[3] as string[] | undefined,
+      resolvedUrl: rest[4] as string | undefined,
+      imageAssetMap: rest[5] as Map<string, string[]> | undefined,
+      outDir: rest[6] as string | undefined,
+      siteDir: rest[7] as string | undefined,
+      sectionPath: rest[8] as string | undefined,
+    };
+  }
+
+  const {
+    pathTransformation,
+    excludeImports = false,
+    removeDuplicateHeadings = false,
+    preserveComponents = [],
+    resolvedUrl,
+    imageAssetMap,
+    outDir,
+    siteDir,
+    sectionPath,
+  } = opts;
+
   const content = await readFile(filePath);
   const { data, content: markdownContent } = matter(content);
 
@@ -632,21 +679,17 @@ export async function processFilesWithPatterns(
           logger.verbose(`Resolved URL for ${path.basename(filePath)}: ${resolvedUrl}`);
         }
 
-        const docInfo = await processMarkdownFile(
-          filePath,
-          baseDir,
-          siteUrl,
-          pathPrefix,
-          context.options.pathTransformation,
-          context.options.excludeImports || false,
-          context.options.removeDuplicateHeadings || false,
-          context.options.preserveComponents || [],
+        const docInfo = await processMarkdownFile(filePath, baseDir, siteUrl, pathPrefix, {
+          pathTransformation: context.options.pathTransformation,
+          excludeImports: context.options.excludeImports || false,
+          removeDuplicateHeadings: context.options.removeDuplicateHeadings || false,
+          preserveComponents: context.options.preserveComponents || [],
           resolvedUrl,
-          context.imageAssetMap,
-          context.options.rewriteImageUrls ? context.outDir : undefined,
+          imageAssetMap: context.imageAssetMap,
+          outDir: context.options.rewriteImageUrls ? context.outDir : undefined,
           siteDir,
-          sectionFsPath
-        );
+          sectionPath: sectionFsPath,
+        });
 
         if (docInfo && sectionLabel) {
           docInfo.section = sectionLabel;

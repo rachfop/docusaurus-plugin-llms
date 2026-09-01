@@ -287,8 +287,10 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
   // Emit the label of Docusaurus's <TabItem> as a bold line before the tab
   // body (with a `value` fallback, matching what Docusaurus renders). Without
   // this, tab bodies concatenate with nothing distinguishing them and the
-  // label prop is silently lost (#64).
-  const tabItemOpen = /<TabItem\b[^>]*>/g;
+  // label prop is silently lost (#64). TAG_ATTRS keeps the match alive through
+  // `>` inside quoted values (e.g. label="A > B"); a [^>]* scan would cut the
+  // tag short and leak the remainder as prose.
+  const tabItemOpen = new RegExp(`<TabItem\\b${TAG_ATTRS}>`, 'g');
   cleaned = cleaned.replace(tabItemOpen, (tag) => {
     const label = extractTagAttr(tag, 'label') ?? extractTagAttr(tag, 'value');
     return label ? `\n\n**${label}**\n\n` : '';
@@ -393,7 +395,11 @@ export function createMarkdownContent(
     result += '---\n\n';
   }
   
-  const descriptionLine = includeMetadata && description ? `\n\n> ${description}\n` : '\n';
+  // Blockquote every line so a multi-line description stays a valid markdown
+  // blockquote; quoting only the first would leave later lines as prose under
+  // the heading.
+  const blockquoted = description.split('\n').map(l => `> ${l}`).join('\n');
+  const descriptionLine = includeMetadata && description ? `\n\n${blockquoted}\n` : '\n';
   
   result += `# ${title}${descriptionLine}
 ${content}`.trim() + '\n';

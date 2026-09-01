@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`<TabItem label="A > B">` leaked tag fragments** — the TabItem label
+  emitter cut its tag match at the first `>`, so a quoted label containing `>`
+  dumped the rest of the tag into the output as prose. The matcher is now
+  attribute-aware, like the PascalCase stripper.
+- **Multi-line descriptions rendered as broken blockquotes** — a frontmatter
+  description spanning lines quoted only its first line, leaving the rest as
+  prose under the heading. Every line is now blockquoted.
 - **`$` sequences corrupted partial content** — partial files were spliced
   with a string replacement, so shell/perl patterns like `echo $1`, `kill $$`,
   or `$&` in a partial's code samples were silently rewritten (attr values
