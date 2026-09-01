@@ -38,19 +38,21 @@ module.exports = {
 };
 ```
 
-On your next `npm run build`, the plugin writes `llms.txt` and `llms-full.txt` into the build output. That's the whole zero-config setup — see [installation](./docs/installation.md) to confirm it worked, then [configuration options](./docs/configuration.md) when you're ready to customize.
+On your next `npm run build`, the plugin writes `llms.txt` and `llms-full.txt` into the build output. That's the whole zero-config setup. See [installation](https://rachfop.github.io/docusaurus-plugin-llms/docs/installation) to confirm it worked, then [configuration options](https://rachfop.github.io/docusaurus-plugin-llms/docs/configuration) when you're ready to customize.
 
 ## Documentation
 
-- [Overview](./docs/overview.md) — what the plugin generates and how it runs.
-- [Installation](./docs/installation.md) — install the package and register it with a zero-config setup.
-- [Configuration options](./docs/configuration.md) — the full reference for every option the plugin accepts.
-- [Generating content](./docs/content-generation.md) — multiple doc sections, custom root content, custom LLM files, and partials.
-- [Generating individual Markdown files](./docs/markdown-files.md) — what `generateMarkdownFiles` produces and how files are named and laid out.
-- [Content cleaning](./docs/content-cleaning.md) — strip HTML, remove imports, drop duplicate headings, and rewrite image URLs.
-- [Ordering and path transformation](./docs/ordering-and-paths.md) — control document order, transform URLs, and tune batch processing.
-- [Multi-version output](./docs/multi-version.md) — publish a separate set of LLM files per documentation version.
-- [Best practices](./docs/best-practices.md) — recommended option combinations for common documentation shapes.
+The docs are published at [rachfop.github.io/docusaurus-plugin-llms](https://rachfop.github.io/docusaurus-plugin-llms), a Docusaurus site that runs this plugin on its own documentation. Its [llms.txt](https://rachfop.github.io/docusaurus-plugin-llms/llms.txt) is live dogfood output.
+
+- [Overview](https://rachfop.github.io/docusaurus-plugin-llms/docs/overview): what the plugin generates and how it runs.
+- [Installation](https://rachfop.github.io/docusaurus-plugin-llms/docs/installation): install the package and register it with a zero-config setup.
+- [Configuration options](https://rachfop.github.io/docusaurus-plugin-llms/docs/configuration): the full reference for every option the plugin accepts.
+- [Generating content](https://rachfop.github.io/docusaurus-plugin-llms/docs/content-generation): multiple doc sections, custom root content, custom LLM files, and partials.
+- [Generating individual Markdown files](https://rachfop.github.io/docusaurus-plugin-llms/docs/markdown-files): what `generateMarkdownFiles` produces and how files are named and laid out.
+- [Content cleaning](https://rachfop.github.io/docusaurus-plugin-llms/docs/content-cleaning): strip HTML, remove imports, drop duplicate headings, and rewrite image URLs.
+- [Ordering and path transformation](https://rachfop.github.io/docusaurus-plugin-llms/docs/ordering-and-paths): control document order, transform URLs, and tune batch processing.
+- [Multi-version output](https://rachfop.github.io/docusaurus-plugin-llms/docs/multi-version): publish a separate set of LLM files per documentation version.
+- [Best practices](https://rachfop.github.io/docusaurus-plugin-llms/docs/best-practices): recommended option combinations for common documentation shapes.
 
 ## License
 

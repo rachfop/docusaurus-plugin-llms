@@ -9,24 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`<TabItem label="A > B">` leaked tag fragments** — the TabItem label
+- **`<TabItem label="A > B">` leaked tag fragments**: the TabItem label
   emitter cut its tag match at the first `>`, so a quoted label containing `>`
   dumped the rest of the tag into the output as prose. The matcher is now
   attribute-aware, like the PascalCase stripper.
-- **Multi-line descriptions rendered as broken blockquotes** — a frontmatter
+- **Multi-line descriptions rendered as broken blockquotes**: a frontmatter
   description spanning lines quoted only its first line, leaving the rest as
   prose under the heading. Every line is now blockquoted.
-- **`$` sequences corrupted partial content** — partial files were spliced
+- **`$` sequences corrupted partial content**: partial files were spliced
   with a string replacement, so shell/perl patterns like `echo $1`, `kill $$`,
   or `$&` in a partial's code samples were silently rewritten (attr values
   substituted, tags re-inserted, document fragments duplicated). The splice
   now ignores replacement patterns.
-- **CRLF line endings corrupted output** — files authored or checked out with
+- **CRLF line endings corrupted output**: files authored or checked out with
   Windows line endings had their fenced code blocks unmasked (imports and HTML
   inside code samples were stripped) and their descriptions mis-extracted (a
   heading-only file got the heading as description; a heading-less file got
   the entire document). `readFile` now normalizes CRLF/CR to LF.
-- **Root slug (`slug: "/"`) crossed version subtrees** — in multi-version
+- **Root slug (`slug: "/"`) crossed version subtrees**: in multi-version
   mode, a section-root page linked to the current version's route (e.g.
   `/docs`) instead of its own version's (`/stable/docs`). Root-slug resolution
   now honors version and section scoping.
@@ -35,49 +35,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`routeBasePath` with a leading/trailing slash** (e.g. `'/docs'`) silently
   disabled route scoping for that section, falling every doc back to
   heuristic URLs. Slashes are now normalized.
-- **Blog detection misclassified sibling sections** — any directory whose name
+- **Blog detection misclassified sibling sections**: any directory whose name
   merely started with the blog dir (e.g. a `blog-api` docs section next to
   `blog`) was treated as the blog for fallback URL construction.
-- **Numeric frontmatter `description` dropped** — an unquoted YAML number
+- **Numeric frontmatter `description` dropped**: an unquoted YAML number
   (`description: 2024`) was silently discarded instead of used as text; it is
   now coerced like `title`/`slug`/`id`.
-- **`applyMdExtension` mangled bare origins** — a bare site URL would become
+- **`applyMdExtension` mangled bare origins**: a bare site URL would become
   `https://site.com.md`; the trailing slash is now preserved.
 
 ### Added
 
-- **`preserveComponents` option** — an array of MDX/JSX component names whose
+- **`preserveComponents` option**: an array of MDX/JSX component names whose
   tags pass through untouched instead of being stripped, for components that
   render meaningful content themselves (e.g. a swizzled
   `<PackageManagerTabs command="add my-package" />`). Matching is exact on
   the component name, and tags inside code fences are still left alone.
   ([#64](https://github.com/rachfop/docusaurus-plugin-llms/issues/64))
-- **CI workflow** — the repository now runs build + unit + integration tests on
+- **CI workflow**: the repository now runs build + unit + integration tests on
   Node 18/20/22 for every pull request and push to `main`.
 
 ### Fixed
 
-- **Prop content lost in JSX stripping** — the attribute-aware stripper
+- **Prop content lost in JSX stripping**: the attribute-aware stripper
   (0.5.0) dropped non-`children` prop values wholesale, deleting content like
   the command inside `<PackageManagerTabs command="..." />`. Attribute values
   are now parsed and their text is preserved. ([#68](https://github.com/rachfop/docusaurus-plugin-llms/pull/68),
   [#64](https://github.com/rachfop/docusaurus-plugin-llms/issues/64))
-- **`<TabItem>` collapsed its label** — `<TabItem>` tags now degrade to a
+- **`<TabItem>` collapsed its label**: `<TabItem>` tags now degrade to a
   readable outline instead of a bare body: the `label` (or `value`) is emitted
   as a bold line before the tab body. ([#64](https://github.com/rachfop/docusaurus-plugin-llms/issues/64))
-- **Imported MDX page bodies silently dropped** — only imports whose path
+- **Imported MDX page bodies silently dropped**: only imports whose path
   contained `_` or `/partials/` were inlined; a normally-named `.mdx` page body
   imported as a component was stripped without its content. Every `.mdx`/`.md`
   import is now inlined, and imports using webpack-style aliases other than
   `@site` (e.g. `@global/components/x.mdx`) resolve against the site directory.
   Failed resolutions warn with the specifier and importing file. ([#65](https://github.com/rachfop/docusaurus-plugin-llms/issues/65))
-- **Imports inside partial code fences stripped** — when a partial was inlined,
+- **Imports inside partial code fences stripped**: when a partial was inlined,
   `import` lines inside its fenced code samples were removed. Code fences are
   masked before partial splicing, so samples survive verbatim. ([#69](https://github.com/rachfop/docusaurus-plugin-llms/pull/69))
-- **Absolute slugs double-prefixed** — a frontmatter `slug` starting with `/`
+- **Absolute slugs double-prefixed**: a frontmatter `slug` starting with `/`
   was prefixed with the route base path again, producing URLs like
   `.../docs/team-b/docs/faq.md`. Absolute slugs are now used as-is. ([#63](https://github.com/rachfop/docusaurus-plugin-llms/pull/63))
-- **Multiple `docsDir` entries collapsed to the first** — with
+- **Multiple `docsDir` entries collapsed to the first**: with
   `docsDir: ['docs', 'blog']`, every page resolved to the first matching
   section, mis-routing pages and leaking `blog` URLs into `docs` output.
   Sections now resolve per-file, routes are scoped per-section, and the new
@@ -94,18 +94,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Numeric frontmatter `slug`/`id` ignored** — an unquoted numeric `slug`/`id`
+- **Numeric frontmatter `slug`/`id` ignored**: an unquoted numeric `slug`/`id`
   (YAML parses `slug: 2025` as a number) is now coerced to a string, matching how
   Docusaurus routes it, so the `.md` is written at the correct route instead of a
   fallback filename. ([#58](https://github.com/rachfop/docusaurus-plugin-llms/issues/58))
-- **`baseUrl` applied twice on disk** — with a non-root `baseUrl`, individual
+- **`baseUrl` applied twice on disk**: with a non-root `baseUrl`, individual
   `.md` files were written nested under the baseUrl segment, so their links
   404'd. The baseUrl path is now stripped before deriving the physical file
   location. ([#59](https://github.com/rachfop/docusaurus-plugin-llms/pull/59))
-- **Compound numeric prefixes** — ordering prefixes are now parsed like
+- **Compound numeric prefixes**: ordering prefixes are now parsed like
   Docusaurus's `DefaultNumberPrefixParser` (e.g. `03--1.6.X` → `1.6.X`), and
   version-like names such as `7.0-foo` are preserved. ([#59](https://github.com/rachfop/docusaurus-plugin-llms/pull/59))
-- **Explicit frontmatter `slug`/`id` overridden by a coincidental route** — an
+- **Explicit frontmatter `slug`/`id` overridden by a coincidental route**: an
   authoritative `slug`/`id` (including `slug: "/"`) is now consulted before the
   filename-tail heuristic, so a root page no longer loses its route to an
   unrelated file. ([#59](https://github.com/rachfop/docusaurus-plugin-llms/pull/59))
@@ -126,45 +126,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Code samples corrupted by content cleaning** — HTML/JSX tag stripping, `import` removal (`excludeImports`), image-URL rewriting, and title detection now skip fenced code blocks and inline code, so examples shown in code blocks are preserved verbatim.
-- **Global `version` option ignored** — it's now included in `llms.txt`/`llms-full.txt` (previously only per-custom-file `version` worked).
-- **`draft: "true"`** — quoted-string frontmatter is now skipped like the boolean `true`.
-- **MDX/JSX component tags** — tags like `<Tabs>`/`<TabItem>` are now stripped from generated text, keeping their inner content.
-- **Custom-file `includeUnmatchedLast`** — now defaults to `true` (matching standard files), so `includePatterns`-selected docs aren't dropped when `orderPatterns` doesn't list them.
-- **`pathTransformation.ignorePaths`** — no longer leaves a trailing slash when removing a terminal segment, and tolerates entries written with a trailing slash.
-- **`buildImageAssetMap`** — no longer indexes non-image build assets.
+- **Code samples corrupted by content cleaning**: HTML/JSX tag stripping, `import` removal (`excludeImports`), image-URL rewriting, and title detection now skip fenced code blocks and inline code, so examples shown in code blocks are preserved verbatim.
+- **Global `version` option ignored**: it's now included in `llms.txt`/`llms-full.txt` (previously only per-custom-file `version` worked).
+- **`draft: "true"`**: quoted-string frontmatter is now skipped like the boolean `true`.
+- **MDX/JSX component tags**: tags like `<Tabs>`/`<TabItem>` are now stripped from generated text, keeping their inner content.
+- **Custom-file `includeUnmatchedLast`**: now defaults to `true` (matching standard files), so `includePatterns`-selected docs aren't dropped when `orderPatterns` doesn't list them.
+- **`pathTransformation.ignorePaths`**: no longer leaves a trailing slash when removing a terminal segment, and tolerates entries written with a trailing slash.
+- **`buildImageAssetMap`**: no longer indexes non-image build assets.
 
 ## [0.4.4] - 2026-07-13
 
 ### Fixed
 
-- **`.md` links returning 404** (#41) — `addMdExtension` appended `.md` to `llms.txt` links by default, but the `.md` files are only produced when `generateMarkdownFiles` is enabled, so the links pointed to files that didn't exist. `.md` is now appended only when the markdown files are actually generated; otherwise links point to the normal doc routes.
+- **`.md` links returning 404** (#41) : `addMdExtension` appended `.md` to `llms.txt` links by default, but the `.md` files are only produced when `generateMarkdownFiles` is enabled, so the links pointed to files that didn't exist. `.md` is now appended only when the markdown files are actually generated; otherwise links point to the normal doc routes.
 
 ## [0.4.3] - 2026-07-13
 
 ### Added
 
-- **`useRelativeUrls` option** (#37, #42) — opt-in (`false` by default) that emits origin-relative links in `llms.txt` (e.g. `/docs/page.md`) instead of absolute URLs. Useful for subpath deployments where the site `url` can't be pinned to the real deployment host. The baseUrl portion of the path is preserved.
+- **`useRelativeUrls` option** (#37, #42) : opt-in (`false` by default) that emits origin-relative links in `llms.txt` (e.g. `/docs/page.md`) instead of absolute URLs. Useful for subpath deployments where the site `url` can't be pinned to the real deployment host. The baseUrl portion of the path is preserved.
 
 ## [0.4.2] - 2026-07-13
 
 ### Fixed
 
-- **baseUrl dropped from generated URLs** (#43) — sites deployed to a subpath (e.g. `baseUrl: '/docs/'`) had the base path silently discarded, producing links to the wrong location. The baseUrl pathname is now preserved on both the resolved-route and fallback code paths, and is added to a route only when not already present (so it's never dropped or duplicated).
-- **Trailing slash in `docsDir`** (#43) — a `docsDir` like `'foo/'` produced a doubled slash that prevented the prefix from being stripped. The prefix is now normalized before use.
+- **baseUrl dropped from generated URLs** (#43) : sites deployed to a subpath (e.g. `baseUrl: '/docs/'`) had the base path silently discarded, producing links to the wrong location. The baseUrl pathname is now preserved on both the resolved-route and fallback code paths, and is added to a route only when not already present (so it's never dropped or duplicated).
+- **Trailing slash in `docsDir`** (#43) : a `docsDir` like `'foo/'` produced a doubled slash that prevented the prefix from being stripped. The prefix is now normalized before use.
 
 ## [0.4.1] - 2026-07-13
 
 ### Added
 
-- **`rewriteImageUrls` option** — opt-in (`false` by default) that rewrites relative image references (`./img/`, `../img/`, `../../img/`, etc.) in generated `.md` files and `llms-full.txt` to absolute hashed URLs served by the site (e.g. `https://site.com/assets/images/diagram-abc123.png`). Resolves images being inaccessible to LLMs reading the served markdown.
+- **`rewriteImageUrls` option**: opt-in (`false` by default) that rewrites relative image references (`./img/`, `../img/`, `../../img/`, etc.) in generated `.md` files and `llms-full.txt` to absolute hashed URLs served by the site (e.g. `https://site.com/assets/images/diagram-abc123.png`). Resolves images being inaccessible to LLMs reading the served markdown.
   - Scans `build/assets/images/` after the build and builds a basename → hashed-path lookup map.
   - Uses byte-comparison to disambiguate when two source images share the same filename.
   - Images not bundled by Docusaurus (e.g. unreferenced files) are left unchanged.
 
-- **Generated `.md` paths now match page URLs** — when `generateMarkdownFiles: true`, each file is placed at the path derived from the resolved Docusaurus route (e.g. `guia/setup.md`) rather than a title-slugified name, so the `.md` is reachable at the same URL as the HTML page with a `.md` extension.
+- **Generated `.md` paths now match page URLs**: when `generateMarkdownFiles: true`, each file is placed at the path derived from the resolved Docusaurus route (e.g. `guia/setup.md`) rather than a title-slugified name, so the `.md` is reachable at the same URL as the HTML page with a `.md` extension.
 
-- **Numeric ordering prefix stripping** — `01-`, `02-` style prefixes are now stripped from every path segment when deriving output paths, matching the clean URLs that Docusaurus itself produces.
+- **Numeric ordering prefix stripping**: `01-`, `02-` style prefixes are now stripped from every path segment when deriving output paths, matching the clean URLs that Docusaurus itself produces.
 
 ## [0.3.1] - 2026-04-14
 

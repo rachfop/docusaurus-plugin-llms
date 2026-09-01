@@ -31,8 +31,8 @@ These options control which files the plugin writes and what they're named.
 | `generateLLMsFullTxt` | `boolean` | `true` | Whether to generate the `llms-full.txt` full-content file. |
 | `llmsTxtFilename` | `string` | `'llms.txt'` | Custom file name for the links file. |
 | `llmsFullTxtFilename` | `string` | `'llms-full.txt'` | Custom file name for the full-content file. |
-| `generateMarkdownFiles` | `boolean` | `false` | Generate an individual `.md` file per page and link to those from `llms.txt` instead of the original docs. |
-| `preserveDirectoryStructure` | `boolean` | `true` | Preserve the source directory structure in generated markdown files (for example `docs/server/config.md` rather than `server/config.md`). Only applies when `generateMarkdownFiles` is `true`. |
+| `generateMarkdownFiles` | `boolean` | `false` | Generate an individual `.md` file per page and link to those from `llms.txt` in place of the original docs. |
+| `preserveDirectoryStructure` | `boolean` | `true` | Preserve the source directory structure in generated markdown files (for example `docs/server/config.md`). Only applies when `generateMarkdownFiles` is `true`. |
 | `keepFrontMatter` | `string[]` | none | Front matter keys to preserve in generated markdown files. Only applies when `generateMarkdownFiles` is `true`. |
 
 ## Content sources
@@ -45,7 +45,7 @@ These options select which files the plugin reads and in what order.
 | `ignoreFiles` | `string[]` | `[]` | Glob patterns for files to skip. |
 | `includeBlog` | `boolean` | `false` | Whether to include blog content. |
 | `blogDir` | `string` | `'blog'` | Filesystem path to the blog content directory, relative to the site root. |
-| `blogRouteBasePath` | `string` | `'blog'` | Docusaurus `routeBasePath` for the blog plugin — set this to match `presets.blog.routeBasePath` if you've customized it (e.g. `'news'`). |
+| `blogRouteBasePath` | `string` | `'blog'` | Docusaurus `routeBasePath` for the blog plugin. Set this to match `presets.blog.routeBasePath` if you've customized it (for example `'news'`). |
 | `includeOrder` | `string[]` | `[]` | Glob patterns controlling the order files are processed in. |
 | `includeUnmatchedLast` | `boolean` | `true` | Whether to append files that match no `includeOrder` pattern at the end. Set to `false` to make `includeOrder` a strict inclusion list. |
 | `processingBatchSize` | `number` | `100` | Batch size for processing large document sets, to bound memory use on big sites. |
@@ -70,7 +70,7 @@ These options strip noise from the source markdown before it's written.
 | --- | --- | --- | --- |
 | `excludeImports` | `boolean` | `false` | Remove `import` statements from generated content. |
 | `removeDuplicateHeadings` | `boolean` | `false` | Remove content that just repeats the heading text immediately below it. |
-| `preserveComponents` | `string[]` | `[]` | Component names whose JSX tags pass through untouched instead of being stripped. See [preserving component tags](content-cleaning.md#preserving-component-tags-preservecomponents). |
+| `preserveComponents` | `string[]` | `[]` | Component names whose JSX tags pass through untouched, exempt from stripping. See [preserving component tags](content-cleaning.md#preserving-component-tags-preservecomponents). |
 
 ## URL construction
 
@@ -79,11 +79,11 @@ These options control the links the plugin emits.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `addMdExtension` | `boolean` | `true` | Append `.md` to link URLs in `llms.txt`, per the llmstxt.org spec. |
-| `useRelativeUrls` | `boolean` | `false` | Emit origin-relative links (for example `/docs/page.md`) instead of absolute URLs. Useful for subpath deployments where the site `url` can't be pinned. |
+| `useRelativeUrls` | `boolean` | `false` | Emit links relative to the site origin (for example `/docs/page.md`). Useful for subpath deployments where the site `url` can't be pinned. |
 | `rewriteImageUrls` | `boolean` | `false` | Rewrite relative image references to absolute hashed build-output URLs so LLMs can resolve them. |
 | `pathTransformation` | `object` | `undefined` | Fallback path rewriting for URL construction. See [Path transformation](#path-transformation). |
 
-The `pathTransformation` object has two fields:
+The `pathTransformation` object accepts the following fields:
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |

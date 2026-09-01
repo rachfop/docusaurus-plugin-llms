@@ -27,7 +27,7 @@ export default function Home() {
           </Link>
         </p>
         <p style={{ marginTop: '2rem' }}>
-          This site runs the plugin on its own docs — check the live output at{' '}
+          This site runs the plugin on its own docs. Check the live output at{' '}
           <a href="/docusaurus-plugin-llms/llms.txt">llms.txt</a>.
         </p>
       </main>

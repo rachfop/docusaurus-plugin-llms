@@ -1,6 +1,6 @@
 # Ordering and path transformation
 
-This page covers three ways to shape the generated output: controlling the order in which documents appear, transforming the URLs the plugin builds from file paths, and tuning batch processing for large sites. All three are optional. The defaults work out of the box, so reach for these options only when you need a specific order, a URL that doesn't match the default route resolution, or memory control on a very large build.
+This page covers ways to shape the generated output: controlling the order in which documents appear, transforming the URLs the plugin builds from file paths, and tuning batch processing for large sites. Each is optional. The defaults work out of the box, so reach for these options only when you need a specific order, a URL that doesn't match the default route resolution, or memory control on a very large build.
 
 For the full option list, see [available options](./configuration.md). For per-file variants of the ordering options, see [custom LLM files](./content-generation.md).
 

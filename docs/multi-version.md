@@ -18,7 +18,7 @@ Each version object in the array has the following shape:
 
 | Field            | Type              | Default              | Description                                                   |
 |------------------|-------------------|----------------------|---------------------------------------------------------------|
-| `name`           | `string` (required) | —                  | Version identifier (e.g. `'nightly'`, `'stable'`, `'0.0.1'`). Must be unique across the array. |
+| `name`           | `string` (required) | none               | Version identifier (for example `'nightly'`, `'stable'`, or `'0.0.1'`). Must be unique across the array. |
 | `label`          | `string`          | `name`               | Human-readable label written into the `Version:` line of the generated files. |
 | `docsDir`        | `string \| DocsSection[]` | top-level `docsDir` | Source docs directory (or sections) for this version, relative to the site directory. |
 | `path`           | `string`          | `name`               | Output subdirectory and route prefix. Use `''` for the site root. |
@@ -56,7 +56,7 @@ The array must contain at least one version, every `name` must be unique, and no
 
 ## Automatic detection
 
-Set `versions: 'auto'` to derive the version list from Docusaurus docs versioning instead of writing it out by hand:
+Set `versions: 'auto'` to derive the version list automatically from Docusaurus docs versioning:
 
 ```js
 plugins: [

@@ -41,7 +41,7 @@ module.exports = {
 
 ## Linking with `addMdExtension`
 
-`addMdExtension` is a `boolean` that defaults to `true`. It appends `.md` to the link URLs in `llms.txt` so they resolve to the Markdown files rather than the HTML pages, per the llmstxt.org spec. It only has an effect when `generateMarkdownFiles` is enabled, since the `.md` files have to exist for the links to resolve.
+`addMdExtension` is a `boolean` that defaults to `true`. It appends `.md` to the link URLs in `llms.txt` so they resolve to the generated Markdown files, per the llmstxt.org spec. It only has an effect when `generateMarkdownFiles` is enabled, since the `.md` files have to exist for the links to resolve.
 
 A Docusaurus page served at `https://example.com/docs/getting-started/` becomes this link:
 

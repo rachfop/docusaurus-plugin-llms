@@ -1,6 +1,6 @@
 # Generating content
 
-Once the plugin is installed (see [installation](./installation.md)), you can shape what goes into the generated files. This page covers four content-shaping features: configuring multiple documentation sections, injecting custom root content, generating extra custom LLM files, and how Docusaurus partials are resolved.
+Once the plugin is installed (see [installation](./installation.md)), you can shape what goes into the generated files: configure multiple documentation sections, inject custom root content, generate extra custom LLM files, and control how Docusaurus partials are resolved.
 
 All of these run during the Docusaurus build (`npm run build`), since the plugin uses the `postBuild` lifecycle hook.
 
@@ -12,8 +12,8 @@ Each `DocsSection` object has the following fields:
 
 | Field           | Type     | Required | Description                                                                             |
 | --------------- | -------- | -------- | --------------------------------------------------------------------------------------- |
-| `path`          | `string` | yes      | Filesystem path to the section, relative to the site directory (e.g. `'docs'`, `'api'`) |
-| `routeBasePath` | `string` | yes      | The Docusaurus `routeBasePath` the section is served under (e.g. `'docs'`, `'api'`)     |
+| `path`          | `string` | yes      | Filesystem path to the section, relative to the site directory (for example `'docs'` or `'api'`) |
+| `routeBasePath` | `string` | yes      | The Docusaurus `routeBasePath` the section is served under (for example `'docs'` or `'api'`) |
 | `label`         | `string` | no       | Optional heading shown for the section in `llms.txt`                                    |
 
 To generate a single `llms.txt` from two instances with distinct headings, pass an array:
@@ -87,7 +87,7 @@ Each `CustomLLMFile` object supports these fields:
 
 | Field                  | Type       | Required | Description                                                                                     |
 | ---------------------- | ---------- | -------- | ----------------------------------------------------------------------------------------------- |
-| `filename`             | `string`   | yes      | Name of the output file (e.g. `'llms-python.txt'`)                                              |
+| `filename`             | `string`   | yes      | Name of the output file (for example `'llms-python.txt'`)                                       |
 | `includePatterns`      | `string[]` | yes      | Glob patterns for files to include                                                              |
 | `fullContent`          | `boolean`  | yes      | `true` for full content (like `llms-full.txt`), `false` for links only (like `llms.txt`)        |
 | `title`                | `string`   | no       | Custom title for this file (defaults to the site title)                                         |
@@ -121,7 +121,7 @@ To split documentation by programming language, define one file per language:
 }
 ```
 
-The `includePatterns`, `orderPatterns`, and `ignorePatterns` globs match against both the site-relative path (e.g. `docs/quickstart/file.md`) and the docs-relative path (e.g. `quickstart/file.md`), so docs-relative patterns are usually the more portable choice.
+The `includePatterns`, `orderPatterns`, and `ignorePatterns` globs match against both the site-relative path (for example `docs/quickstart/file.md`) and the docs-relative path (for example `quickstart/file.md`), so docs-relative patterns are usually the more portable choice.
 
 To build a curated file with explicit ordering and exclusions, combine `ignorePatterns` and `orderPatterns`:
 
@@ -183,7 +183,7 @@ The plugin supports [Docusaurus partials](https://docusaurus.io/docs/markdown-fe
 - Partial files are excluded from the generated `llms*.txt` files. Any `.md` or `.mdx` file whose name starts with an underscore (for example `_shared-config.mdx`) is skipped during file collection.
 - Import statements for partials are resolved and their content is inlined into the importing document before it's processed.
 
-An import is treated as a partial when its path contains an underscore (for example `./_api-config.mdx`) or lives under a `/partials/` directory (for example `@site/src/partials/config.mdx`). The `@site/` alias resolves against the site directory; other paths resolve relative to the importing file. Circular imports are detected and reported rather than followed.
+An import is treated as a partial when its path contains an underscore (for example `./_api-config.mdx`) or lives under a `/partials/` directory (for example `@site/src/partials/config.mdx`). The `@site/` alias resolves against the site directory; other paths resolve relative to the importing file. Circular imports are detected and reported as a warning.
 
 Given a partial file `_api-config.mdx`:
 
