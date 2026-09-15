@@ -238,13 +238,23 @@ export async function processMarkdownFile(
   if (isNonEmptyString(data.description)) {
     description = data.description;
   } else {
-    // Second priority: Find the first non-heading paragraph
-    const paragraphs = resolvedContent.split('\n\n');
+    // Second priority: Find the first non-heading paragraph. Fences are masked
+    // so a blank line inside a code sample cannot split it into fragments that
+    // read as paragraphs; each candidate is restored before it is tested, so a
+    // paragraph merely starting with an inline code span still counts as prose.
+    const { masked: maskedBody, restore: restoreBody } = maskCodeSegments(resolvedContent);
+    const paragraphs = maskedBody.split('\n\n');
     for (const para of paragraphs) {
-      const trimmedPara = para.trim();
+      const trimmedPara = restoreBody(para).trim();
       // Skip empty paragraphs, headings, and import/export statements
       const isImportOrExport = /^(import\s|export\s)/.test(trimmedPara);
-      if (trimmedPara && !trimmedPara.startsWith('#') && !isImportOrExport) {
+      // Skip blocks that are structure rather than prose: a code fence, a JSX
+      // or HTML element, an HTML comment, an admonition marker, a table row, a
+      // standalone image. None reads as a page summary, and several (an
+      // unbalanced ``` fence, a `|` row) also break the markdown of the TOC
+      // line they would land in.
+      const isNonProse = /^(```|~~~|<[A-Za-z!/]|:::|\||!\[)/.test(trimmedPara);
+      if (trimmedPara && !trimmedPara.startsWith('#') && !isImportOrExport && !isNonProse) {
         description = trimmedPara;
         break;
       }
