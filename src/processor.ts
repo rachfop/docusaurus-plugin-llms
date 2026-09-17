@@ -156,10 +156,10 @@ export async function processMarkdownFile(
     // Convert .md extension to appropriate path
     const linkPathBase = normalizedPath.replace(/\.mdx?$/, '');
     
-    // Handle index files specially
-    let linkPath = linkPathBase.endsWith('index')
-      ? linkPathBase.replace(/\/index$/, '')
-      : linkPathBase;
+    // Handle index files specially. Anchored to the end of the path, and matched
+    // case-insensitively including "readme", to follow Docusaurus's own
+    // directory-index convention.
+    let linkPath = linkPathBase.replace(/\/(index|readme)$/i, '');
 
     // linkPath is filesystem-relative while pathPrefix is a route, so strip
     // the section's own filesystem path first when the two differ.
@@ -450,9 +450,12 @@ async function resolveDocumentUrl(
   }
   if (!scopedRoutes.length) return undefined;
 
+  // Docusaurus routes directory indices at the parent directory. `isCategoryIndex`
+  // matches the file name lowercased against "index", "readme" and the parent
+  // directory's name, so INDEX.md and README.md are indices too.
   const relative = normalizePath(path.relative(baseDir, filePath))
     .replace(/\.mdx?$/, '')
-    .replace(/\/index$/, '');
+    .replace(/\/(index|readme)$/i, '');
 
   // Strip the matched section's filesystem path — this is the filesystem root
   // Docusaurus removes when computing routes for files under this section.
