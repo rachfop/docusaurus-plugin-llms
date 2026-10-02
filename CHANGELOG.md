@@ -173,6 +173,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ignorePaths: ['api']` turned `api/api/x` into `api/x`, and `addPaths` on an
   empty path produced `docs/`. Every matching segment is removed, and an empty
   path becomes the added path.
+- **`versions: 'auto'` linked the wrong version's pages**: on a default site
+  the current docs linked the last version's `/docs/...` pages, and versioned
+  docs linked `/versioned_docs/version-<id>/...` URLs that 404. Auto mode
+  follows the docs plugin's routing: each version links pages under
+  `/<routeBasePath>/<versionPath>/`, honors `lastVersion`,
+  `includeCurrentVersion`, `onlyIncludeVersions`, and per-version `path`, and
+  writes to `<outDir>/<versionPath>/`, so the last version owns the root
+  `llms.txt` and the current docs write to `next/`. Explicit versions accept
+  `routePrefix: ''` to describe the same layout.
+- **Translated locales got source-language content**: a locale build such as
+  `build/fr/llms.txt` read every page from the source files. A non-default
+  locale reads each page from its translation under
+  `i18n/<locale>/docusaurus-plugin-content-docs/` or
+  `docusaurus-plugin-content-blog/` when one exists, and from the source file
+  otherwise.
+- **Invalid per-version options passed validation**: `versions[].docsDir`,
+  `customLLMFiles`, and `includeOrder` got shape checks only, so a section
+  without a `path` aborted every later version while the build succeeded, and
+  a custom file without `includePatterns` listed every doc. They get the same
+  validation as the top-level options, and a version that fails during
+  generation is logged without stopping the remaining versions.
+- **Blog posts were repeated in every version**: with `versions` and
+  `includeBlog`, each version's files listed the blog. The blog appears in the
+  root version's files only.
 
 ### Documentation
 

@@ -3,6 +3,7 @@
  */
 
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import matter from 'gray-matter';
 import { minimatch } from 'minimatch';
 import { DocInfo, DocsSection, PluginContext } from './types';
@@ -117,6 +118,12 @@ export interface ProcessFileOptions {
   siteDir?: string;
   sectionPath?: string;
   isBlogFile?: boolean;
+  /**
+   * The file to read the content from, when it differs from `filePath` (a
+   * translated copy for the current locale). `filePath` still determines the
+   * document's path and fallback URL.
+   */
+  contentFilePath?: string;
 }
 
 /**
@@ -168,9 +175,10 @@ export async function processMarkdownFile(
     siteDir,
     sectionPath,
     isBlogFile = false,
+    contentFilePath = filePath,
   } = opts;
 
-  const content = await readFile(filePath);
+  const content = await readFile(contentFilePath);
   const { data, content: markdownContent } = matter(content);
 
   // Skip draft files (accept both boolean true and the string "true", which
@@ -214,7 +222,7 @@ export async function processMarkdownFile(
   // resolution treats only imports outside fences as real.
   const { masked, restore } = maskCodeSegments(markdownContent);
   const resolvedContent = restore(
-    await resolvePartialImports(masked, filePath, new Set(), siteDir),
+    await resolvePartialImports(masked, contentFilePath, new Set(), siteDir),
   );
 
   const relativePath = path.relative(baseDir, filePath);
@@ -387,7 +395,13 @@ export async function processMarkdownFile(
   // Rewrite relative image URLs to absolute build-output URLs when requested
   const finalContent =
     imageAssetMap && outDir
-      ? await rewriteRelativeImageUrls(cleanedContent, filePath, imageAssetMap, siteUrl, outDir)
+      ? await rewriteRelativeImageUrls(
+          cleanedContent,
+          contentFilePath,
+          imageAssetMap,
+          siteUrl,
+          outDir,
+        )
       : cleanedContent;
 
   return {
@@ -492,6 +506,7 @@ async function resolveDocumentUrl(
   filePath: string,
   baseDir: string,
   context: PluginContext,
+  contentFilePath: string = filePath,
 ): Promise<string | undefined> {
   if (!context.routesPaths?.length) return undefined;
 
@@ -545,7 +560,8 @@ async function resolveDocumentUrl(
   // routeBasePath defaulted to its filesystem path (a plain string docsDir),
   // which doesn't necessarily reflect the real route, so its routes under that
   // base are searched first and the remaining routes after them.
-  const isStrictlyScoped = isBlogFile || (context.docsSections?.length ?? 0) > 1;
+  const isStrictlyScoped =
+    isBlogFile || (context.docsSections?.length ?? 0) > 1 || context.strictRouteScope === true;
   const routeLists: string[][] = [];
   if (sectionBase === '/') {
     routeLists.push(scopedRoutes);
@@ -586,7 +602,7 @@ async function resolveDocumentUrl(
   // other file's nested route). Checking frontmatter first prevents that.
   const overrideTails: string[] = [];
   try {
-    const content = await readFile(filePath);
+    const content = await readFile(contentFilePath);
     const { data } = matter(content);
     const slug = coerceFrontMatterString(data.slug);
     const id = coerceFrontMatterString(data.id);
@@ -640,6 +656,26 @@ async function resolveDocumentUrl(
   }
 
   return undefined;
+}
+
+/**
+ * The file Docusaurus renders for a source file in the current locale: the
+ * translated copy at the same relative path under the matching localized
+ * directory when it exists, otherwise the source file itself.
+ * @param filePath - Absolute path of the source file
+ * @param context - Plugin context carrying the locale's localized directories
+ */
+async function getLocalizedFilePath(filePath: string, context: PluginContext): Promise<string> {
+  const dirs = context.localizedDirs ?? [];
+  const match = dirs.find(({ sourceDir }) => filePath.startsWith(sourceDir + path.sep));
+  if (!match) return filePath;
+  const localizedFile = path.join(match.localizedDir, path.relative(match.sourceDir, filePath));
+  try {
+    await fs.access(localizedFile);
+    return localizedFile;
+  } catch {
+    return filePath;
+  }
 }
 
 /**
@@ -791,7 +827,8 @@ export async function processFilesWithPatterns(
           pathPrefix = docsDir;
         }
 
-        const resolvedUrl = await resolveDocumentUrl(filePath, baseDir, context);
+        const contentFilePath = await getLocalizedFilePath(filePath, context);
+        const resolvedUrl = await resolveDocumentUrl(filePath, baseDir, context, contentFilePath);
 
         if (resolvedUrl) {
           logger.verbose(`Resolved URL for ${path.basename(filePath)}: ${resolvedUrl}`);
@@ -808,6 +845,7 @@ export async function processFilesWithPatterns(
           siteDir,
           sectionPath: sectionFsPath,
           isBlogFile,
+          contentFilePath,
         });
 
         if (docInfo && sectionLabel) {

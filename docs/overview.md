@@ -72,6 +72,10 @@ description: Install the CLI and run your first build.
 ---
 ```
 
+## Translated sites
+
+On a site with [Docusaurus i18n](https://docusaurus.io/docs/i18n/introduction), each locale's build writes its own files to that locale's build directory, such as `build/fr/llms.txt`, with links under the locale's URLs. A page's content comes from its translation in `i18n/<locale>/docusaurus-plugin-content-docs/` (or `i18n/<locale>/docusaurus-plugin-content-blog/` for blog posts). A page with no translation uses its source file, as the Docusaurus build does. A locale with `translate: false` always uses the source files.
+
 ## Next steps
 
 - See [installation](./installation.md) to add the plugin to your project.

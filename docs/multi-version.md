@@ -24,12 +24,17 @@ Each version object accepts these fields:
 | `label`          | `string`                  | `name`                     | Human-readable label written into the `Version:` line of the generated files.                            |
 | `docsDir`        | `string \| DocsSection[]` | top-level `docsDir`        | Source docs directory (or sections) for this version, relative to the site directory.                    |
 | `path`           | `string`                  | `name`                     | Output subdirectory and route prefix. Use `''` for the site root.                                        |
+| `routePrefix`    | `string`                  | `path`                     | Route prefix the version's links resolve under. Use `''` when the sections' `routeBasePath` holds it.    |
 | `customLLMFiles` | `CustomLLMFile[]`         | top-level `customLLMFiles` | Per-version custom LLM files.                                                                            |
 | `includeOrder`   | `string[]`                | top-level `includeOrder`   | Per-version include order.                                                                               |
 
 Any field left unset on a version falls back to the matching top-level plugin option, so you declare shared settings like `customLLMFiles` and `includeOrder` once and override them per version.
 
-The `path` field sets both the output subdirectory under the build directory and the route prefix that the version's links must resolve to. A version with `path: 'stable'` writes its files to `<outDir>/stable/` and its links resolve to `/stable/...` URLs. A version with `path: ''` writes to the site root.
+The `path` field sets both the output subdirectory under the build directory and the route prefix that the version's links must resolve to. A version with `path: 'stable'` writes its files to `<outDir>/stable/` and its links resolve to `/stable/...` URLs. A version with `path: ''` writes to the site root. Set `routePrefix` when the route prefix differs from the output subdirectory; see [versions inside the route base path](#versions-inside-the-route-base-path).
+
+Each version's `docsDir`, `customLLMFiles`, and `includeOrder` get the same checks as the top-level options, and an invalid value throws a configuration error when the plugin loads. If one version fails while its files are generated, the plugin logs an error naming that version and generates the remaining versions.
+
+With `includeBlog: true`, blog posts appear in the files of the version written at the site root, or of the first version when no version writes to the root.
 
 ## Explicit versions
 
@@ -56,6 +61,28 @@ Each version writes `llms.txt` (and any `customLLMFiles`) under `<path>/`, so th
 
 The array must contain at least one version, every `name` must be unique, and no two versions may resolve to the same `path`. The plugin throws a configuration error at build time if any of these constraints is violated.
 
+### Versions inside the route base path
+
+Docusaurus serves a docs version at `/<routeBasePath>/<versionPath>/`, so a default site serves its last version at `/docs/...` and the current docs at `/docs/next/...`. To describe that layout explicitly, give each version a section whose `routeBasePath` includes the version segment, and set `routePrefix: ''`:
+
+```js
+versions: [
+  {
+    name: '1.0',
+    docsDir: [{ path: 'versioned_docs/version-1.0', routeBasePath: 'docs' }],
+    path: '',
+  },
+  {
+    name: 'current',
+    docsDir: [{ path: 'docs', routeBasePath: 'docs/next' }],
+    path: 'next',
+    routePrefix: '',
+  },
+],
+```
+
+This writes `/llms.txt` with links to `/docs/...` pages and `/next/llms.txt` with links to `/docs/next/...` pages. [Automatic detection](#automatic-detection) produces the same layout from the Docusaurus config.
+
 ## Automatic detection
 
 Set `versions: 'auto'` to derive the version list automatically from Docusaurus docs versioning:
@@ -72,16 +99,29 @@ plugins: [
 ];
 ```
 
-In auto mode the plugin builds the list from two sources:
+Auto mode reads the docs plugin options (from the preset's `docs` options or a `@docusaurus/plugin-content-docs` entry in `plugins`) and builds the versions the way Docusaurus does:
 
-- The current (unversioned) docs, added as a version named `current`. Its `docsDir` defaults to your top-level `docsDir` (or `'docs'`), and its `path` defaults to the site root.
-- Every entry in `versions.json`, each sourced from `versioned_docs/version-<id>/`. The version `name` is the id, its `docsDir` is `versioned_docs/version-<id>`, and its `path` defaults to the id.
+- The versions are the current docs plus every entry in `versions.json`. The current docs are named `current` and read from the docs plugin's `path` (or your top-level `docsDir`); a versioned entry `<id>` reads from `versioned_docs/version-<id>/`.
+- `includeCurrentVersion: false` leaves out the current docs, `onlyIncludeVersions` keeps only the listed versions, and `disableVersioning: true` keeps only the current docs.
+- The last version is `lastVersion` when set, otherwise the first included entry in `versions.json`, otherwise `current`.
+- Each version's path is its `versions.<name>.path` when set. Otherwise the last version's path is `''`, the current docs' path is `'next'`, and any other version's path is its name.
 
-When your Docusaurus docs plugin config sets a version's `label` or `path`, the plugin uses those values. Without a configured label, the current docs are labeled `current`, so the root `llms.txt` reads `Version: current`. To change it, set `versions.current.label` in the docs plugin config. This works whether the docs plugin is configured through a preset or listed in `plugins`. If `versions.json` is absent, the plugin generates only the current docs.
+A version with path `<versionPath>` links to pages under `/<routeBasePath>/<versionPath>/` and writes its files to `<outDir>/<versionPath>/`. The last version has an empty path by default, so its files are the root `llms.txt` and `llms-full.txt`. On a default site with `versions.json` set to `["1.0"]`, the build directory looks like this:
+
+```
+build/
+├── llms.txt                 # 1.0, links to /docs/...
+├── llms-full.txt
+└── next/
+    ├── llms.txt             # current, links to /docs/next/...
+    └── llms-full.txt
+```
+
+Each version's label is its `versions.<name>.label` from the docs plugin config, or its name otherwise, so the current docs are labeled `current` unless you set `versions.current.label`. If `versions.json` is absent, the plugin generates only the current docs.
 
 ## Output layout and version identity
 
-Every version writes its files under `<outDir>/<path>/`. With the explicit example above, the build directory looks like this:
+Every version writes its files under `<outDir>/<path>/`. With the [explicit example](#explicit-versions), the build directory looks like this:
 
 ```
 build/
