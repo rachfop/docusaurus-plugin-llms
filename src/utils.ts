@@ -220,6 +220,11 @@ export async function readMarkdownFiles(
     }
 
     if (isDir) {
+      // Docusaurus excludes `**/_*/**` by default: files in `_`-prefixed
+      // directories are partials, not pages (they stay importable by path).
+      if (entry.name.startsWith('_')) {
+        continue;
+      }
       const subDirFiles = await readMarkdownFiles(
         fullPath,
         baseDir,
@@ -273,8 +278,10 @@ export function applyPathTransformations(
       // We use word boundaries to ensure we match complete path segments
       // Escape special regex characters in ignorePath to prevent regex injection
       const escapedIgnorePath = ignorePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const ignoreRegex = new RegExp(`(^|/)(${escapedIgnorePath})(/|$)`, 'g');
-      transformedPath = transformedPath.replace(ignoreRegex, '$1$3');
+      // The trailing boundary is a lookahead, which leaves the slash after a
+      // match in place for an adjacent duplicate ('api/api/x') to match.
+      const ignoreRegex = new RegExp(`(^|/)${escapedIgnorePath}(?=/|$)`, 'g');
+      transformedPath = transformedPath.replace(ignoreRegex, '');
     }
 
     // Clean up any double slashes that might have been created
@@ -294,7 +301,7 @@ export function applyPathTransformations(
     for (const addPath of pathsToAdd) {
       // Only add if not already present at the beginning
       if (!transformedPath.startsWith(addPath + '/') && transformedPath !== addPath) {
-        transformedPath = `${addPath}/${transformedPath}`;
+        transformedPath = transformedPath ? `${addPath}/${transformedPath}` : addPath;
       }
     }
   }
@@ -418,6 +425,63 @@ export function stripSiteBasePath(route: string, basePath: string): string {
   if (!basePath) return route;
   if (route === basePath) return '/';
   return route.startsWith(`${basePath}/`) ? route.slice(basePath.length) : route;
+}
+
+/**
+ * Percent-encode each segment of a URL path, leaving segments that are
+ * already encoded (or need no encoding) unchanged.
+ * @param urlPath - A `/`-joined URL path
+ * @returns The path with every segment URL-safe
+ */
+export function encodeUrlPathSegments(urlPath: string): string {
+  return urlPath
+    .split('/')
+    .map((segment) => {
+      // Unreserved characters (per RFC 3986): A-Z a-z 0-9 - . _ ~
+      if (!/[^A-Za-z0-9\-._~]/.test(segment)) {
+        return segment;
+      }
+      try {
+        // A segment that decodes to something else was already encoded.
+        return decodeURIComponent(segment) !== segment ? segment : encodeURIComponent(segment);
+      } catch {
+        // Malformed encoding, re-encode
+        return encodeURIComponent(segment);
+      }
+    })
+    .join('/');
+}
+
+/**
+ * Decode each segment of a URL path for use as a filesystem path. Segments
+ * with malformed encoding are kept as written.
+ * @param urlPath - A `/`-joined URL path
+ * @returns The decoded path
+ */
+export function decodeUrlPathSegments(urlPath: string): string {
+  return urlPath
+    .split('/')
+    .map((segment) => {
+      try {
+        return decodeURIComponent(segment);
+      } catch {
+        return segment;
+      }
+    })
+    .join('/');
+}
+
+/**
+ * Join a path relative to the site's baseUrl onto `siteUrl`. The baseUrl
+ * pathname that `siteUrl` carries is always prepended, so a path whose first
+ * segment equals the baseUrl (baseUrl '/docs/', path 'docs/intro') keeps both.
+ *
+ * @param siteUrl - Site URL including baseUrl pathname
+ * @param relativePath - Path relative to the baseUrl, already URL-encoded
+ * @returns Absolute URL string
+ */
+export function joinSiteRelativeUrl(siteUrl: string, relativePath: string): string {
+  return `${siteUrl.replace(/\/+$/, '')}/${relativePath.replace(/^\/+/, '')}`;
 }
 
 /**

@@ -19,11 +19,13 @@ import {
   isNonEmptyString,
   isNonEmptyArray,
   isDefined,
-  joinSiteUrl,
   getSiteBasePath,
   stripSiteBasePath,
   stripNumberPrefix,
   isPathInside,
+  joinSiteRelativeUrl,
+  encodeUrlPathSegments,
+  decodeUrlPathSegments,
 } from './utils';
 import { processFilesWithPatterns } from './processor';
 import {
@@ -370,7 +372,9 @@ export async function generateIndividualMarkdownFiles(
       try {
         // Extract clean pathname relative to the baseUrl:
         // "https://site.com/sub/guides/start" → "guides/start.md"
-        const route = new URL(doc.url).pathname.replace(/\/+$/, '') || '/';
+        // The pathname is percent-encoded; files are written under the
+        // decoded names ('my file.md', not 'my%20file.md').
+        const route = decodeUrlPathSegments(new URL(doc.url).pathname.replace(/\/+$/, '')) || '/';
         let urlPathname = stripSiteBasePath(route, siteBasePath).replace(/^\/+/, '');
 
         // A version's routes carry its path ('stable/get-started'), but
@@ -421,14 +425,19 @@ export async function generateIndividualMarkdownFiles(
       relativePath = buildFallbackPath(doc.path, sectionFsPath, preserveDirectoryStructure);
     }
 
-    // An explicit frontmatter slug (or id, the next-best authority) wins over
-    // the path derived from the resolved URL: it declares the page's real route
-    // even when route resolution failed and doc.url was unavailable.
-    const frontMatterOverride = isNonEmptyString(doc.frontMatter?.slug)
-      ? String(doc.frontMatter!.slug)
-      : isNonEmptyString(doc.frontMatter?.id)
-        ? String(doc.frontMatter!.id)
-        : undefined;
+    // The processor's URL already reflects any frontmatter slug/id (whether it
+    // came from a route or was derived like Docusaurus derives routes), so the
+    // override below applies only to docs built without the processor. For
+    // those, an explicit frontmatter slug (or id, the next-best authority) wins
+    // over the path derived from the URL.
+    const frontMatterOverride =
+      doc.routeResolved !== undefined
+        ? undefined
+        : isNonEmptyString(doc.frontMatter?.slug)
+          ? String(doc.frontMatter!.slug)
+          : isNonEmptyString(doc.frontMatter?.id)
+            ? String(doc.frontMatter!.id)
+            : undefined;
 
     if (frontMatterOverride !== undefined) {
       const override = frontMatterOverride.trim().replace(/^\/+|\/+$/g, '');
@@ -568,9 +577,13 @@ function toMarkdownDocInfo(
 ): DocInfo {
   // Convert file path to URL path (use forward slashes)
   const urlPath = normalizePath(filePath);
+  // filePath is relative to the baseUrl, which is always prepended (its first
+  // segment can equal the baseUrl), and holds decoded names that are encoded
+  // for the link.
+  const relativeUrl = encodeUrlPathSegments(versionPath ? `${versionPath}/${urlPath}` : urlPath);
   return {
     ...doc,
-    url: joinSiteUrl(siteUrl, versionPath ? `${versionPath}/${urlPath}` : urlPath),
+    url: joinSiteRelativeUrl(siteUrl, relativeUrl),
     path: `/${urlPath}`, // Update path to the new markdown file
   };
 }

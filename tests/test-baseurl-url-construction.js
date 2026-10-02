@@ -27,16 +27,7 @@ async function check(name, { relPath, siteUrl, pathPrefix, resolvedUrl }, expect
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'llms-baseurl-'));
   try {
     const filePath = makeDoc(tmpDir, relPath);
-    const doc = await processMarkdownFile(
-      filePath,
-      tmpDir,
-      siteUrl,
-      pathPrefix,
-      undefined, // pathTransformation
-      false, // excludeImports
-      false, // removeDuplicateHeadings
-      resolvedUrl,
-    );
+    const doc = await processMarkdownFile(filePath, tmpDir, siteUrl, pathPrefix, { resolvedUrl });
     assert.strictEqual(doc.url, expectedUrl);
     assert.ok(!/([^:])\/\//.test(doc.url), `URL should not contain doubled slashes: ${doc.url}`);
     console.log(`✅ PASS: ${name}\n   ${doc.url}`);

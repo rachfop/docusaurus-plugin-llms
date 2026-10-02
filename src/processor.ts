@@ -25,9 +25,78 @@ import {
   stripPathNumberPrefixes,
   rewriteRelativeImageUrls,
   joinSiteUrl,
+  joinSiteRelativeUrl,
+  encodeUrlPathSegments,
   getSiteBasePath,
   stripSiteBasePath,
 } from './utils';
+
+/**
+ * Docusaurus's blog file-name convention (plugin-content-blog
+ * `parseBlogFileName`): a date in the path becomes `YYYY/MM/DD/` in the route.
+ * The extension is optional so extensionless link paths parse too.
+ */
+const BLOG_DATE_FILENAME_REGEX =
+  /^(?<folder>.*)(?<date>\d{4}[-/]\d{1,2}[-/]\d{1,2})[-/]?(?<text>.*?)(?:\/index)?(?:\.mdx?)?$/;
+
+/**
+ * The route Docusaurus gives a blog post without a frontmatter slug, relative
+ * to the blog's routeBasePath ('2024-01-01-hello.md' → '2024/01/01/hello').
+ * @param blogRelativePath - The post's path relative to the blog directory
+ * @returns The route path, without leading or trailing slashes
+ */
+export function getBlogFileRoutePath(blogRelativePath: string): string {
+  const match = BLOG_DATE_FILENAME_REGEX.exec(blogRelativePath);
+  const routePath = match?.groups
+    ? `${match.groups.date.replace(/-/g, '/')}/${match.groups.folder}${match.groups.text}`
+    : blogRelativePath.replace(/(?:\/index)?(?:\.mdx?)?$/, '');
+  return routePath.replace(/^\/+|\/+$/g, '');
+}
+
+/**
+ * Whether Docusaurus treats a doc as its directory's category index
+ * (plugin-content-docs `isCategoryIndex`): the file is named index, readme,
+ * or after its parent directory, case-insensitively.
+ * @param sectionRelativePath - The doc's path relative to its docs directory
+ */
+export function isCategoryIndexDoc(sectionRelativePath: string): boolean {
+  const segments = sectionRelativePath.replace(/\.mdx?$/i, '').split('/');
+  const fileName = segments[segments.length - 1].toLowerCase();
+  const parentDir = segments.length >= 2 ? segments[segments.length - 2].toLowerCase() : undefined;
+  return fileName === 'index' || fileName === 'readme' || fileName === parentDir;
+}
+
+/**
+ * The route a doc's frontmatter `slug` or `id` gives it, relative to its docs
+ * section's routeBasePath, following Docusaurus's `getSlug`: an absolute slug
+ * is used as written; a relative slug, or an `id`, resolves against the file's
+ * directory with number prefixes stripped. A category index ignores `id`.
+ * @param sectionRelativePath - The doc's path relative to its docs directory
+ * @param slug - Frontmatter slug
+ * @param id - Frontmatter id
+ * @returns The route path without leading or trailing slashes ('' for a
+ *          section root), or undefined when neither field sets the route
+ */
+export function resolveDocSlugPath(
+  sectionRelativePath: string,
+  slug?: unknown,
+  id?: unknown,
+): string | undefined {
+  const trimmedSlug = isNonEmptyString(slug) ? slug.trim() : '';
+  if (trimmedSlug.startsWith('/')) {
+    return trimmedSlug.replace(/^\/+|\/+$/g, '');
+  }
+  const base =
+    trimmedSlug ||
+    (isNonEmptyString(id) && !isCategoryIndexDoc(sectionRelativePath) ? id.trim() : '');
+  if (!base) return undefined;
+  const dirName = path.posix.dirname(sectionRelativePath);
+  const parentDir = dirName === '.' ? '' : stripPathNumberPrefixes(dirName);
+  return path.posix
+    .join(parentDir || '.', base)
+    .replace(/^\.$/, '')
+    .replace(/^\/+|\/+$/g, '');
+}
 
 /**
  * Optional per-file settings for `processMarkdownFile`, accepted as a final
@@ -47,6 +116,7 @@ export interface ProcessFileOptions {
   outDir?: string;
   siteDir?: string;
   sectionPath?: string;
+  isBlogFile?: boolean;
 }
 
 /**
@@ -97,6 +167,7 @@ export async function processMarkdownFile(
     outDir,
     siteDir,
     sectionPath,
+    isBlogFile = false,
   } = opts;
 
   const content = await readFile(filePath);
@@ -154,7 +225,9 @@ export async function processMarkdownFile(
 
   if (isNonEmptyString(resolvedUrl)) {
     // Use the actual resolved route from Docusaurus, preserving siteUrl's baseUrl.
-    fullUrl = joinSiteUrl(siteUrl, resolvedUrl);
+    // Routes are written as Docusaurus builds them (spaces, accents), so
+    // encode each segment for the link.
+    fullUrl = joinSiteUrl(siteUrl, encodeUrlPathSegments(resolvedUrl));
   } else {
     // Fallback to the old path construction method
     // Convert .md extension to appropriate path
@@ -167,12 +240,27 @@ export async function processMarkdownFile(
 
     // linkPath is filesystem-relative while pathPrefix is a route, so strip
     // the section's own filesystem path first when the two differ.
-    if (isNonEmptyString(sectionPath)) {
-      const cleanSectionPath = sectionPath.replace(/^\/+|\/+$/g, '');
-      if (cleanSectionPath && linkPath.startsWith(`${cleanSectionPath}/`)) {
+    const cleanSectionPath = isNonEmptyString(sectionPath)
+      ? sectionPath.replace(/^\/+|\/+$/g, '')
+      : '';
+    if (cleanSectionPath) {
+      if (linkPath.startsWith(`${cleanSectionPath}/`)) {
         linkPath = linkPath.substring(`${cleanSectionPath}/`.length);
-      } else if (cleanSectionPath && linkPath === cleanSectionPath) {
+      } else if (linkPath === cleanSectionPath) {
         linkPath = '';
+      }
+
+      // Frontmatter slug/id and blog dates set the route the same way
+      // Docusaurus does, so the fallback link points at the real page.
+      const sectionRelativePath = normalizedPath.startsWith(`${cleanSectionPath}/`)
+        ? normalizedPath.substring(`${cleanSectionPath}/`.length)
+        : normalizedPath;
+      if (isBlogFile) {
+        linkPath = isNonEmptyString(data.slug)
+          ? data.slug.trim().replace(/^\/+|\/+$/g, '')
+          : getBlogFileRoutePath(sectionRelativePath);
+      } else {
+        linkPath = resolveDocSlugPath(sectionRelativePath, data.slug, data.id) ?? linkPath;
       }
     }
 
@@ -201,40 +289,13 @@ export async function processMarkdownFile(
       transformedPathPrefix = '';
     }
 
-    // Ensure path segments are URL-safe with sophisticated encoding detection
-    const encodedLinkPath = transformedLinkPath
-      .split('/')
-      .map((segment) => {
-        // Check if segment contains characters that need encoding
-        // Unreserved characters (per RFC 3986): A-Z a-z 0-9 - . _ ~
-        if (!/[^A-Za-z0-9\-._~]/.test(segment)) {
-          // Segment only contains unreserved characters, no encoding needed
-          return segment;
-        }
+    // Ensure path segments are URL-safe (already-encoded segments are kept)
+    const encodedLinkPath = encodeUrlPathSegments(transformedLinkPath);
 
-        try {
-          // Try to decode - if it changes, it was already encoded
-          const decoded = decodeURIComponent(segment);
-          if (decoded !== segment) {
-            // Was already encoded, return as-is
-            return segment;
-          }
-          // Not encoded, encode it
-          return encodeURIComponent(segment);
-        } catch {
-          // Malformed encoding, re-encode
-          return encodeURIComponent(segment);
-        }
-      })
-      .join('/');
-
-    // Construct URL by encoding path components, then combine with site URL
-    // Segments are pre-encoded above (the URL constructor would decode some), so
-    // joinSiteUrl just attaches the baseUrl-aware origin.
-    const pathPart = transformedPathPrefix
-      ? `${transformedPathPrefix}/${encodedLinkPath}`
-      : encodedLinkPath;
-    fullUrl = joinSiteUrl(siteUrl, pathPart);
+    // pathPart is relative to the baseUrl, which is always prepended: its
+    // first segment can equal the baseUrl (baseUrl '/docs/', route base 'docs').
+    const pathPart = [transformedPathPrefix, encodedLinkPath].filter(Boolean).join('/');
+    fullUrl = joinSiteRelativeUrl(siteUrl, pathPart);
   }
 
   // Extract title
@@ -336,6 +397,7 @@ export async function processMarkdownFile(
     content: finalContent,
     description: description || '',
     frontMatter: data,
+    routeResolved: isNonEmptyString(resolvedUrl),
   };
 }
 
@@ -441,7 +503,10 @@ async function resolveDocumentUrl(
   });
   const { blogDir = 'blog', blogRouteBasePath = 'blog' } = context.options;
   const isBlogFile = !matchedSection && filePath.startsWith(path.join(baseDir, blogDir) + path.sep);
-  const sectionFsPath = matchedSection?.path ?? (isBlogFile ? blogDir : context.docsDir);
+  const sectionFsPath = (matchedSection?.path ?? (isBlogFile ? blogDir : context.docsDir)).replace(
+    /^\/+|\/+$/g,
+    '',
+  );
 
   // In multi-version mode, restrict matching to routes owned by this version so
   // links resolve within the correct subtree (e.g. a 'stable' doc links to
@@ -454,46 +519,64 @@ async function resolveDocumentUrl(
     context.siblingPrefixes,
   );
 
-  // Also restrict to this file's own section (or the blog), so a same-named
-  // file elsewhere (e.g. two docsDir entries each with a faq.md) can't
-  // suffix-match this file's tail and steal its route. Skipped for a single
-  // implicit docs section (e.g. a plain string docsDir), whose routeBasePath
-  // is defaulted to its filesystem path and doesn't necessarily reflect the
-  // real route.
-  const routeBase = isBlogFile
-    ? blogRouteBasePath
-    : matchedSection && (context.docsSections?.length ?? 0) > 1
-      ? matchedSection.routeBasePath
-      : undefined;
-  if (routeBase && routeBase !== '/') {
-    // Tolerate leading/trailing slashes in routeBasePath ('/docs' or 'docs/')
-    // so scoping doesn't silently fail and fall every doc back to heuristic URLs.
-    const cleanRouteBase = routeBase.replace(/^\/+|\/+$/g, '');
-    if (cleanRouteBase) {
-      const versionPrefix = context.routePrefix
-        ? context.routePrefix.replace(/^\/+|\/+$/g, '')
-        : '';
-      const scopedRouteBase = `/${[versionPrefix, cleanRouteBase].filter(Boolean).join('/')}`;
-      scopedRoutes = scopedRoutes.filter((r) =>
-        isRouteUnder(stripSiteBasePath(r, basePath), scopedRouteBase),
+  // The section's root route, relative to the baseUrl. Routes beneath it
+  // belong to this section; the blog isn't versioned.
+  const cleanBlogBase = blogRouteBasePath.replace(/^\/+|\/+$/g, '');
+  const cleanSectionBase = isBlogFile
+    ? cleanBlogBase
+    : (matchedSection?.routeBasePath ?? '').replace(/^\/+|\/+$/g, '');
+  const versionPrefix = context.routePrefix ? context.routePrefix.replace(/^\/+|\/+$/g, '') : '';
+  const sectionBase = `/${[isBlogFile ? '' : versionPrefix, cleanSectionBase].filter(Boolean).join('/')}`;
+  const isUnderSectionBase = (r: string) =>
+    isRouteUnder(stripSiteBasePath(r, basePath), sectionBase);
+
+  // A docs file never takes a blog route: drop routes under the blog's
+  // routeBasePath (unless this section itself lives there).
+  const blogBase = `/${cleanBlogBase}`;
+  if (!isBlogFile && cleanBlogBase && !isRouteUnder(sectionBase, blogBase)) {
+    scopedRoutes = scopedRoutes.filter(
+      (r) => !isRouteUnder(stripSiteBasePath(r, basePath), blogBase),
+    );
+  }
+
+  // Restrict to this file's own section (or the blog), so a same-named file
+  // elsewhere (e.g. two docsDir entries each with a faq.md) can't suffix-match
+  // this file's tail and steal its route. A single docs section may have its
+  // routeBasePath defaulted to its filesystem path (a plain string docsDir),
+  // which doesn't necessarily reflect the real route, so its routes under that
+  // base are searched first and the remaining routes after them.
+  const isStrictlyScoped = isBlogFile || (context.docsSections?.length ?? 0) > 1;
+  const routeLists: string[][] = [];
+  if (sectionBase === '/') {
+    routeLists.push(scopedRoutes);
+  } else if (isStrictlyScoped) {
+    routeLists.push(scopedRoutes.filter(isUnderSectionBase));
+  } else {
+    routeLists.push(scopedRoutes.filter(isUnderSectionBase), scopedRoutes);
+  }
+  if (!routeLists.some((routes) => routes.length)) return undefined;
+
+  const findRootRoute = (): string | undefined => {
+    for (const routes of routeLists) {
+      const rootMatch = routes.find(
+        (r) => stripSiteBasePath(r.replace(/\/+$/, '') || '/', basePath) === sectionBase,
       );
+      if (rootMatch) return rootMatch;
     }
-  }
-  if (!scopedRoutes.length) return undefined;
+    return undefined;
+  };
 
-  // Docusaurus routes directory indices at the parent directory. `isCategoryIndex`
-  // matches the file name lowercased against "index", "readme" and the parent
-  // directory's name, so INDEX.md and README.md are indices too.
-  const relative = normalizePath(path.relative(baseDir, filePath))
-    .replace(/\.mdx?$/, '')
-    .replace(/\/(index|readme)$/i, '');
-
-  // Strip the matched section's filesystem path — this is the filesystem root
-  // Docusaurus removes when computing routes for files under this section.
-  let tail = relative;
-  if (sectionFsPath && tail.startsWith(`${sectionFsPath}/`)) {
-    tail = tail.substring(`${sectionFsPath}/`.length);
-  }
+  // The file's path relative to its section, and the "tail" Docusaurus derives
+  // its route from: extension dropped and directory indices routed at the
+  // parent directory. `isCategoryIndex` matches the file name lowercased
+  // against "index", "readme" and the parent directory's name, so INDEX.md and
+  // README.md are indices too.
+  const relative = normalizePath(path.relative(baseDir, filePath));
+  const sectionRelative =
+    sectionFsPath && relative.startsWith(`${sectionFsPath}/`)
+      ? relative.substring(`${sectionFsPath}/`.length)
+      : relative;
+  const tail = sectionRelative.replace(/\.mdx?$/, '').replace(/(^|\/)(index|readme)$/i, '');
 
   // An explicit `slug`/`id` in frontmatter unambiguously declares the document's
   // real route, so it must take priority over the filename-tail heuristic below.
@@ -501,71 +584,59 @@ async function resolveDocumentUrl(
   // coincidentally steal an unrelated document's route (most damagingly for
   // `slug: "/"` root pages, whose bare filename tail can end up matching some
   // other file's nested route). Checking frontmatter first prevents that.
+  const overrideTails: string[] = [];
   try {
     const content = await readFile(filePath);
     const { data } = matter(content);
+    const slug = coerceFrontMatterString(data.slug);
+    const id = coerceFrontMatterString(data.id);
 
-    for (const override of [coerceFrontMatterString(data.slug), coerceFrontMatterString(data.id)]) {
-      if (!isNonEmptyString(override)) continue;
-      const rawSlug = override.trim();
+    // Root slug (slug: "/") — the page is at the root of its section.
+    if (isNonEmptyString(slug) && /^\/+$/.test(slug.trim())) {
+      return findRootRoute() ?? sectionBase;
+    }
 
-      // Handle root slug (slug: "/") — means the page is at the root of its section.
-      // A plain slug strip would produce "" and skip; instead find the section this
-      // file belongs to and use its routeBasePath to locate the correct route.
-      if (/^\/+$/.test(rawSlug)) {
-        // Use the section already matched above to get the correct base route,
-        // prefixed with this version's route prefix so multi-version sites
-        // resolve within their own subtree (a 'stable' root-slug page must
-        // link to /stable/docs, not the current version's /docs).
-        const versionPrefix = context.routePrefix
-          ? context.routePrefix.replace(/^\/+|\/+$/g, '')
-          : '';
-        const sectionRouteBase = matchedSection
-          ? matchedSection.routeBasePath.replace(/^\/+|\/+$/g, '')
-          : '';
-        const sectionBase = `/${[versionPrefix, sectionRouteBase].filter(Boolean).join('/')}`;
-        // Look for an exact or trailing-slash-equivalent route, scoped to
-        // this version and section (scopedRoutes was built above exactly for
-        // this; searching all routesPaths would cross version subtrees).
-        const rootMatch = scopedRoutes.find((r) => {
-          const clean = stripSiteBasePath(r.replace(/\/+$/, '') || '/', basePath);
-          return clean === sectionBase;
-        });
-        return rootMatch ?? sectionBase;
+    if (isBlogFile) {
+      // A blog slug is relative to the blog's routeBasePath, wherever the
+      // file lives.
+      if (isNonEmptyString(slug)) overrideTails.push(slug.trim().replace(/^\/+|\/+$/g, ''));
+    } else {
+      // Slug first, then id, each resolved the way Docusaurus resolves it.
+      for (const override of [
+        resolveDocSlugPath(sectionRelative, slug),
+        resolveDocSlugPath(sectionRelative, undefined, id),
+      ]) {
+        if (isNonEmptyString(override)) overrideTails.push(override);
       }
-
-      const slug = rawSlug.replace(/^\/+|\/+$/g, '');
-      if (!isNonEmptyString(slug)) continue;
-      // A leading-slash slug is *absolute*: Docusaurus resolves it against the
-      // docs instance's routeBasePath, independent of where the file lives, so
-      // it must not be prefixed with the file's parent directory. Prefixing
-      // would break pages deliberately flattened out of their folder (e.g.
-      // `slug: /page` in docs/section/page.md routes to /page, not
-      // /section/page). A slug without a leading slash stays relative to the
-      // file's directory.
-      const parentDir = path.dirname(tail);
-      const isAbsoluteSlug = rawSlug.startsWith('/');
-      const overriddenTail = isAbsoluteSlug || parentDir === '.' ? slug : `${parentDir}/${slug}`;
-      const match = findMatchingRoute(scopedRoutes, overriddenTail);
-      if (match) return match;
     }
   } catch {
     // Frontmatter read failed or absent; fall through to filename-based matching.
   }
 
+  // A section-root index (e.g. docs/index.md) routes at the section root.
+  if (!tail && !overrideTails.length) {
+    return findRootRoute();
+  }
+
   // Fall back to the filename-derived tail heuristic: build candidate tails
-  // (original, directory-collapsed, numbered-prefix-stripped) and suffix-match.
-  const tails = new Set<string>([tail]);
-
+  // (blog date path, original, directory-collapsed, numbered-prefix-stripped)
+  // and suffix-match.
+  const tails = new Set<string>();
+  if (isBlogFile) tails.add(getBlogFileRoutePath(sectionRelative));
+  tails.add(tail);
   const collapsed = collapseMatchingTrailingSegment(tail);
-  if (collapsed !== tail) tails.add(collapsed);
+  tails.add(collapsed);
+  tails.add(stripPathNumberPrefixes(tail));
+  // A number-prefixed file named after its folder (02-api/02-api.md) routes
+  // at the stripped folder name.
+  tails.add(stripPathNumberPrefixes(collapsed));
+  tails.delete('');
 
-  const stripped = stripPathNumberPrefixes(tail);
-  if (stripped !== tail) tails.add(stripped);
-
-  for (const t of tails) {
-    const match = findMatchingRoute(scopedRoutes, t);
-    if (match) return match;
+  for (const routes of routeLists) {
+    for (const t of [...overrideTails, ...tails]) {
+      const match = findMatchingRoute(routes, t);
+      if (match) return match;
+    }
   }
 
   return undefined;
@@ -736,6 +807,7 @@ export async function processFilesWithPatterns(
           outDir: context.options.rewriteImageUrls ? context.outDir : undefined,
           siteDir,
           sectionPath: sectionFsPath,
+          isBlogFile,
         });
 
         if (docInfo && sectionLabel) {

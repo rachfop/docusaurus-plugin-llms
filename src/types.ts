@@ -37,6 +37,12 @@ export interface DocInfo {
   frontMatter?: Record<string, any>;
   /** Section label assigned when multiple docsDir sections are configured */
   section?: string;
+  /**
+   * Set by the processor: true when `url` is a Docusaurus route, false when it
+   * was derived from the file path and frontmatter. Either way `url` already
+   * reflects the frontmatter slug/id.
+   */
+  routeResolved?: boolean;
 }
 
 /**

@@ -126,6 +126,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   source paths. Markdown image paths that aren't absolute, root-relative, or
   aliases are rewritten, percent-decoded for the asset lookup as Docusaurus
   does, and spaces in the asset URL are percent-encoded.
+- **Docs pages linked to page or blog routes**: with a single docs section,
+  route matching took the shortest route ending in the file name, so
+  `docs/about.md` linked `/about` and `docs/install.md` linked
+  `/blog/install`. Docs files match routes under their section's
+  `routeBasePath` first and never match routes under `blogRouteBasePath`;
+  blog files match blog routes only.
+- **Date-prefixed blog posts linked to pages that don't exist**:
+  `blog/2024-01-01-hello.md` and `blog/2024-01-01-hello/index.md` linked
+  `/blog/2024-01-01-hello`. They follow Docusaurus's date convention and link
+  `/blog/2024/01/01/hello`.
+- **Section-root index pages linked to unrelated routes**: `docs/index.md` in a
+  section with `routeBasePath: '/'` matched any route ending in `/docs` (such
+  as `/blog/tags/docs`), and a multi-section root index linked `/guide/`. A
+  section-root index links its section's root route.
+- **A `baseUrl` equal to the route base was dropped from links**: with
+  `baseUrl: '/docs/'` and docs at `/docs/docs/intro`, markdown file links and
+  file-path fallback links omitted one `/docs`. Paths relative to the
+  `baseUrl` always get it prepended.
+- **Frontmatter `slug` and `id` resolved to the wrong page**: an index file
+  with an `id` took the URL and markdown file of the doc that `id` named;
+  a relative slug on an index file resolved against the parent directory; a
+  relative slug under a number-prefixed folder (`01-guides/`) kept the prefix;
+  and with `generateMarkdownFiles`, an absolute or nested slug dropped the
+  route base from the file path (`slug: /custom/path` wrote
+  `custom/path.md`, served at `/docs/custom/path`). Slugs and ids resolve
+  following Docusaurus: absolute slugs join the route base, relative slugs and
+  ids join the file's directory with number prefixes stripped, and index files
+  ignore `id`. Markdown files for route-resolved pages take their path from
+  the route.
+- **Number-prefixed files named after their folder used file-name URLs**:
+  `docs/02-api/02-api.md` linked `/docs/02-api/02-api`. It links `/docs/api`.
+- **Spaces and accents broke links and markdown file names**: routes with
+  spaces or accents appeared unencoded in `llms.txt` links, and generated
+  markdown files were written under percent-encoded names
+  (`docs/my%20file.md`). Links are percent-encoded per segment, and files are
+  written under the decoded names.
+- **Partials in `_`-prefixed directories were listed as pages**: files such as
+  `docs/_partials/snip.md` appeared in `llms.txt`. Docusaurus excludes
+  `**/_*/**`, and so does the plugin; those files stay available for imports.
+- **Custom heading ids appeared in titles**: `# Getting started {#start}`
+  produced the title `Getting started {#start}`, and the heading was emitted
+  twice in generated files. The trailing `{#id}` is dropped from titles and
+  duplicate-heading detection.
+- **`pathTransformation` left duplicate segments and trailing slashes**:
+  `ignorePaths: ['api']` turned `api/api/x` into `api/x`, and `addPaths` on an
+  empty path produced `docs/`. Every matching segment is removed, and an empty
+  path becomes the added path.
 
 ### Documentation
 

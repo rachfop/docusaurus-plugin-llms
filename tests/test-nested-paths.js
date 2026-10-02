@@ -183,7 +183,9 @@ async function runNestedPathTests() {
         }
 
         // Validate URL
-        const expectedUrl = `${siteUrl}/${testCase.expectedPath}`;
+        // Links are percent-encoded per segment, as in Docusaurus's sitemap
+        // (a space in a markdown link destination would break the link).
+        const expectedUrl = `${siteUrl}/${testCase.expectedPath.split('/').map(encodeURIComponent).join('/')}`;
         if (result[0].url !== expectedUrl) {
           throw new Error(`Expected URL "${expectedUrl}", got "${result[0].url}"`);
         }
