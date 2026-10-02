@@ -21,8 +21,57 @@ import {
   isDefined,
   isNonEmptyString,
   isNonEmptyArray,
+  isUnsafeOutputPath,
   buildImageAssetMap,
 } from './utils';
+
+/**
+ * Reject an output path that could be written outside the build directory.
+ * @param filePath - The configured filename or version path
+ * @param label - Option name used in the error message
+ * @throws Error if the path is absolute or has a `..` segment
+ */
+function validateOutputPath(filePath: string, label: string): void {
+  if (isUnsafeOutputPath(filePath)) {
+    throw new Error(
+      `${label} '${filePath}' must be a relative path inside the build directory (no absolute paths or '..' segments)`,
+    );
+  }
+}
+
+/**
+ * Collision key for an output filename: './llms.txt' and 'LLMS.txt' write the
+ * same file as 'llms.txt' (case-insensitive filesystems included).
+ */
+function outputFileKey(filename: string): string {
+  return path.posix.normalize(filename.replace(/\\/g, '/')).toLowerCase();
+}
+
+/**
+ * Reject custom files whose filename matches a standard output or another
+ * custom file in the same output directory, which would overwrite it.
+ * @param customFiles - The customLLMFiles array to check
+ * @param label - Option name used in error messages
+ * @param standardFiles - Collision key → option label for the generated standard files
+ */
+function validateCustomFileCollisions(
+  customFiles: CustomLLMFile[],
+  label: string,
+  standardFiles: Map<string, string>,
+): void {
+  const seen = new Map(standardFiles);
+  customFiles.forEach((file, index) => {
+    if (!isNonEmptyString(file?.filename)) return;
+    const key = outputFileKey(file.filename);
+    const existing = seen.get(key);
+    if (existing !== undefined) {
+      throw new Error(
+        `${label}[${index}].filename '${file.filename}' collides with ${existing}; each generated file needs its own name`,
+      );
+    }
+    seen.set(key, `${label}[${index}].filename`);
+  });
+}
 
 /**
  * Validates plugin options to ensure they conform to expected types and constraints
@@ -141,6 +190,12 @@ function validatePluginOptions(options: PluginOptions): void {
     }
   }
 
+  for (const option of ['llmsTxtFilename', 'llmsFullTxtFilename'] as const) {
+    if (isNonEmptyString(options[option])) {
+      validateOutputPath(options[option] as string, option);
+    }
+  }
+
   // Validate processingBatchSize: the batch loop advances by this value, so
   // 0, a negative number, or a non-integer would never terminate cleanly.
   if (
@@ -193,6 +248,7 @@ function validatePluginOptions(options: PluginOptions): void {
       if (!isNonEmptyString(file.filename)) {
         throw new Error(`customLLMFiles[${index}].filename must be a non-empty string`);
       }
+      validateOutputPath(file.filename, `customLLMFiles[${index}].filename`);
 
       if (!isNonEmptyArray(file.includePatterns)) {
         throw new Error(`customLLMFiles[${index}].includePatterns must be a non-empty array`);
@@ -288,6 +344,10 @@ function validatePluginOptions(options: PluginOptions): void {
           );
         }
         seenPaths.add(normalizedPath);
+        validateOutputPath(
+          normalizedPath,
+          isDefined(version.path) ? `versions[${index}].path` : `versions[${index}].name`,
+        );
 
         if (
           isDefined(version.docsDir) &&
@@ -301,11 +361,50 @@ function validatePluginOptions(options: PluginOptions): void {
         if (isDefined(version.customLLMFiles) && !Array.isArray(version.customLLMFiles)) {
           throw new Error(`versions[${index}].customLLMFiles must be an array`);
         }
+        (version.customLLMFiles ?? []).forEach((file, fileIndex) => {
+          if (isNonEmptyString(file?.filename)) {
+            validateOutputPath(
+              file.filename,
+              `versions[${index}].customLLMFiles[${fileIndex}].filename`,
+            );
+          }
+        });
         if (isDefined(version.includeOrder) && !Array.isArray(version.includeOrder)) {
           throw new Error(`versions[${index}].includeOrder must be an array`);
         }
       });
     }
+  }
+
+  // Generated files sharing a name overwrite each other. Only files that are
+  // actually generated count, so a disabled llms-full.txt may share a name.
+  const standardFiles = new Map<string, string>();
+  if (options.generateLLMsTxt !== false) {
+    standardFiles.set(outputFileKey(options.llmsTxtFilename ?? 'llms.txt'), 'llmsTxtFilename');
+  }
+  if (options.generateLLMsFullTxt !== false) {
+    const key = outputFileKey(options.llmsFullTxtFilename ?? 'llms-full.txt');
+    if (standardFiles.has(key)) {
+      throw new Error(
+        `llmsFullTxtFilename '${options.llmsFullTxtFilename}' collides with llmsTxtFilename; each generated file needs its own name`,
+      );
+    }
+    standardFiles.set(key, 'llmsFullTxtFilename');
+  }
+  // Each version writes its own subdirectory, so collisions are per version.
+  if (Array.isArray(options.customLLMFiles)) {
+    validateCustomFileCollisions(options.customLLMFiles, 'customLLMFiles', standardFiles);
+  }
+  if (Array.isArray(options.versions)) {
+    options.versions.forEach((version, index) => {
+      if (Array.isArray(version.customLLMFiles)) {
+        validateCustomFileCollisions(
+          version.customLLMFiles,
+          `versions[${index}].customLLMFiles`,
+          standardFiles,
+        );
+      }
+    });
   }
 }
 
@@ -642,6 +741,7 @@ export default function docusaurusPluginLLMs(
             docsSections: version.docsSections,
             docsDir: version.docsSections[0].path,
             outputSubdir: version.pathPrefix,
+            markdownPaths: { usedPaths: new Set(), docPaths: new Map() },
             // Only scope routes in multi-version mode; the single default
             // version keeps the original whole-site matching behavior.
             routePrefix: isMultiVersion ? routePrefix : undefined,
