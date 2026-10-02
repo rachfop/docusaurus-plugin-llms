@@ -36,10 +36,7 @@ Before you begin, review the configuration:
 
 After configuring your client, you can make requests...`;
 
-  await fs.writeFile(
-    path.join(testDir, 'api-guide.md'),
-    mainContent
-  );
+  await fs.writeFile(path.join(testDir, 'api-guide.md'), mainContent);
 
   // Create a document with named import for missing partial
   const namedImportContent = `---
@@ -56,10 +53,7 @@ Follow these steps:
 
 Done!`;
 
-  await fs.writeFile(
-    path.join(testDir, 'install-guide.md'),
-    namedImportContent
-  );
+  await fs.writeFile(path.join(testDir, 'install-guide.md'), namedImportContent);
 
   // Create a document with multiple missing partials
   const multipleContent = `---
@@ -83,10 +77,7 @@ import SecondPartial from './_second.mdx';
 
 All done.`;
 
-  await fs.writeFile(
-    path.join(testDir, 'config-guide.md'),
-    multipleContent
-  );
+  await fs.writeFile(path.join(testDir, 'config-guide.md'), multipleContent);
 
   return testDir;
 }
@@ -104,7 +95,7 @@ async function runTests() {
       path.join(testDir, 'api-guide.md'),
       testDir,
       'https://example.com',
-      'docs'
+      'docs',
     );
 
     // Check that import statement was removed
@@ -128,8 +119,8 @@ async function runTests() {
     }
 
     // Check that surrounding content is still intact
-    const hasMainContent = apiDoc.content.includes('Getting Started') &&
-                           apiDoc.content.includes('Making Requests');
+    const hasMainContent =
+      apiDoc.content.includes('Getting Started') && apiDoc.content.includes('Making Requests');
     if (hasMainContent) {
       console.log('  ✅ PASS: Surrounding content is intact');
     } else {
@@ -145,7 +136,7 @@ async function runTests() {
       path.join(testDir, 'install-guide.md'),
       testDir,
       'https://example.com',
-      'docs'
+      'docs',
     );
 
     const hasNamedImport = installDoc.content.includes('import { InstallSteps }');
@@ -169,7 +160,7 @@ async function runTests() {
       path.join(testDir, 'config-guide.md'),
       testDir,
       'https://example.com',
-      'docs'
+      'docs',
     );
 
     const hasFirstImport = configDoc.content.includes('import FirstPartial');
@@ -190,9 +181,10 @@ async function runTests() {
     }
 
     // Check section headers are still present
-    const hasSections = configDoc.content.includes('Section 1') &&
-                        configDoc.content.includes('Section 2') &&
-                        configDoc.content.includes('Summary');
+    const hasSections =
+      configDoc.content.includes('Section 1') &&
+      configDoc.content.includes('Section 2') &&
+      configDoc.content.includes('Summary');
     if (hasSections) {
       console.log('  ✅ PASS: Section structure is intact');
     } else {
@@ -201,7 +193,6 @@ async function runTests() {
     }
 
     console.log('');
-
   } catch (error) {
     console.error('Test error:', error);
     allTestsPassed = false;
@@ -225,7 +216,7 @@ async function runTests() {
 }
 
 // Run tests
-runTests().catch(err => {
+runTests().catch((err) => {
   console.error('Fatal error:', err);
   process.exit(1);
 });

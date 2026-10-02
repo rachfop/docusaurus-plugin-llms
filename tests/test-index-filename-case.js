@@ -75,10 +75,7 @@ async function generateWithIndexFile(fileName) {
   const { tmpDir, outDir } = makeSite();
   try {
     fs.mkdirSync(path.join(tmpDir, 'docs', 'guide'), { recursive: true });
-    fs.writeFileSync(
-      path.join(tmpDir, 'docs', 'guide', fileName),
-      page('Guide', 'Guide body.')
-    );
+    fs.writeFileSync(path.join(tmpDir, 'docs', 'guide', fileName), page('Guide', 'Guide body.'));
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
       generateLLMsFullTxt: false,
@@ -103,12 +100,12 @@ async function testIndexFileName(fileName) {
 
     assert.ok(
       llms.includes('](https://example.com/guide)'),
-      `expected a link to /guide; got:\n${llms}`
+      `expected a link to /guide; got:\n${llms}`,
     );
     // The pre-fix failure mode: the filename is carried into the URL.
     assert.ok(
       !/\/guide\/(index|readme)/i.test(llms),
-      `URL should not retain the ${fileName} segment; got:\n${llms}`
+      `URL should not retain the ${fileName} segment; got:\n${llms}`,
     );
 
     pass(name);
@@ -129,7 +126,7 @@ async function testNonIndexFileKeepsItsSegment() {
     // "indexing" ends with neither "/index" nor "/readme" as a whole segment.
     fs.writeFileSync(
       path.join(tmpDir, 'docs', 'guide', 'indexing.md'),
-      page('Indexing', 'Indexing body.')
+      page('Indexing', 'Indexing body.'),
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
@@ -141,7 +138,7 @@ async function testNonIndexFileKeepsItsSegment() {
     const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
     assert.ok(
       llms.includes('https://example.com/guide/indexing'),
-      `expected /guide/indexing to survive intact; got:\n${llms}`
+      `expected /guide/indexing to survive intact; got:\n${llms}`,
     );
 
     pass(name);

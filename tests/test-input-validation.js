@@ -11,7 +11,7 @@ const {
   validateArray,
   sanitizeForFilename,
   ensureUniqueIdentifier,
-  normalizePath
+  normalizePath,
 } = require('../lib/utils');
 
 function testValidationError() {
@@ -20,9 +20,11 @@ function testValidationError() {
   try {
     throw new ValidationError('Test error message');
   } catch (error) {
-    if (error instanceof ValidationError &&
-        error.name === 'ValidationError' &&
-        error.message === 'Test error message') {
+    if (
+      error instanceof ValidationError &&
+      error.name === 'ValidationError' &&
+      error.message === 'Test error message'
+    ) {
       console.log('✅ PASS: ValidationError class works correctly');
     } else {
       console.log('❌ FAIL: ValidationError class');
@@ -58,8 +60,7 @@ function testValidateRequired() {
     console.log('❌ FAIL: validateRequired should throw for null');
     failed++;
   } catch (error) {
-    if (error instanceof ValidationError &&
-        error.message.includes('null or undefined')) {
+    if (error instanceof ValidationError && error.message.includes('null or undefined')) {
       console.log('✅ PASS: validateRequired throws for null');
     } else {
       console.log('❌ FAIL: validateRequired throws wrong error for null');
@@ -73,8 +74,7 @@ function testValidateRequired() {
     console.log('❌ FAIL: validateRequired should throw for undefined');
     failed++;
   } catch (error) {
-    if (error instanceof ValidationError &&
-        error.message.includes('null or undefined')) {
+    if (error instanceof ValidationError && error.message.includes('null or undefined')) {
       console.log('✅ PASS: validateRequired throws for undefined');
     } else {
       console.log('❌ FAIL: validateRequired throws wrong error for undefined');
@@ -138,8 +138,7 @@ function testValidateString() {
     console.log('❌ FAIL: validateString should throw for non-string');
     failed++;
   } catch (error) {
-    if (error instanceof ValidationError &&
-        error.message.includes('must be a string')) {
+    if (error instanceof ValidationError && error.message.includes('must be a string')) {
       console.log('✅ PASS: validateString throws for non-string');
     } else {
       console.log('❌ FAIL: validateString throws wrong error for non-string');
@@ -153,8 +152,7 @@ function testValidateString() {
     console.log('❌ FAIL: validateString should throw for string too short');
     failed++;
   } catch (error) {
-    if (error instanceof ValidationError &&
-        error.message.includes('at least')) {
+    if (error instanceof ValidationError && error.message.includes('at least')) {
       console.log('✅ PASS: validateString validates minLength');
     } else {
       console.log('❌ FAIL: validateString throws wrong error for minLength');
@@ -168,8 +166,7 @@ function testValidateString() {
     console.log('❌ FAIL: validateString should throw for string too long');
     failed++;
   } catch (error) {
-    if (error instanceof ValidationError &&
-        error.message.includes('exceeds maximum length')) {
+    if (error instanceof ValidationError && error.message.includes('exceeds maximum length')) {
       console.log('✅ PASS: validateString validates maxLength');
     } else {
       console.log('❌ FAIL: validateString throws wrong error for maxLength');
@@ -183,8 +180,7 @@ function testValidateString() {
     console.log('❌ FAIL: validateString should throw for pattern mismatch');
     failed++;
   } catch (error) {
-    if (error instanceof ValidationError &&
-        error.message.includes('does not match')) {
+    if (error instanceof ValidationError && error.message.includes('does not match')) {
       console.log('✅ PASS: validateString validates pattern');
     } else {
       console.log('❌ FAIL: validateString throws wrong error for pattern');
@@ -234,8 +230,7 @@ function testValidateArray() {
     console.log('❌ FAIL: validateArray should throw for non-array');
     failed++;
   } catch (error) {
-    if (error instanceof ValidationError &&
-        error.message.includes('must be an array')) {
+    if (error instanceof ValidationError && error.message.includes('must be an array')) {
       console.log('✅ PASS: validateArray throws for non-array');
     } else {
       console.log('❌ FAIL: validateArray throws wrong error for non-array');
@@ -263,8 +258,7 @@ function testValidateArray() {
     console.log('❌ FAIL: validateArray should throw for invalid element');
     failed++;
   } catch (error) {
-    if (error instanceof ValidationError &&
-        error.message.includes('failed validation')) {
+    if (error instanceof ValidationError && error.message.includes('failed validation')) {
       console.log('✅ PASS: validateArray validates elements');
     } else {
       console.log('❌ FAIL: validateArray throws wrong error for invalid element');
@@ -500,11 +494,11 @@ function runAllTests() {
     validateArray: testValidateArray(),
     sanitizeForFilename: testSanitizeForFilenameValidation(),
     ensureUniqueIdentifier: testEnsureUniqueIdentifierValidation(),
-    normalizePath: testNormalizePathValidation()
+    normalizePath: testNormalizePathValidation(),
   };
 
-  const passed = Object.values(results).filter(r => r === true).length;
-  const failed = Object.values(results).filter(r => r === false).length;
+  const passed = Object.values(results).filter((r) => r === true).length;
+  const failed = Object.values(results).filter((r) => r === false).length;
 
   console.log('\n========================================');
   console.log('Input Validation Tests Summary:');

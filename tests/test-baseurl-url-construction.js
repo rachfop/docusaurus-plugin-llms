@@ -32,10 +32,10 @@ async function check(name, { relPath, siteUrl, pathPrefix, resolvedUrl }, expect
       tmpDir,
       siteUrl,
       pathPrefix,
-      undefined,   // pathTransformation
-      false,       // excludeImports
-      false,       // removeDuplicateHeadings
-      resolvedUrl
+      undefined, // pathTransformation
+      false, // excludeImports
+      false, // removeDuplicateHeadings
+      resolvedUrl,
     );
     assert.strictEqual(doc.url, expectedUrl);
     assert.ok(!/([^:])\/\//.test(doc.url), `URL should not contain doubled slashes: ${doc.url}`);
@@ -55,54 +55,78 @@ async function run() {
   // --- Resolved-route path (Docusaurus routesPaths available) ---
 
   // Subpath baseUrl, route is baseUrl-relative → baseUrl must be prepended (#43.3)
-  await check('resolved route, subpath baseUrl, route without prefix', {
-    relPath: 'docs/explainers/foo.md',
-    siteUrl: 'https://noir-lang.org/docs',
-    pathPrefix: 'docs',
-    resolvedUrl: '/explainers/foo',
-  }, 'https://noir-lang.org/docs/explainers/foo');
+  await check(
+    'resolved route, subpath baseUrl, route without prefix',
+    {
+      relPath: 'docs/explainers/foo.md',
+      siteUrl: 'https://noir-lang.org/docs',
+      pathPrefix: 'docs',
+      resolvedUrl: '/explainers/foo',
+    },
+    'https://noir-lang.org/docs/explainers/foo',
+  );
 
   // Same, but route already carries baseUrl → must NOT be duplicated
-  await check('resolved route, subpath baseUrl, route already prefixed', {
-    relPath: 'docs/explainers/foo.md',
-    siteUrl: 'https://noir-lang.org/docs',
-    pathPrefix: 'docs',
-    resolvedUrl: '/docs/explainers/foo',
-  }, 'https://noir-lang.org/docs/explainers/foo');
+  await check(
+    'resolved route, subpath baseUrl, route already prefixed',
+    {
+      relPath: 'docs/explainers/foo.md',
+      siteUrl: 'https://noir-lang.org/docs',
+      pathPrefix: 'docs',
+      resolvedUrl: '/docs/explainers/foo',
+    },
+    'https://noir-lang.org/docs/explainers/foo',
+  );
 
   // Root baseUrl → unchanged behaviour
-  await check('resolved route, root baseUrl', {
-    relPath: 'docs/intro.md',
-    siteUrl: 'https://tunit.dev/',
-    pathPrefix: 'docs',
-    resolvedUrl: '/docs/intro',
-  }, 'https://tunit.dev/docs/intro');
+  await check(
+    'resolved route, root baseUrl',
+    {
+      relPath: 'docs/intro.md',
+      siteUrl: 'https://tunit.dev/',
+      pathPrefix: 'docs',
+      resolvedUrl: '/docs/intro',
+    },
+    'https://tunit.dev/docs/intro',
+  );
 
   // --- Fallback path (no resolvedUrl) ---
 
   // Subpath baseUrl must be preserved (#43.2 — previously dropped by .origin)
-  await check('fallback, subpath baseUrl preserved', {
-    relPath: 'docs/guide.md',
-    siteUrl: 'https://example.com/base',
-    pathPrefix: 'docs',
-    resolvedUrl: undefined,
-  }, 'https://example.com/base/docs/guide');
+  await check(
+    'fallback, subpath baseUrl preserved',
+    {
+      relPath: 'docs/guide.md',
+      siteUrl: 'https://example.com/base',
+      pathPrefix: 'docs',
+      resolvedUrl: undefined,
+    },
+    'https://example.com/base/docs/guide',
+  );
 
   // Trailing slash on pathPrefix must not break stripping or double the slash (#43.1)
-  await check('fallback, trailing-slash pathPrefix', {
-    relPath: 'docs/guide.md',
-    siteUrl: 'https://example.com/base',
-    pathPrefix: 'docs/',
-    resolvedUrl: undefined,
-  }, 'https://example.com/base/docs/guide');
+  await check(
+    'fallback, trailing-slash pathPrefix',
+    {
+      relPath: 'docs/guide.md',
+      siteUrl: 'https://example.com/base',
+      pathPrefix: 'docs/',
+      resolvedUrl: undefined,
+    },
+    'https://example.com/base/docs/guide',
+  );
 
   // Root baseUrl fallback → unchanged behaviour
-  await check('fallback, root baseUrl', {
-    relPath: 'docs/guide.md',
-    siteUrl: 'https://example.com/',
-    pathPrefix: 'docs',
-    resolvedUrl: undefined,
-  }, 'https://example.com/docs/guide');
+  await check(
+    'fallback, root baseUrl',
+    {
+      relPath: 'docs/guide.md',
+      siteUrl: 'https://example.com/',
+      pathPrefix: 'docs',
+      resolvedUrl: undefined,
+    },
+    'https://example.com/docs/guide',
+  );
 
   console.log(`\n========================================`);
   console.log(`baseUrl URL Construction Tests Summary:`);
@@ -112,11 +136,11 @@ async function run() {
 }
 
 run()
-  .then(ok => {
+  .then((ok) => {
     console.log(ok ? '🎉 All baseUrl URL construction tests passed!' : '❌ Some tests failed.');
     process.exit(ok ? 0 : 1);
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('Test execution error:', err);
     process.exit(1);
   });

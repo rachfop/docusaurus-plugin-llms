@@ -49,112 +49,120 @@ const tests = [
     name: 'Short description (no truncation)',
     input: 'This is a short description',
     expected: 'This is a short description',
-    expectsTruncation: false
+    expectsTruncation: false,
   },
   {
     name: 'Exactly at max length',
     input: 'a'.repeat(MAX_DESCRIPTION_LENGTH),
     expected: 'a'.repeat(MAX_DESCRIPTION_LENGTH),
-    expectsTruncation: false
+    expectsTruncation: false,
   },
   {
     name: 'One character over max length',
     input: 'a'.repeat(MAX_DESCRIPTION_LENGTH + 1),
     expected: 'a'.repeat(DESCRIPTION_TRUNCATE_AT) + '...',
-    expectsTruncation: true
+    expectsTruncation: true,
   },
   {
     name: 'Long description with spaces (word boundary truncation)',
-    input: 'This is a very long description that should be truncated at a word boundary to avoid cutting words in half and making the text look awkward when displayed in the table of contents',
-    expected: function(result) {
+    input:
+      'This is a very long description that should be truncated at a word boundary to avoid cutting words in half and making the text look awkward when displayed in the table of contents',
+    expected: function (result) {
       // Should be truncated with ellipsis
-      return result.endsWith('...') &&
-             result.length <= MAX_DESCRIPTION_LENGTH &&
-             // Should not end with a partial word (space before the ellipsis or at a word break)
-             (result.substring(0, result.length - 3).match(/\s$/) || true);
+      return (
+        result.endsWith('...') &&
+        result.length <= MAX_DESCRIPTION_LENGTH &&
+        // Should not end with a partial word (space before the ellipsis or at a word break)
+        (result.substring(0, result.length - 3).match(/\s$/) || true)
+      );
     },
-    expectsTruncation: true
+    expectsTruncation: true,
   },
   {
     name: 'Long description without spaces (no word boundary)',
     input: 'a'.repeat(200),
     expected: 'a'.repeat(DESCRIPTION_TRUNCATE_AT) + '...',
-    expectsTruncation: true
+    expectsTruncation: true,
   },
   {
     name: 'Description with space near the end',
     input: 'a'.repeat(140) + ' test more content here',
-    expected: function(result) {
+    expected: function (result) {
       // Should truncate at the space before "test"
       // The space is at position 140, which is > 120 (80% of 150)
       // So it should truncate at the space and include " test"
-      return result.endsWith('...') &&
-             result.length <= MAX_DESCRIPTION_LENGTH;
+      return result.endsWith('...') && result.length <= MAX_DESCRIPTION_LENGTH;
     },
-    expectsTruncation: true
+    expectsTruncation: true,
   },
   {
     name: 'Description with space too early (below 80% threshold)',
     input: 'word ' + 'a'.repeat(200),
     expected: 'word ' + 'a'.repeat(DESCRIPTION_TRUNCATE_AT - 5) + '...',
-    expectsTruncation: true
+    expectsTruncation: true,
   },
   {
     name: 'Multi-line description (only first line used)',
     input: 'First line that is quite long and should be used\nSecond line should be ignored',
     expected: 'First line that is quite long and should be used',
-    expectsTruncation: false
+    expectsTruncation: false,
   },
   {
     name: 'Description with heading marker',
     input: '## This heading marker should be removed',
     expected: 'This heading marker should be removed',
-    expectsTruncation: false
+    expectsTruncation: false,
   },
   {
     name: 'Long description with heading marker',
     input: '# ' + 'a'.repeat(200),
     expected: 'a'.repeat(DESCRIPTION_TRUNCATE_AT) + '...',
-    expectsTruncation: true
+    expectsTruncation: true,
   },
   {
     name: 'Description with inline hashtag (preserved)',
     input: 'Learn about the # symbol in programming',
     expected: 'Learn about the # symbol in programming',
-    expectsTruncation: false
+    expectsTruncation: false,
   },
   {
     name: 'Empty string',
     input: '',
     expected: '',
-    expectsTruncation: false
+    expectsTruncation: false,
   },
   {
     name: 'Only whitespace',
     input: '   \t  \n  ',
     expected: '   \t  ', // First line only (before \n)
-    expectsTruncation: false
+    expectsTruncation: false,
   },
   {
     name: 'Word boundary at exactly 80% threshold',
-    input: 'a'.repeat(Math.floor(MAX_DESCRIPTION_LENGTH * WORD_BOUNDARY_MIN_RATIO)) + ' ' + 'b'.repeat(100),
-    expected: function(result) {
+    input:
+      'a'.repeat(Math.floor(MAX_DESCRIPTION_LENGTH * WORD_BOUNDARY_MIN_RATIO)) +
+      ' ' +
+      'b'.repeat(100),
+    expected: function (result) {
       // The space is at position 120, which equals 120 (80% of 150)
       // Since lastSpace (120) > MAX_DESCRIPTION_LENGTH * WORD_BOUNDARY_MIN_RATIO (120), condition is true
       // So it will truncate at the space, but since we're at 147 chars first, it includes some 'b's
       return result.endsWith('...') && result.length <= MAX_DESCRIPTION_LENGTH;
     },
-    expectsTruncation: true
+    expectsTruncation: true,
   },
   {
     name: 'Word boundary just above 80% threshold',
-    input: 'a'.repeat(Math.floor(MAX_DESCRIPTION_LENGTH * WORD_BOUNDARY_MIN_RATIO) + 1) + ' ' + 'b'.repeat(100),
-    expected: function(result) {
+    input:
+      'a'.repeat(Math.floor(MAX_DESCRIPTION_LENGTH * WORD_BOUNDARY_MIN_RATIO) + 1) +
+      ' ' +
+      'b'.repeat(100),
+    expected: function (result) {
       // Should truncate at the space
       return result.endsWith('...') && !result.includes('b');
     },
-    expectsTruncation: true
-  }
+    expectsTruncation: true,
+  },
 ];
 
 // Run tests
@@ -164,7 +172,9 @@ function runTests() {
   console.log(`  MAX_DESCRIPTION_LENGTH: ${MAX_DESCRIPTION_LENGTH}`);
   console.log(`  DESCRIPTION_TRUNCATE_AT: ${DESCRIPTION_TRUNCATE_AT}`);
   console.log(`  WORD_BOUNDARY_MIN_RATIO: ${WORD_BOUNDARY_MIN_RATIO}`);
-  console.log(`  Minimum word boundary position: ${Math.floor(MAX_DESCRIPTION_LENGTH * WORD_BOUNDARY_MIN_RATIO)}\n`);
+  console.log(
+    `  Minimum word boundary position: ${Math.floor(MAX_DESCRIPTION_LENGTH * WORD_BOUNDARY_MIN_RATIO)}\n`,
+  );
 
   let passed = 0;
   let failed = 0;
@@ -193,7 +203,9 @@ function runTests() {
       testPassed = result === test.expected;
       if (!testPassed) {
         console.log(`  ❌ FAIL`);
-        console.log(`  Expected: "${test.expected.substring(0, 50)}${test.expected.length > 50 ? '...' : ''}"`);
+        console.log(
+          `  Expected: "${test.expected.substring(0, 50)}${test.expected.length > 50 ? '...' : ''}"`,
+        );
         console.log(`  Got:      "${result.substring(0, 50)}${result.length > 50 ? '...' : ''}"`);
         if (result.length !== test.expected.length) {
           console.log(`  Length mismatch: expected ${test.expected.length}, got ${result.length}`);
@@ -206,13 +218,17 @@ function runTests() {
     // Verify truncation occurred as expected
     const hasTruncation = result.endsWith('...');
     if (test.expectsTruncation !== hasTruncation) {
-      console.log(`  ⚠️  WARNING: Expected truncation=${test.expectsTruncation}, but got truncation=${hasTruncation}`);
+      console.log(
+        `  ⚠️  WARNING: Expected truncation=${test.expectsTruncation}, but got truncation=${hasTruncation}`,
+      );
       testPassed = false;
     }
 
     // Verify output is within max length
     if (result.length > MAX_DESCRIPTION_LENGTH) {
-      console.log(`  ❌ ERROR: Output exceeds MAX_DESCRIPTION_LENGTH (${result.length} > ${MAX_DESCRIPTION_LENGTH})`);
+      console.log(
+        `  ❌ ERROR: Output exceeds MAX_DESCRIPTION_LENGTH (${result.length} > ${MAX_DESCRIPTION_LENGTH})`,
+      );
       testPassed = false;
     }
 
@@ -242,12 +258,18 @@ function runIntegrationTests() {
 
   // Test that constants are consistent
   console.log('Test: Constants consistency');
-  assert(DESCRIPTION_TRUNCATE_AT < MAX_DESCRIPTION_LENGTH,
-    'DESCRIPTION_TRUNCATE_AT must be less than MAX_DESCRIPTION_LENGTH');
-  assert(DESCRIPTION_TRUNCATE_AT + 3 === MAX_DESCRIPTION_LENGTH,
-    'DESCRIPTION_TRUNCATE_AT + "..." (3 chars) should equal MAX_DESCRIPTION_LENGTH');
-  assert(WORD_BOUNDARY_MIN_RATIO > 0 && WORD_BOUNDARY_MIN_RATIO < 1,
-    'WORD_BOUNDARY_MIN_RATIO should be between 0 and 1');
+  assert(
+    DESCRIPTION_TRUNCATE_AT < MAX_DESCRIPTION_LENGTH,
+    'DESCRIPTION_TRUNCATE_AT must be less than MAX_DESCRIPTION_LENGTH',
+  );
+  assert(
+    DESCRIPTION_TRUNCATE_AT + 3 === MAX_DESCRIPTION_LENGTH,
+    'DESCRIPTION_TRUNCATE_AT + "..." (3 chars) should equal MAX_DESCRIPTION_LENGTH',
+  );
+  assert(
+    WORD_BOUNDARY_MIN_RATIO > 0 && WORD_BOUNDARY_MIN_RATIO < 1,
+    'WORD_BOUNDARY_MIN_RATIO should be between 0 and 1',
+  );
   console.log('  ✅ PASS: Constants are consistent\n');
 
   // Test that word boundary logic works correctly
@@ -267,11 +289,15 @@ function runIntegrationTests() {
   console.log('Test: Truncation without word boundary');
   const noSpaceStr = 'a'.repeat(200);
   const result2 = cleanDescriptionForToc(noSpaceStr);
-  assert(result2.length === MAX_DESCRIPTION_LENGTH,
-    `Should be exactly ${MAX_DESCRIPTION_LENGTH} chars`);
+  assert(
+    result2.length === MAX_DESCRIPTION_LENGTH,
+    `Should be exactly ${MAX_DESCRIPTION_LENGTH} chars`,
+  );
   assert(result2.endsWith('...'), 'Should end with ellipsis');
-  assert(result2 === 'a'.repeat(DESCRIPTION_TRUNCATE_AT) + '...',
-    'Should truncate at DESCRIPTION_TRUNCATE_AT');
+  assert(
+    result2 === 'a'.repeat(DESCRIPTION_TRUNCATE_AT) + '...',
+    'Should truncate at DESCRIPTION_TRUNCATE_AT',
+  );
   console.log('  ✅ PASS: No word boundary truncation works\n');
 
   console.log('✅ All integration tests passed!');

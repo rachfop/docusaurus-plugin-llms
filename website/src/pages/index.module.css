@@ -110,7 +110,9 @@
   background: transparent;
   color: var(--site-muted-fg);
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 
 .copy:hover {
@@ -343,7 +345,9 @@
   border: 1px solid var(--site-border);
   border-radius: var(--site-radius-lg);
   color: var(--site-fg);
-  transition: border-color 120ms ease, background 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
 }
 
 .guide:hover {

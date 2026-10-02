@@ -30,9 +30,9 @@ module.exports = {
     [
       'docusaurus-plugin-llms',
       {
-        generateMarkdownFiles: true,  // write individual .md files
-        generateLLMsTxt: true,        // index file that links to them
-        excludeImports: true,         // strip MDX import statements
+        generateMarkdownFiles: true, // write individual .md files
+        generateLLMsTxt: true, // index file that links to them
+        excludeImports: true, // strip MDX import statements
         removeDuplicateHeadings: true, // drop redundant heading text
         includeOrder: ['getting-started/*', 'guides/*', 'api/*'],
       },

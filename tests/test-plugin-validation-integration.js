@@ -5,7 +5,6 @@
  * and properly rejects invalid options.
  */
 
-
 console.log('Testing plugin options validation integration...\n');
 
 // Import the actual plugin
@@ -18,9 +17,9 @@ const mockContext = {
     title: 'Test Site',
     tagline: 'Test tagline',
     url: 'https://example.com',
-    baseUrl: '/'
+    baseUrl: '/',
   },
-  outDir: '/tmp/test-site/build'
+  outDir: '/tmp/test-site/build',
 };
 
 // Test cases
@@ -29,69 +28,71 @@ const testCases = [
     name: 'Valid options should initialize plugin',
     options: {
       generateLLMsTxt: true,
-      docsDir: 'docs'
+      docsDir: 'docs',
     },
     shouldThrow: false,
-    description: 'Plugin should initialize with valid options'
+    description: 'Plugin should initialize with valid options',
   },
   {
     name: 'Invalid includeOrder should throw',
     options: {
-      includeOrder: 'not-an-array'
+      includeOrder: 'not-an-array',
     },
     shouldThrow: true,
     expectedError: 'includeOrder must be an array',
-    description: 'Plugin should reject invalid includeOrder'
+    description: 'Plugin should reject invalid includeOrder',
   },
   {
     name: 'Invalid ignoreFiles should throw',
     options: {
-      ignoreFiles: ['valid', 123]
+      ignoreFiles: ['valid', 123],
     },
     shouldThrow: true,
     expectedError: 'ignoreFiles must contain only strings',
-    description: 'Plugin should reject non-string elements in ignoreFiles'
+    description: 'Plugin should reject non-string elements in ignoreFiles',
   },
   {
     name: 'Invalid pathTransformation should throw',
     options: {
-      pathTransformation: 'not-an-object'
+      pathTransformation: 'not-an-object',
     },
     shouldThrow: true,
     expectedError: 'pathTransformation must be an object',
-    description: 'Plugin should reject invalid pathTransformation'
+    description: 'Plugin should reject invalid pathTransformation',
   },
   {
     name: 'Invalid boolean option should throw',
     options: {
-      generateLLMsTxt: 'true'
+      generateLLMsTxt: 'true',
     },
     shouldThrow: true,
     expectedError: 'generateLLMsTxt must be a boolean',
-    description: 'Plugin should reject non-boolean for boolean options'
+    description: 'Plugin should reject non-boolean for boolean options',
   },
   {
     name: 'Invalid customLLMFiles should throw',
     options: {
-      customLLMFiles: [{
-        filename: 'test.txt',
-        includePatterns: [],
-        fullContent: true
-      }]
+      customLLMFiles: [
+        {
+          filename: 'test.txt',
+          includePatterns: [],
+          fullContent: true,
+        },
+      ],
     },
     shouldThrow: true,
     expectedError: 'customLLMFiles[0].includePatterns must be a non-empty array',
-    description: 'Plugin should reject empty includePatterns'
+    description: 'Plugin should reject empty includePatterns',
   },
   {
     name: 'Invalid logLevel should throw',
     options: {
-      logLevel: 'debug'
+      logLevel: 'debug',
     },
     shouldThrow: true,
     expectedError: 'logLevel must be one of: quiet, normal, verbose',
-    description: 'Plugin should reject invalid logLevel values'
-  }
+    description: 'Plugin should reject invalid logLevel values',
+  },
 ];
 
 // Run tests

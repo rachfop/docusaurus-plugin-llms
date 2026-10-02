@@ -37,138 +37,142 @@ const testCases = [
   {
     name: 'Normal component with path containing special chars',
     componentName: 'SharedConfig',
-    partialFileName: '_config-v1.0.mdx',  // Path with dots
+    partialFileName: '_config-v1.0.mdx', // Path with dots
     partialContent: 'Configuration content',
-    mainContent: 'import SharedConfig from \'./_config-v1.0.mdx\';\n\n<SharedConfig />\n\nOther content',
+    mainContent:
+      "import SharedConfig from './_config-v1.0.mdx';\n\n<SharedConfig />\n\nOther content",
     expectedContent: 'Configuration content\n\nOther content',
-    description: 'Import path with dots should be escaped properly'
+    description: 'Import path with dots should be escaped properly',
   },
   {
     name: 'Component with path containing parentheses',
     componentName: 'APIGuide',
-    partialFileName: '_api(v2).mdx',  // Path with parentheses
+    partialFileName: '_api(v2).mdx', // Path with parentheses
     partialContent: 'API guide content',
-    mainContent: 'import APIGuide from \'./_api(v2).mdx\';\n\n<APIGuide />\n\nMore info',
+    mainContent: "import APIGuide from './_api(v2).mdx';\n\n<APIGuide />\n\nMore info",
     expectedContent: 'API guide content\n\nMore info',
-    description: 'Import path with parentheses should be escaped'
+    description: 'Import path with parentheses should be escaped',
   },
   {
     name: 'Component with path containing square brackets',
     componentName: 'ArrayDocs',
-    partialFileName: '_array[methods].mdx',  // Path with brackets
+    partialFileName: '_array[methods].mdx', // Path with brackets
     partialContent: 'Array methods documentation',
-    mainContent: 'import ArrayDocs from \'./_array[methods].mdx\';\n\n<ArrayDocs />\n\nExample',
+    mainContent: "import ArrayDocs from './_array[methods].mdx';\n\n<ArrayDocs />\n\nExample",
     expectedContent: 'Array methods documentation\n\nExample',
-    description: 'Import path with square brackets should be escaped'
+    description: 'Import path with square brackets should be escaped',
   },
   {
     name: 'Component with path containing plus signs',
     componentName: 'CppGuide',
-    partialFileName: '_c++guide.mdx',  // Path with ++
+    partialFileName: '_c++guide.mdx', // Path with ++
     partialContent: 'C++ programming guide',
-    mainContent: 'import CppGuide from \'./_c++guide.mdx\';\n\n<CppGuide />\n\nDetails',
+    mainContent: "import CppGuide from './_c++guide.mdx';\n\n<CppGuide />\n\nDetails",
     expectedContent: 'C++ programming guide\n\nDetails',
-    description: 'Import path with ++ should be escaped'
+    description: 'Import path with ++ should be escaped',
   },
   {
     name: 'Component with path containing dollar sign',
     componentName: 'PriceInfo',
-    partialFileName: '_price$info.mdx',  // Path with $
+    partialFileName: '_price$info.mdx', // Path with $
     partialContent: 'Price information',
-    mainContent: 'import PriceInfo from \'./_price$info.mdx\';\n\n<PriceInfo />\n\nNotes',
+    mainContent: "import PriceInfo from './_price$info.mdx';\n\n<PriceInfo />\n\nNotes",
     expectedContent: 'Price information\n\nNotes',
-    description: 'Import path with $ should be escaped'
+    description: 'Import path with $ should be escaped',
   },
   {
     name: 'Component with path containing asterisk',
     componentName: 'WildcardTest',
-    partialFileName: '_test*.mdx',  // Path with *
+    partialFileName: '_test*.mdx', // Path with *
     partialContent: 'Wildcard test content',
-    mainContent: 'import WildcardTest from \'./_test*.mdx\';\n\n<WildcardTest />\n\nText',
+    mainContent: "import WildcardTest from './_test*.mdx';\n\n<WildcardTest />\n\nText",
     expectedContent: 'Wildcard test content\n\nText',
-    description: 'Import path with * should be escaped'
+    description: 'Import path with * should be escaped',
   },
   {
     name: 'Component with path containing question mark',
     componentName: 'HelpDoc',
-    partialFileName: '_help?.mdx',  // Path with ?
+    partialFileName: '_help?.mdx', // Path with ?
     partialContent: 'Help documentation',
-    mainContent: 'import HelpDoc from \'./_help?.mdx\';\n\n<HelpDoc />\n\nFAQ',
+    mainContent: "import HelpDoc from './_help?.mdx';\n\n<HelpDoc />\n\nFAQ",
     expectedContent: 'Help documentation\n\nFAQ',
-    description: 'Import path with ? should be escaped'
+    description: 'Import path with ? should be escaped',
   },
   {
     name: 'Component with path containing caret',
     componentName: 'ConfigSettings',
-    partialFileName: '_config^settings.mdx',  // Path with ^
+    partialFileName: '_config^settings.mdx', // Path with ^
     partialContent: 'Configuration settings',
-    mainContent: 'import ConfigSettings from \'./_config^settings.mdx\';\n\n<ConfigSettings />\n\nInfo',
+    mainContent:
+      "import ConfigSettings from './_config^settings.mdx';\n\n<ConfigSettings />\n\nInfo",
     expectedContent: 'Configuration settings\n\nInfo',
-    description: 'Import path with ^ should be escaped'
+    description: 'Import path with ^ should be escaped',
   },
   {
     name: 'Component with path containing pipe',
     componentName: 'OptionSelect',
-    partialFileName: '_option|select.mdx',  // Path with |
+    partialFileName: '_option|select.mdx', // Path with |
     partialContent: 'Option selection guide',
-    mainContent: 'import OptionSelect from \'./_option|select.mdx\';\n\n<OptionSelect />\n\nMore',
+    mainContent: "import OptionSelect from './_option|select.mdx';\n\n<OptionSelect />\n\nMore",
     expectedContent: 'Option selection guide\n\nMore',
-    description: 'Import path with | should be escaped'
+    description: 'Import path with | should be escaped',
   },
   {
     name: 'Component with path containing curly braces',
     componentName: 'TemplateDoc',
-    partialFileName: '_template{}.mdx',  // Path with {}
+    partialFileName: '_template{}.mdx', // Path with {}
     partialContent: 'Template content',
-    mainContent: 'import TemplateDoc from \'./_template{}.mdx\';\n\n<TemplateDoc />\n\nExample',
+    mainContent: "import TemplateDoc from './_template{}.mdx';\n\n<TemplateDoc />\n\nExample",
     expectedContent: 'Template content\n\nExample',
-    description: 'Import path with {} should be escaped'
+    description: 'Import path with {} should be escaped',
   },
   {
     name: 'Normal component without special chars',
     componentName: 'SimpleComponent',
     partialFileName: '_simple.mdx',
     partialContent: 'Simple content',
-    mainContent: 'import SimpleComponent from \'./_simple.mdx\';\n\n<SimpleComponent />\n\nText',
+    mainContent: "import SimpleComponent from './_simple.mdx';\n\n<SimpleComponent />\n\nText",
     expectedContent: 'Simple content\n\nText',
-    description: 'Normal paths without special characters should still work'
+    description: 'Normal paths without special characters should still work',
   },
   {
     name: 'Destructured import with special chars in path',
     componentName: 'SpecialComponent',
     partialFileName: '_special-v1.0.mdx',
     partialContent: 'Special component content',
-    mainContent: 'import { SpecialComponent } from \'./_special-v1.0.mdx\';\n\n<SpecialComponent />\n\nMore',
+    mainContent:
+      "import { SpecialComponent } from './_special-v1.0.mdx';\n\n<SpecialComponent />\n\nMore",
     expectedContent: 'Special component content\n\nMore',
-    description: 'Destructured imports with special chars in path should work'
+    description: 'Destructured imports with special chars in path should work',
   },
   {
     name: 'Component with complex path',
     componentName: 'ComplexDoc',
-    partialFileName: '_api(v2.0)[beta]*.mdx',  // Path with multiple special chars
+    partialFileName: '_api(v2.0)[beta]*.mdx', // Path with multiple special chars
     partialContent: 'Complex documentation',
-    mainContent: 'import ComplexDoc from \'./_api(v2.0)[beta]*.mdx\';\n\n<ComplexDoc />\n\nNotes',
+    mainContent: "import ComplexDoc from './_api(v2.0)[beta]*.mdx';\n\n<ComplexDoc />\n\nNotes",
     expectedContent: 'Complex documentation\n\nNotes',
-    description: 'Path with multiple special characters should all be escaped'
+    description: 'Path with multiple special characters should all be escaped',
   },
   {
     name: 'Regex injection prevention in path',
     componentName: 'TestComponent',
-    partialFileName: '_test.star.mdx',  // Path with dots that could match regex
+    partialFileName: '_test.star.mdx', // Path with dots that could match regex
     partialContent: 'Test content',
-    mainContent: 'import TestComponent from \'./_test.star.mdx\';\n\n<TestComponent />\n\nData',
+    mainContent: "import TestComponent from './_test.star.mdx';\n\n<TestComponent />\n\nData",
     expectedContent: 'Test content\n\nData',
-    description: 'Path with dots should be treated literally, not as regex wildcard'
+    description: 'Path with dots should be treated literally, not as regex wildcard',
   },
   {
     name: 'Multiple imports with special paths',
     componentName: 'FirstComponent',
     partialFileName: '_first-v1.0.mdx',
     partialContent: 'First component',
-    mainContent: 'import FirstComponent from \'./_first-v1.0.mdx\';\nimport SecondComponent from \'./_second.mdx\';\n\n<FirstComponent />\n\nText',
+    mainContent:
+      "import FirstComponent from './_first-v1.0.mdx';\nimport SecondComponent from './_second.mdx';\n\n<FirstComponent />\n\nText",
     expectedContent: 'First component\n\nText',
-    description: 'Multiple imports with mixed special characters should work'
-  }
+    description: 'Multiple imports with mixed special characters should work',
+  },
 ];
 
 // Run tests
@@ -249,7 +253,7 @@ async function runTests() {
   }
 }
 
-runTests().catch(err => {
+runTests().catch((err) => {
   console.error('Fatal error:', err);
   process.exit(1);
 });

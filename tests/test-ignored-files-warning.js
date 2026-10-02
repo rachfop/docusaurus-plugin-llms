@@ -103,46 +103,42 @@ async function runTests() {
           baseDir,
           [], // no ignore patterns
           'docs',
-          testCase.warnOnIgnoredFiles
+          testCase.warnOnIgnoredFiles,
         );
 
         restoreWarn();
 
         // Check file count
         if (files.length !== testCase.expectedFiles) {
-          throw new Error(
-            `Expected ${testCase.expectedFiles} files, got ${files.length}`
-          );
+          throw new Error(`Expected ${testCase.expectedFiles} files, got ${files.length}`);
         }
 
         // Check warning count
         if (warnings.length !== testCase.expectedWarningCount) {
           throw new Error(
-            `Expected ${testCase.expectedWarningCount} warnings, got ${warnings.length}. Warnings: ${JSON.stringify(warnings)}`
+            `Expected ${testCase.expectedWarningCount} warnings, got ${warnings.length}. Warnings: ${JSON.stringify(warnings)}`,
           );
         }
 
         // Check warning patterns if specified
         if (testCase.expectedWarningPatterns) {
           for (const pattern of testCase.expectedWarningPatterns) {
-            const found = warnings.some(warning => pattern.test(warning));
+            const found = warnings.some((warning) => pattern.test(warning));
             if (!found) {
               throw new Error(
-                `Expected warning matching pattern ${pattern}, but not found in: ${JSON.stringify(warnings)}`
+                `Expected warning matching pattern ${pattern}, but not found in: ${JSON.stringify(warnings)}`,
               );
             }
           }
         }
 
         // Verify that valid markdown files are still found
-        const hasValidMd = files.some(f => f.endsWith('valid.md'));
-        const hasValidMdx = files.some(f => f.endsWith('valid.mdx'));
-        const hasNestedMd = files.some(f => f.endsWith('nested.md'));
+        const hasValidMd = files.some((f) => f.endsWith('valid.md'));
+        const hasValidMdx = files.some((f) => f.endsWith('valid.mdx'));
+        const hasNestedMd = files.some((f) => f.endsWith('nested.md'));
 
         if (!hasValidMd || !hasValidMdx || !hasNestedMd) {
-          throw new Error(
-            'Expected to find valid.md, valid.mdx, and nested.md in results'
-          );
+          throw new Error('Expected to find valid.md, valid.mdx, and nested.md in results');
         }
 
         console.log('✅ PASS');
@@ -170,15 +166,15 @@ async function runTests() {
 
 // Run the tests
 runTests()
-  .then(success => {
+  .then((success) => {
     console.log(
       success
         ? '🎉 All ignored files warning tests passed!'
-        : '❌ Some ignored files warning tests failed.'
+        : '❌ Some ignored files warning tests failed.',
     );
     if (!success) process.exit(1);
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('Test runner error:', error);
     process.exit(1);
   });
