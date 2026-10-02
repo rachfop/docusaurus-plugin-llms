@@ -1,2 +1,4 @@
 User-agent: *
 Disallow:
+
+Sitemap: https://rachfop.github.io/docusaurus-plugin-llms/sitemap.xml
