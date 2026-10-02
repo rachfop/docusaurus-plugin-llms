@@ -55,6 +55,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `generateMarkdownFiles`, a page at `/stable/get-started` was written to
   `build/stable/stable/get-started.md` while `stable/llms.txt` linked
   `/stable/get-started.md`. Files now land at the linked path.
+- **Prose lines starting with "import" were deleted**: inlined partials, and
+  pages built with `excludeImports`, lost any line beginning with `import `,
+  so prose wrapped onto a line starting "import the SDK ..." dropped that
+  line. A multi-line `import { ... } from '...'` was half-removed. Only ES
+  import statements with a quoted module specifier are removed now,
+  multi-line ones whole.
+- **Code samples in nested partials were emptied or spliced**: imports and
+  partial usage inside a nested partial's code fence were resolved as real,
+  and one partial's body could be spliced into another partial's code sample
+  (`<B />` in a fence in partial A). Code is masked at every resolution level,
+  and inlined partial bodies are protected from later splices.
+- **Long JSX tags hung the build**: a tag with many brace-valued attributes
+  and one deeply nested expression backtracked exponentially (seconds at 24
+  attributes, longer beyond). The attribute matcher has one way to match each
+  value and finishes in linear time.
+- **HTML tags were removed with no separator**: `a<br/>b` became `ab`, table
+  cells ran together, and `<img>` disappeared. Block tags (`br`, `p`, `div`,
+  `li`, `tr`, ...) now leave a line break, adjacent cells are separated by a
+  pipe (`a | b`), and `<img src alt>` becomes `![alt](src)`, so image-URL
+  rewriting applies to it.
+- **Nested and blockquoted fences were not masked**: a ```` fence showing a
+  ``` fence closed at the inner fence, and fences inside `>` blockquotes were
+  not masked, so HTML in those samples was stripped. Closing fences follow
+  CommonMark (same character, at least as long as the opener), and
+  blockquoted fences are masked.
+- **Descriptions came from code comments and MDX comments**: the H1 fallback
+  read `# install deps` from a bash fence, and a `{/* TODO */}` paragraph
+  became the description. Both are skipped, and MDX `{/* */}` and HTML
+  `<!-- -->` comments outside code are stripped from the output.
+- **Some partial imports and usages were not inlined**: the
+  `import { default as X } from './_x.mdx'` and
+  `import Y, { toc } from './_y.mdx'` forms lost the partial body and leaked
+  the import line, and a partial used with element children
+  (`<P><b>x</b></P>`) was not replaced.
 
 ### Documentation
 
