@@ -10,6 +10,9 @@ import { isDefined, isNonEmptyString, getErrorMessage } from './guards';
 import { logger } from './logger';
 import { readFile } from './files';
 
+/** Source of unique placeholder-token namespaces (see maskCodeSegments). */
+let maskCounter = 0;
+
 /**
  * Mask fenced code blocks (``` / ~~~) and inline code spans with opaque
  * placeholder tokens so that content transforms — HTML/JSX stripping, import
@@ -21,18 +24,28 @@ export function maskCodeSegments(content: string): {
   restore: (s: string) => string;
 } {
   const segments: string[] = [];
+  // Each call gets its own token namespace, so content masked twice (a caller
+  // masks, then resolvePartialImports masks again) restores correctly.
+  const id = maskCounter++;
   const store = (code: string): string => {
-    const token = `￼CODE${segments.length}￼`;
+    const token = `￼CODE${id}:${segments.length}￼`;
     segments.push(code);
     return token;
   };
 
   // Fenced code blocks first: opening fence (>=3 backticks or tildes) through a
-  // closing fence of the same character (>=3, count need not match, per
-  // CommonMark). The leading newline (if any) stays outside the token so line
-  // structure is unchanged.
+  // closing fence of the same character that is at least as long as the
+  // opener (CommonMark), so a ```` fence can show a ``` fence inside it. The
+  // leading newline (if any) stays outside the token so line structure is
+  // unchanged.
   let masked = content.replace(
-    /(^|\n)([ \t]*(?:`{3,}[^\n]*\n[\s\S]*?\n[ \t]*`{3,}|~{3,}[^\n]*\n[\s\S]*?\n[ \t]*~{3,})[ \t]*)(?=\n|$)/g,
+    /(^|\n)([ \t]*(?:(`{3,})[^\n]*\n[\s\S]*?\n[ \t]*\3`*|(~{3,})[^\n]*\n[\s\S]*?\n[ \t]*\4~*)[ \t]*)(?=\n|$)/g,
+    (_match, lead, block) => `${lead}${store(block)}`,
+  );
+
+  // Fences inside blockquotes: every line of the block carries a `>` prefix.
+  masked = masked.replace(
+    /(^|\n)([ \t]*>(?:[ \t]*>)*[ \t]*(?:(`{3,})[^\n]*(?:\n[ \t]*>[^\n]*?)*?\n[ \t]*>(?:[ \t]*>)*[ \t]*\3`*|(~{3,})[^\n]*(?:\n[ \t]*>[^\n]*?)*?\n[ \t]*>(?:[ \t]*>)*[ \t]*\4~*)[ \t]*)(?=\n|$)/g,
     (_match, lead, block) => `${lead}${store(block)}`,
   );
 
@@ -40,7 +53,7 @@ export function maskCodeSegments(content: string): {
   masked = masked.replace(/(`+)(?:(?!\1)[^\n])+?\1/g, (m) => store(m));
 
   const restore = (s: string): string =>
-    s.replace(/￼CODE(\d+)￼/g, (_t, i) => segments[Number(i)] ?? '');
+    s.replace(new RegExp(`￼CODE${id}:(\\d+)￼`, 'g'), (_t, i) => segments[Number(i)] ?? '');
 
   return { masked, restore };
 }
@@ -88,13 +101,32 @@ function escapeRegex(str: string): string {
  * `>` legally appears inside JSX expression attributes (`onClick={() => ...}`)
  * and quoted values (`title="a > b"`), so a naive scan cuts the tag short and
  * leaks the remainder into the output as prose. Values may be double-quoted,
- * single-quoted, a JSX brace expression, or bare.
+ * single-quoted, a JSX brace expression, or bare. A bare value cannot start
+ * with a quote or brace, so each value has one way to match: with overlapping
+ * alternatives, a long tag that fails to match backtracks exponentially.
  * Brace expressions are matched to one nesting level only; a deeper expression
  * makes the whole tag fail to match and stay intact in the output, which is
  * the safe failure direction (visible leftover rather than silent corruption).
  */
 const TAG_ATTRS =
-  /(?:\s+[^\s=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\}|[^\s>]+))?)*\s*/.source;
+  /(?:\s+[^\s=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\}|[^\s>"'{][^\s>]*))?)*\s*/
+    .source;
+
+/**
+ * Regex source matching one ES import statement on its own line(s): `import
+ * X from '...'`, `import { a, b } from '...'` (braces may span lines),
+ * `import * as ns from '...'`, `import X, { a } from '...'`, or a side-effect
+ * `import '...'`. A line of prose that starts with "import" has no quoted
+ * module specifier and never matches.
+ */
+const IMPORT_STATEMENT =
+  /^[ \t]*import\s+(?:(?:type\s+)?(?:[\w$]+(?:\s*,\s*(?:\{[^}]*\}|\*\s*as\s+[\w$]+))?|\{[^}]*\}|\*\s*as\s+[\w$]+)\s*from\s*)?['"][^'"\n]+['"][ \t]*;?[ \t]*$/
+    .source;
+
+/** Remove ES import statements, leaving every other line as written. */
+function stripImportStatements(content: string): string {
+  return content.replace(new RegExp(IMPORT_STATEMENT, 'gm'), '');
+}
 
 /**
  * Resolve and inline partial imports in markdown content
@@ -110,21 +142,37 @@ export async function resolvePartialImports(
   importChain: Set<string> = new Set(),
   siteDir: string = process.cwd(),
 ): Promise<string> {
-  let resolved = content;
+  // Mask code at every recursion level: an import or `<Partial />` shown in a
+  // code sample is documentation, never a real import or usage.
+  const { masked, restore } = maskCodeSegments(content);
+  let resolved = masked;
+
+  // Inlined partial bodies are parked behind tokens until the end, so a later
+  // splice cannot reach into an earlier partial's content (e.g. a `<B />`
+  // inside partial A's code sample).
+  const inlined: string[] = [];
+  const partialId = maskCounter++;
+  const park = (body: string): string => {
+    const token = `￼PARTIAL${partialId}:${inlined.length}￼`;
+    inlined.push(body);
+    return token;
+  };
 
   // Match import statements for partials and JSX usage
   // Pattern 1: import PartialName from './_partial.mdx'
   // Pattern 2: import { PartialName } from './_partial.mdx'
-  // Pattern 3: import PartialName from '@site/src/partials/partial.mdx'
+  // Pattern 3: import { default as PartialName } from './_partial.mdx'
+  // Pattern 4: import PartialName, { toc } from './_partial.mdx'
+  // Pattern 5: import PartialName from '@site/src/partials/partial.mdx'
   // Create a fresh regex for each invocation to avoid lastIndex state leakage
   const createImportRegex = () =>
-    /^\s*import\s+(?:(\w+)|{\s*(\w+)\s*})\s+from\s+['"]([^'"]+\.mdx?)['"];?\s*$/gm;
-  const imports = new Map<string, string>();
+    /^[ \t]*import\s+(?:([\w$]+)(?:\s*,\s*\{[^}]*\})?|\{\s*(?:default\s+as\s+)?([\w$]+)\s*\})\s*from\s*['"]([^'"]+\.mdx?)['"][ \t]*;?[ \t]*$/gm;
+  const imports = new Map<string, { importPath: string; statement: string }>();
 
   // First pass: collect all imports
   let match;
   const importRegex = createImportRegex();
-  while ((match = importRegex.exec(content)) !== null) {
+  while ((match = importRegex.exec(masked)) !== null) {
     const componentName = match[1] || match[2];
     const importPath = match[3];
 
@@ -132,11 +180,16 @@ export async function resolvePartialImports(
     // are never collected. Any markdown import — partial or whole page body —
     // is inlined (#65: the previous '_'/'/partials/' gate silently dropped
     // page bodies imported as normally-named .mdx components).
-    imports.set(componentName, importPath);
+    imports.set(componentName, { importPath, statement: match[0] });
   }
 
+  // Remove an import statement as written (every copy of it).
+  const removeStatement = (statement: string): void => {
+    resolved = resolved.split(statement).join('');
+  };
+
   // Resolve each partial import
-  for (const [componentName, importPath] of imports) {
+  for (const [componentName, { importPath, statement }] of imports) {
     try {
       // Resolve the partial file path relative to the current file, against
       // the site directory for '@site/' alias imports, or — for other
@@ -160,18 +213,11 @@ export async function resolvePartialImports(
         const chain = Array.from(importChain).join(' -> ');
         logger.error(`Circular import detected: ${chain} -> ${partialPath}`);
 
-        // Escape special regex characters in component name and import path
+        // Escape special regex characters in component name
         const escapedComponentName = escapeRegex(componentName);
-        const escapedImportPath = escapeRegex(importPath);
 
         // Remove the import statement to prevent infinite recursion
-        resolved = resolved.replace(
-          new RegExp(
-            `^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`,
-            'gm',
-          ),
-          '',
-        );
+        removeStatement(statement);
 
         // Remove JSX usage of this component
         const jsxRegex = new RegExp(
@@ -199,24 +245,19 @@ export async function resolvePartialImports(
         siteDir,
       );
 
-      // Escape special regex characters in component name and import path
+      // Escape special regex characters in component name
       const escapedComponentName = escapeRegex(componentName);
-      const escapedImportPath = escapeRegex(importPath);
 
       // Remove the import statement
-      resolved = resolved.replace(
-        new RegExp(
-          `^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`,
-          'gm',
-        ),
-        '',
-      );
+      removeStatement(statement);
 
       // Replace JSX usage with the partial content
       // Handle both self-closing tags and tags with content
       // <PartialName /> or <PartialName></PartialName> or <PartialName>...</PartialName>
+      // MDX renders the partial's own body for the tag, so children appear
+      // only where the partial renders `{props.children}`.
       const jsxRegex = new RegExp(
-        `<${escapedComponentName}${TAG_ATTRS}(?:/>|>[^<]*</${escapedComponentName}>)`,
+        `<${escapedComponentName}${TAG_ATTRS}(?:/>|>([\\s\\S]*?)</${escapedComponentName}>)`,
         'g',
       );
       // Drop the partial's own import lines before splicing: they reference
@@ -228,13 +269,19 @@ export async function resolvePartialImports(
       // otherwise delete from the middle of the fence.
       const { masked: maskedPartial, restore: restorePartial } = maskCodeSegments(resolvedPartial);
       const partialInlined = restorePartial(
-        maskedPartial.replace(/^\s*import\s+.*$/gm, '').replace(/\n{3,}/g, '\n\n'),
+        stripImportStatements(maskedPartial).replace(/\n{3,}/g, '\n\n'),
       ).trim();
       // Function form: a string replacement would interpret `$` sequences
       // ($&, $1, $$, $' ...) in the partial's content — corrupting shell
       // samples like `echo $1` or `kill $$` that are extremely common in
       // documentation code blocks.
-      resolved = resolved.replace(jsxRegex, () => partialInlined);
+      resolved = resolved.replace(jsxRegex, (_tag, children?: string) =>
+        park(
+          isDefined(children) && partialInlined.includes('{props.children}')
+            ? partialInlined.split('{props.children}').join(children.trim())
+            : partialInlined,
+        ),
+      );
     } catch (error: unknown) {
       logger.warn(
         `Failed to resolve partial import '${importPath}' (imported by ${filePath}): ${getErrorMessage(error)}`,
@@ -243,18 +290,11 @@ export async function resolvePartialImports(
       // Remove both the import statement AND the JSX usage even if partial can't be resolved
       // This prevents leaving broken references in the output
 
-      // Escape special regex characters in component name and import path
+      // Escape special regex characters in component name
       const escapedComponentName = escapeRegex(componentName);
-      const escapedImportPath = escapeRegex(importPath);
 
       // Remove the import statement
-      resolved = resolved.replace(
-        new RegExp(
-          `^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`,
-          'gm',
-        ),
-        '',
-      );
+      removeStatement(statement);
 
       // Remove JSX usage of this component
       // Handle both self-closing tags (<Component />) and regular tags with content (<Component>...</Component>)
@@ -266,7 +306,12 @@ export async function resolvePartialImports(
     }
   }
 
-  return resolved;
+  return restore(
+    resolved.replace(
+      new RegExp(`￼PARTIAL${partialId}:(\\d+)￼`, 'g'),
+      (_t, i) => inlined[Number(i)] ?? '',
+    ),
+  );
 }
 
 /**
@@ -276,6 +321,16 @@ export async function resolvePartialImports(
 function extractTagAttr(tag: string, name: string): string | undefined {
   const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|\\{([^{}]*)\\})`));
   const raw = m?.[1] ?? m?.[2] ?? m?.[3];
+  return isNonEmptyString(raw) ? raw : undefined;
+}
+
+/**
+ * Extract a quoted HTML attribute value from a tag. The name must follow
+ * whitespace, so `src` never matches inside `data-src`.
+ */
+function quotedTagAttr(tag: string, name: string): string | undefined {
+  const m = tag.match(new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i'));
+  const raw = m?.[1] ?? m?.[2];
   return isNonEmptyString(raw) ? raw : undefined;
 }
 
@@ -307,15 +362,37 @@ export function cleanMarkdownContent(
     // - import { ... } from "...";
     // - import * as ... from "...";
     // - import "..."; (side-effect imports)
-    cleaned = cleaned.replace(/^\s*import\s+.*?;?\s*$/gm, '');
+    // Multi-line `import {\n  A,\n} from '...'` is removed whole; prose that
+    // starts with "import" is left alone.
+    cleaned = stripImportStatements(cleaned);
   }
 
-  // Remove common HTML tags (code blocks are already masked out above).
+  // Remove MDX `{/* ... */}` and HTML `<!-- ... -->` comments (code is masked,
+  // so a comment shown in a code sample stays).
+  cleaned = cleaned.replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/<!--[\s\S]*?-->/g, '');
+
+  // Convert <img> to a markdown image, keeping its alt text; image-URL
+  // rewriting runs after cleaning and then applies to the src too.
+  cleaned = cleaned.replace(new RegExp(`<img\\b${TAG_ATTRS}/?>`, 'gi'), (tag) => {
+    const src = quotedTagAttr(tag, 'src');
+    return src ? `![${quotedTagAttr(tag, 'alt') ?? ''}](${src})` : '';
+  });
+
+  // Remove common HTML tags (code blocks are already masked out above),
+  // keeping the text boundaries they marked: adjacent table cells get a ` | `
+  // separator, and a run of block-level tags becomes one newline (a space
+  // inside a markdown table row, where a newline would break the row).
+  cleaned = cleaned.replace(new RegExp(`</t[dh]\\s*>\\s*<t[dh]\\b${TAG_ATTRS}>`, 'gi'), ' | ');
+  const blockTag = `</?(?:div|p|br|hr|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\\b${TAG_ATTRS}/?>`;
   cleaned = cleaned.replace(
-    new RegExp(
-      `</?(?:div|span|p|br|hr|img|a|strong|em|b|i|u|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\\b${TAG_ATTRS}/?>`,
-      'gi',
-    ),
+    new RegExp(`(?:${blockTag}[ \\t]*)+`, 'gi'),
+    (_run, offset: number, str: string) => {
+      const lineStart = str.lastIndexOf('\n', offset - 1) + 1;
+      return /^[ \t]*\|/.test(str.slice(lineStart, offset)) ? ' ' : '\n';
+    },
+  );
+  cleaned = cleaned.replace(
+    new RegExp(`</?(?:span|a|strong|em|b|i|u)\\b${TAG_ATTRS}/?>`, 'gi'),
     '',
   );
 
@@ -389,14 +466,16 @@ export function cleanMarkdownContent(
     cleaned = processedLines.join('\n');
   }
 
-  // Restore the masked code blocks / inline code.
-  cleaned = restore(cleaned);
-
-  // Normalize whitespace
+  // Collapse blank lines outside code: removed tags leave whitespace-only
+  // lines and runs of newlines. Code is still masked, so blank lines inside a
+  // code sample stay as written.
   cleaned = cleaned
     .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .replace(/\n[ \t]+(?=\n)/g, '\n')
+    .replace(/\n{3,}/g, '\n\n');
+
+  // Restore the masked code blocks / inline code.
+  cleaned = restore(cleaned).trim();
 
   return cleaned;
 }
