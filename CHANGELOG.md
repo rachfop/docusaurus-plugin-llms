@@ -5,6 +5,32 @@ All notable changes to the docusaurus-plugin-llms will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`INDEX.md` and `README.md` linked to pages that don't exist** (#74):
+  URL resolution recognized only a lowercase `index`, so `INDEX.md`,
+  `Index.md`, and `README.md` got a file-name URL that 404s. They now resolve
+  to their directory's route, following Docusaurus's own convention.
+- **Descriptions picked up code fences, tables, and JSX** (#76): with no
+  frontmatter `description`, the first block under the H1 became the page
+  description even when it was a code fence, `:::note` admonition, table,
+  JSX/HTML element, HTML comment, or standalone image. Description extraction
+  now skips those blocks and masks code fences, so a fence containing a blank
+  line no longer splits into fragments.
+- **Multi-section sites linked to file-name URLs** (#77): on unversioned
+  sites, a section whose `routeBasePath` isn't `/` matched no routes, so its
+  docs fell back to URLs like `/other/README`. Route scoping also ignored the
+  site `baseUrl`. `routeBasePath`, version `path`, and `blogRouteBasePath` are
+  now matched relative to `baseUrl`.
+- **`logLevel: 'quiet'` printed normal output**: the level map fell back to
+  `normal` with `||`, and `LogLevel.QUIET` is `0`. Quiet mode now prints errors
+  only.
+- **`processingBatchSize` of `0` or less hung the build**: the batch loop
+  never advanced. The option must now be a positive integer, and other values
+  fail option validation.
+
 ## [0.6.0] - 2026-08-31
 
 ### Fixed

@@ -129,6 +129,15 @@ function validatePluginOptions(options: PluginOptions): void {
     }
   }
 
+  // Validate processingBatchSize: the batch loop advances by this value, so
+  // 0, a negative number, or a non-integer would never terminate cleanly.
+  if (
+    options.processingBatchSize !== undefined &&
+    !(Number.isInteger(options.processingBatchSize) && options.processingBatchSize > 0)
+  ) {
+    throw new Error('processingBatchSize must be a positive integer');
+  }
+
   // Validate keepFrontMatter
   if (options.keepFrontMatter !== undefined) {
     if (!Array.isArray(options.keepFrontMatter)) {
@@ -507,7 +516,8 @@ export default function docusaurusPluginLLMs(
     normal: LogLevel.NORMAL,
     verbose: LogLevel.VERBOSE,
   };
-  setLogLevel(logLevelMap[logLevel] || LogLevel.NORMAL);
+  // `??`, not `||`: LogLevel.QUIET is 0, which `||` would turn into NORMAL.
+  setLogLevel(logLevelMap[logLevel] ?? LogLevel.NORMAL);
 
   const {
     siteDir,
