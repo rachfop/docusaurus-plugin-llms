@@ -1,8 +1,8 @@
 /**
- * Site-wide theme on top of the classic preset, modeled on Blume
- * (useblume.dev): white surfaces, Inter with tight display tracking, gray
- * secondary text, hairline borders, and one blue accent. Light is the
- * default color mode; the dark tokens below back the navbar toggle.
+ * Site-wide theme on top of the classic preset: white surfaces, Inter with
+ * tight display tracking, gray secondary text, hairline borders, and one
+ * blue accent. Light is the default color mode; the dark tokens below back
+ * the navbar toggle.
  * Homepage styles live in src/pages/index.module.css.
  */
 :root {
@@ -133,7 +133,7 @@ body {
   color: var(--site-fg);
 }
 
-/* Headings: Inter at tight tracking, as Blume sets its display type. */
+/* Headings: Inter at tight tracking. */
 
 .markdown h1,
 .markdown h2,

@@ -1,8 +1,7 @@
 /*
- * Homepage, modeled on Blume's landing page: a left-aligned headline whose
- * second line drops to gray, an install command beside plain text links,
- * and a product preview inside a soft blue frame. Colors come from the
- * site tokens in src/css/custom.css.
+ * Homepage: a left-aligned headline whose second line drops to gray, an
+ * install command beside plain text links, and a product preview inside a
+ * soft blue frame. Colors come from the site tokens in src/css/custom.css.
  */
 
 .page {
