@@ -140,18 +140,19 @@ Each entry in `customLLMFiles` is a `CustomLLMFile` object with these fields:
 
 ## Versions
 
-Set `versions` to publish a separate set of LLM files per documentation version, each written under its own subdirectory with links scoped to that version's routes. Provide an explicit array of `VersionConfig` objects, or `'auto'` to detect versions from Docusaurus docs versioning (`versions.json` plus `versioned_docs/`). Any field left unset on a version falls back to the matching top-level option.
+Set `versions` to publish a separate set of LLM files per documentation version, each written under its own subdirectory with links scoped to that version's routes. Provide an explicit array of `VersionConfig` objects, or `'auto'` to detect versions, their routes, and the last version from the Docusaurus docs plugin config and `versions.json`. Any field left unset on a version falls back to the matching top-level option.
 
 Each `VersionConfig` entry accepts:
 
-| Field            | Type                      | Default             | Description                                                                                                                                          |
-| ---------------- | ------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`           | `string`                  | required            | Version identifier (for example `'nightly'`, `'stable'`, `'0.0.1'`).                                                                                 |
-| `label`          | `string`                  | `name`              | Label written into the `Version:` line of generated files. With `versions: 'auto'`, see [automatic detection](multi-version.md#automatic-detection). |
-| `docsDir`        | `string \| DocsSection[]` | top-level `docsDir` | Source docs directory or sections for this version.                                                                                                  |
-| `path`           | `string`                  | `name`              | Output subdirectory and route prefix. Use `''` for the site root.                                                                                    |
-| `customLLMFiles` | `CustomLLMFile[]`         | top-level value     | Per-version custom LLM files.                                                                                                                        |
-| `includeOrder`   | `string[]`                | top-level value     | Per-version include order.                                                                                                                           |
+| Field            | Type                      | Default             | Description                                                                                                                                                                             |
+| ---------------- | ------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`           | `string`                  | required            | Version identifier (for example `'nightly'`, `'stable'`, `'0.0.1'`).                                                                                                                    |
+| `label`          | `string`                  | `name`              | Label written into the `Version:` line of generated files. With `versions: 'auto'`, see [automatic detection](multi-version.md#automatic-detection).                                    |
+| `docsDir`        | `string \| DocsSection[]` | top-level `docsDir` | Source docs directory or sections for this version.                                                                                                                                     |
+| `path`           | `string`                  | `name`              | Output subdirectory and route prefix. Use `''` for the site root.                                                                                                                       |
+| `routePrefix`    | `string`                  | `path`              | Route prefix the version's links resolve under. Use `''` when the sections' `routeBasePath` holds it. See [multi-version output](multi-version.md#versions-inside-the-route-base-path). |
+| `customLLMFiles` | `CustomLLMFile[]`         | top-level value     | Per-version custom LLM files.                                                                                                                                                           |
+| `includeOrder`   | `string[]`                | top-level value     | Per-version include order.                                                                                                                                                              |
 
 ## Path transformation
 
