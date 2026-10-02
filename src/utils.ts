@@ -87,6 +87,33 @@ export function shortenPathIfNeeded(
 }
 
 /**
+ * Whether `target` resolves to a location strictly inside `dir`. Used to keep
+ * every generated file within the build output directory.
+ * @param dir - The directory that must contain the target
+ * @param target - The path to check
+ * @returns True if target is inside dir (not dir itself)
+ */
+export function isPathInside(dir: string, target: string): boolean {
+  const root = path.resolve(dir);
+  const resolved = path.resolve(root, target);
+  return resolved.startsWith(root.endsWith(path.sep) ? root : root + path.sep);
+}
+
+/**
+ * Whether a configured output path could point outside the output directory:
+ * it is absolute (POSIX or Windows) or has a `..` segment.
+ * @param filePath - The configured path (filename or version path)
+ * @returns True if the path is unsafe to join onto the output directory
+ */
+export function isUnsafeOutputPath(filePath: string): boolean {
+  return (
+    path.posix.isAbsolute(filePath) ||
+    path.win32.isAbsolute(filePath) ||
+    filePath.split(/[\\/]/).includes('..')
+  );
+}
+
+/**
  * Check if a file should be ignored based on glob patterns
  * Matches against both site-relative and docs-relative paths
  * @param filePath - Path to the file

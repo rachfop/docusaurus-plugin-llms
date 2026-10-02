@@ -15,6 +15,17 @@ export interface DocsSection {
 }
 
 /**
+ * Markdown file paths assigned in one output directory. Shared by the standard
+ * and custom passes so each doc gets one file and no doc overwrites another.
+ */
+export interface MarkdownPathRegistry {
+  /** Lowercased output-relative paths already claimed. */
+  usedPaths: Set<string>;
+  /** Source doc path → output-relative path assigned to it. */
+  docPaths: Map<string, string>;
+}
+
+/**
  * Interface for processed document information
  */
 export interface DocInfo {
@@ -247,4 +258,6 @@ export interface PluginContext {
    * URLs, routes under these prefixes are excluded so links stay at the root.
    */
   siblingPrefixes?: string[];
+  /** Markdown paths already assigned in this version's output directory. */
+  markdownPaths?: MarkdownPathRegistry;
 }

@@ -30,6 +30,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`processingBatchSize` of `0` or less hung the build**: the batch loop
   never advanced. The option must now be a positive integer, and other values
   fail option validation.
+- **A frontmatter `slug` could write files outside the build directory**: with
+  `generateMarkdownFiles`, a slug such as `../../../escaped` wrote its markdown
+  file above `outDir`. Markdown paths now drop `.` and `..` segments, and any
+  path that still resolves outside the output directory falls back to a
+  filename from the page title.
+- **Output filenames and version paths could escape the build directory**:
+  `customLLMFiles[].filename`, `llmsTxtFilename`, `llmsFullTxtFilename`, and
+  `versions[].path` accepted absolute paths and `..` segments. Option
+  validation now rejects them, and a write-time check skips any file outside
+  `outDir`.
+- **Generated files with the same name overwrote each other**: an
+  `llmsTxtFilename` equal to `llmsFullTxtFilename`, or a custom filename equal
+  to a standard output or another custom file, silently replaced one file with
+  another. Option validation now rejects these collisions, counting only the
+  files that are generated.
+- **Custom LLM files overwrote markdown files from `llms.txt`**: with
+  `generateMarkdownFiles`, each custom file assigned markdown paths from
+  scratch, so a page could overwrite another page's file (for example two
+  sections' `intro.md` with `preserveDirectoryStructure: false`), leaving an
+  `llms.txt` link serving the wrong page. Each version now assigns every doc
+  one markdown file, shared by `llms.txt`, `llms-full.txt`, and custom files.
+- **Versioned markdown files repeated the version path**: with `versions` and
+  `generateMarkdownFiles`, a page at `/stable/get-started` was written to
+  `build/stable/stable/get-started.md` while `stable/llms.txt` linked
+  `/stable/get-started.md`. Files now land at the linked path.
 
 ### Documentation
 
