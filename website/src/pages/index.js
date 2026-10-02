@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from '@docusaurus/Link';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 
@@ -9,6 +10,7 @@ import Layout from '@theme/Layout';
  */
 export default function Home() {
   const { siteConfig } = useDocusaurusContext();
+  const llmsTxtUrl = useBaseUrl('/llms.txt');
   return (
     <Layout
       title="Home"
@@ -28,7 +30,7 @@ export default function Home() {
         </p>
         <p style={{ marginTop: '2rem' }}>
           This site runs the plugin on its own docs. Check the live output at{' '}
-          <a href="/docusaurus-plugin-llms/llms.txt">llms.txt</a>.
+          <a href={llmsTxtUrl}>llms.txt</a>.
         </p>
       </main>
     </Layout>

@@ -13,8 +13,18 @@ const config = {
   url: 'https://rachfop.github.io',
   baseUrl: '/docusaurus-plugin-llms/',
 
+  // Write `docs/overview.html`, which GitHub Pages serves at `/docs/overview`.
+  // The default writes `docs/overview/index.html`, which GitHub Pages reaches
+  // only through a 301 from the slash-less URLs the sidebar links to.
+  trailingSlash: false,
+
   onBrokenLinks: 'throw',
-  onBrokenLinks: 'warn',
+  onBrokenAnchors: 'throw',
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'throw',
+    },
+  },
 
   i18n: {
     defaultLocale: 'en',
@@ -30,8 +40,10 @@ const config = {
           // site reads them in place so there is a single source of truth.
           path: '../docs',
           sidebarPath: './sidebars.js',
-          editUrl:
-            'https://github.com/rachfop/docusaurus-plugin-llms/edit/main/docs',
+          // A string editUrl is joined with the path relative to website/,
+          // which yields `docs/../docs/<page>.md`; build it from docPath.
+          editUrl: ({ docPath }) =>
+            `https://github.com/rachfop/docusaurus-plugin-llms/edit/main/docs/${docPath}`,
         },
         blog: false,
         theme: {
@@ -44,6 +56,13 @@ const config = {
   // Dogfood: this plugin generates the llms.txt for this very site at
   // https://rachfop.github.io/docusaurus-plugin-llms/llms.txt
   plugins: [
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        // The docs have no index page; send /docs to the first page.
+        redirects: [{ from: '/docs', to: '/docs/overview' }],
+      },
+    ],
     [
       'docusaurus-plugin-llms',
       {
