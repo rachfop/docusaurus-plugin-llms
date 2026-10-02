@@ -172,32 +172,6 @@ runTests();
 // Document ordering tests
 console.log('\nRunning document ordering tests...\n');
 
-// Mock functions and utilities needed for ordering tests
-function mockReadFile(paths) {
-  return function(filePath) {
-    const pathStr = filePath.toString();
-    for (const [pattern, content] of Object.entries(paths)) {
-      if (pathStr.includes(pattern)) {
-        return Promise.resolve(content);
-      }
-    }
-    return Promise.reject(new Error(`Mock file not found: ${pathStr}`));
-  };
-}
-
-// Mock minimal plugin context
-function createMockContext() {
-  return {
-    siteDir: '/mock/site',
-    siteConfig: {
-      title: 'Mock Site',
-      tagline: 'For testing purposes',
-      url: 'https://example.com',
-      baseUrl: '/',
-    },
-    outDir: '/mock/site/build',
-  };
-}
 
 // Test for ordering documents
 async function testOrderingDocuments() {
@@ -272,8 +246,6 @@ async function testOrderingDocuments() {
   // Run fake plugin
   const mockPlugin = {
     postBuild: async () => {
-      const mockContext = createMockContext();
-      
       // Simulate the logic from the real plugin
       const allDocFiles = await mockReadMarkdownFiles();
       const matchedFiles = new Set();
@@ -399,8 +371,6 @@ async function testExcludeUnmatchedFiles() {
   // Run fake plugin
   const mockPlugin = {
     postBuild: async () => {
-      const mockContext = createMockContext();
-      
       // Simulate the logic from the real plugin
       const allDocFiles = await mockReadMarkdownFiles();
       const matchedFiles = new Set();
@@ -696,16 +666,12 @@ function runDescriptionTests() {
   
   const path = require('path');
   const fs = require('fs');
-  const matter = require('gray-matter');
   
   // Create a temporary directory for test files
   const testDir = path.join(__dirname, 'tmp-test');
   if (!fs.existsSync(testDir)) {
     fs.mkdirSync(testDir, { recursive: true });
   }
-  
-  // Create a mock file to process
-  const testFilePath = path.join(testDir, 'description-test.md');
   
   let passed = 0;
   

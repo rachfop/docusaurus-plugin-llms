@@ -147,7 +147,7 @@ async function runIndividualMarkdownGenerationTests() {
       
       try {
         // Generate individual markdown files
-        const result = await generateIndividualMarkdownFiles(
+        await generateIndividualMarkdownFiles(
           testCase.docs,
           testDir,
           testCase.siteUrl,
@@ -341,7 +341,7 @@ async function testEdgeCases() {
       console.log(`Edge Case Test: ${testCase.name}`);
       
       try {
-        const result = await generateIndividualMarkdownFiles(
+        await generateIndividualMarkdownFiles(
           testCase.docs,
           testDir,
           'https://example.com',
@@ -546,7 +546,7 @@ async function testKeepFrontMatter() {
       console.log(`Frontmatter Test: ${testCase.name}`);
       
       try {
-        const result = await generateIndividualMarkdownFiles(
+        await generateIndividualMarkdownFiles(
           testCase.docs,
           testDir,
           'https://example.com',

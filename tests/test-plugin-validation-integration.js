@@ -5,8 +5,6 @@
  * and properly rejects invalid options.
  */
 
-const assert = require('assert');
-const path = require('path');
 
 console.log('Testing plugin options validation integration...\n');
 

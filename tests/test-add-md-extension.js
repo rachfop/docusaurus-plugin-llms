@@ -7,7 +7,7 @@ async function setupTestDir() {
 
   try {
     await fs.rm(testDir, { recursive: true });
-  } catch (err) {
+  } catch {
     // Ignore if doesn't exist
   }
 
@@ -126,7 +126,7 @@ async function runTests() {
   } finally {
     try {
       await fs.rm(testDir, { recursive: true });
-    } catch (err) {
+    } catch {
       // Ignore cleanup errors
     }
   }

@@ -4,7 +4,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { DocInfo, DocsSection, PluginContext, CustomLLMFile } from './types';
+import { DocInfo, DocsSection, PluginContext } from './types';
 import {
   writeFile,
   readMarkdownFiles,
@@ -129,7 +129,7 @@ export async function generateLLMFile(
       const uniqueHeader = ensureUniqueIdentifier(
         doc.title,
         usedHeaders,
-        (counter, base) => {
+        (counter) => {
           // Try to make it more descriptive by adding the file path info if available
           if (isNonEmptyString(doc.path) && counter === 2) {
             const pathParts = doc.path.split('/');
@@ -707,7 +707,7 @@ export async function collectDocFiles(context: PluginContext): Promise<string[]>
       const docFiles = await readMarkdownFiles(fullDocsDir, siteDir, ignoreFiles, section.path, warnOnIgnoredFiles);
       allDocFiles.push(...docFiles);
 
-    } catch (err: unknown) {
+    } catch {
       logger.warn(`Docs directory not found: ${fullDocsDir}`);
     }
   }
@@ -723,7 +723,7 @@ export async function collectDocFiles(context: PluginContext): Promise<string[]>
       const blogFiles = await readMarkdownFiles(blogDir, siteDir, ignoreFiles, blogDirOption, warnOnIgnoredFiles);
       allDocFiles.push(...blogFiles);
 
-    } catch (err: unknown) {
+    } catch {
       logger.warn(`Blog directory not found: ${blogDir}`);
     }
   }

@@ -5,14 +5,6 @@
  * resolveDocumentUrl.
  */
 
-const path = require('path');
-
-function normalizePath(filePath) {
-  return filePath.split(path.sep).join('/');
-}
-
-const { processFilesWithPatterns } = require('../lib/processor');
-
 function createMockContext(options = {}) {
   return {
     siteDir: options.siteDir || '/test',
@@ -221,7 +213,7 @@ async function runTests() {
     try {
       const fullUrl = new URL(resolvedPath, siteUrl).toString();
       assert(fullUrl === 'https://example.com/docs/test', 'URL construction');
-    } catch (e) {
+    } catch {
       assert(false, 'URL construction', 'Should not throw error');
     }
 
@@ -229,7 +221,7 @@ async function runTests() {
     try {
       const fullUrl2 = new URL(resolvedPath, siteUrlWithSlash).toString();
       assert(fullUrl2 === 'https://example.com/docs/test', 'URL construction with trailing slash');
-    } catch (e) {
+    } catch {
       assert(false, 'URL construction with trailing slash', 'Should not throw error');
     }
   }

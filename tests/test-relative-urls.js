@@ -9,7 +9,6 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const assert = require('assert');
 const { generateLLMFile } = require('../lib/generator');
 
 let passed = 0;

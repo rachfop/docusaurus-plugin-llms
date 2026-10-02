@@ -235,7 +235,7 @@ function runEdgeCaseValidation() {
         try {
           const result = emptyString.length > 150 ? emptyString.substring(0, 147) + '...' : emptyString;
           return result === '';
-        } catch (error) {
+        } catch {
           return false;
         }
       }

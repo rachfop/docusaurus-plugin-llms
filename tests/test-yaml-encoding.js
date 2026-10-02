@@ -7,8 +7,6 @@
  * Run with: node test-yaml-encoding.js
  */
 
-const fs = require('fs');
-const path = require('path');
 const { createMarkdownContent } = require('../lib/utils');
 
 // Helper to extract frontmatter from markdown content

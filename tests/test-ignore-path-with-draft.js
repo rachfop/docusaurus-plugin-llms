@@ -6,7 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { processMarkdownFile, processFilesWithPatterns } = require('../lib/processor');
+const { processFilesWithPatterns } = require('../lib/processor');
 const { readMarkdownFiles } = require('../lib/utils');
 
 // Create test directory structure

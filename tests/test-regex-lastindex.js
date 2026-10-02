@@ -8,7 +8,7 @@ async function setupTestFiles() {
   // Clean up if exists
   try {
     await fs.rm(testDir, { recursive: true });
-  } catch (err) {
+  } catch {
     // Ignore if doesn't exist
   }
 
@@ -165,7 +165,7 @@ import Third from './_shared.mdx';
     // Clean up test directory
     try {
       await fs.rm(testDir, { recursive: true });
-    } catch (err) {
+    } catch {
       // Ignore cleanup errors
     }
   }

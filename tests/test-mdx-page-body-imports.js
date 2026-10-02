@@ -7,7 +7,6 @@
  * Run with: node tests/test-mdx-page-body-imports.js
  */
 
-const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');

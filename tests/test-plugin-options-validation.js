@@ -9,7 +9,6 @@
  * - Empty value validation where appropriate
  */
 
-const assert = require('assert');
 
 console.log('Testing plugin options validation...\n');
 

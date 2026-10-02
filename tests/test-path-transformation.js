@@ -139,13 +139,6 @@ function verifyResults() {
   console.log('\nTest completed. Please verify the URL patterns in the output files.');
 }
 
-// Clean up test files
-function cleanup() {
-  console.log('\nCleaning up...');
-  // Uncomment to remove test files after running
-  // fs.rmSync(TEST_DIR, { recursive: true, force: true });
-  // fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
-}
 
 // Run the tests
 async function main() {
@@ -153,7 +146,6 @@ async function main() {
     await setupTestDocs();
     await runTests();
     verifyResults();
-    // cleanup();
     console.log('All tests completed successfully.');
   } catch (error) {
     console.error('Test failed:', error);
