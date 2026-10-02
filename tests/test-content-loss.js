@@ -259,6 +259,17 @@ async function run() {
     check('comments inside code kept', cleanMarkdownContent(code), code);
   }
 
+  console.log('\nIndented HTML leaves no runs of blank lines');
+  {
+    check(
+      'indented block tags collapse to one blank line',
+      cleanMarkdownContent('<div>\n    <p>a</p>\n    \n    <p>b</p>\n</div>'),
+      'a\n\nb',
+    );
+    const code = '```\na\n   \n\n\nb\n```';
+    check('whitespace lines inside code kept', cleanMarkdownContent(code), code);
+  }
+
   console.log('\nBug 9: partial import forms and children');
   {
     const r = await processPage(
@@ -280,6 +291,16 @@ async function run() {
       'partial with element children inlined',
       r2.content,
       '# Page\n\nIntro text.\n\nPartial body.',
+    );
+    const r3 = await processPage(
+      'b9c',
+      "import Wrap from './_wrap9.mdx';\n\n# Page\n\n<Wrap>\n  Child text.\n</Wrap>\n",
+      { '_wrap9.mdx': 'Before.\n\n{props.children}\n\nAfter.' },
+    );
+    check(
+      'children rendered by {props.children} kept',
+      r3.content,
+      '# Page\n\nBefore.\n\nChild text.\n\nAfter.',
     );
   }
 }

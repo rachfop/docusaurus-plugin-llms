@@ -254,10 +254,10 @@ export async function resolvePartialImports(
       // Replace JSX usage with the partial content
       // Handle both self-closing tags and tags with content
       // <PartialName /> or <PartialName></PartialName> or <PartialName>...</PartialName>
-      // Children, elements included, are dropped: MDX renders the partial's
-      // own body for the tag.
+      // MDX renders the partial's own body for the tag, so children appear
+      // only where the partial renders `{props.children}`.
       const jsxRegex = new RegExp(
-        `<${escapedComponentName}${TAG_ATTRS}(?:/>|>[\\s\\S]*?</${escapedComponentName}>)`,
+        `<${escapedComponentName}${TAG_ATTRS}(?:/>|>([\\s\\S]*?)</${escapedComponentName}>)`,
         'g',
       );
       // Drop the partial's own import lines before splicing: they reference
@@ -275,7 +275,13 @@ export async function resolvePartialImports(
       // ($&, $1, $$, $' ...) in the partial's content — corrupting shell
       // samples like `echo $1` or `kill $$` that are extremely common in
       // documentation code blocks.
-      resolved = resolved.replace(jsxRegex, () => park(partialInlined));
+      resolved = resolved.replace(jsxRegex, (_tag, children?: string) =>
+        park(
+          isDefined(children) && partialInlined.includes('{props.children}')
+            ? partialInlined.split('{props.children}').join(children.trim())
+            : partialInlined,
+        ),
+      );
     } catch (error: unknown) {
       logger.warn(
         `Failed to resolve partial import '${importPath}' (imported by ${filePath}): ${getErrorMessage(error)}`,
@@ -460,14 +466,16 @@ export function cleanMarkdownContent(
     cleaned = processedLines.join('\n');
   }
 
-  // Restore the masked code blocks / inline code.
-  cleaned = restore(cleaned);
-
-  // Normalize whitespace
+  // Collapse blank lines outside code: removed tags leave whitespace-only
+  // lines and runs of newlines. Code is still masked, so blank lines inside a
+  // code sample stay as written.
   cleaned = cleaned
     .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .replace(/\n[ \t]+(?=\n)/g, '\n')
+    .replace(/\n{3,}/g, '\n\n');
+
+  // Restore the masked code blocks / inline code.
+  cleaned = restore(cleaned).trim();
 
   return cleaned;
 }

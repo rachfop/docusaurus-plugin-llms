@@ -98,6 +98,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   how often verbose mode logs progress.
 - Documented how page titles and descriptions are chosen, directory index
   handling, and the `llms-full.txt` page structure.
+- **Blank lines inside code samples were collapsed**: content cleaning
+  squeezed runs of blank lines everywhere, so a code sample with two blank
+  lines between functions came out with one. Blank lines are now collapsed
+  only outside code, including the whitespace-only lines left by indented
+  HTML.
 
 ## [0.6.0] - 2026-08-31
 
