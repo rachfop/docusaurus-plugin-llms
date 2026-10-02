@@ -66,13 +66,30 @@ function cleanDescriptionForToc(description: string, fromFrontMatter: boolean = 
   // Remove heading markers only at the beginning of the line
   // Be careful to only remove actual heading markers (# followed by space at beginning)
   // and not hashtag symbols that are part of the content (inline hashtags)
-  const cleaned = firstLine
+  let cleaned = firstLine
     .replace(/^(#+)\s+/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
+  // Body text often carries links relative to the page (`./installation.md`),
+  // which mean nothing in llms.txt, so a body description keeps link text only.
+  if (!fromFrontMatter) {
+    cleaned = cleaned.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1');
+  }
+
   // Truncate if too long (150 characters max with ellipsis)
-  return cleaned.length > 150 ? cleaned.substring(0, 147) + '...' : cleaned;
+  if (cleaned.length <= 150) return cleaned;
+  let truncated = cleaned.substring(0, 147);
+  // A cut inside a code span or link would leave it open and break the TOC
+  // line's markdown, so cut before the unclosed opener instead.
+  if ((truncated.match(/`/g) || []).length % 2 === 1) {
+    truncated = truncated.substring(0, truncated.lastIndexOf('`')).trimEnd();
+  }
+  const openLink = truncated.search(/!?\[[^\]]*$|!?\[[^\]]*\]\([^)]*$/);
+  if (openLink !== -1) {
+    truncated = truncated.substring(0, openLink).trimEnd();
+  }
+  return `${truncated}...`;
 }
 
 /**

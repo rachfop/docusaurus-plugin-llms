@@ -140,6 +140,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lines between functions came out with one. Blank lines are now collapsed
   only outside code, including the whitespace-only lines left by indented
   HTML.
+- **Truncated TOC descriptions could leave a link or code span open**: the
+  150-character cut could land inside `[text](url)` or an inline code span,
+  breaking the markdown of that llms.txt line. Body descriptions keep link
+  text only (their links are relative to the page), and a cut that would
+  leave a link or code span open moves before it.
 
 ## [0.6.0] - 2026-08-31
 

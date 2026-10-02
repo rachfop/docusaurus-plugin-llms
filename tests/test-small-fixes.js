@@ -233,6 +233,37 @@ async function main() {
   }
 
   {
+    const pad = 'x '.repeat(65);
+    const site = await runSite({
+      'docs/link.md': '# LinkDesc\n\nSee [the installation guide](./installation.md) to add it.\n',
+      'docs/cut-link.md': `# CutLink\n\n${pad}see [the configuration reference](./configuration.md#options) for more.\n`,
+      'docs/cut-plain.md': `# CutPlain\n\n${pad}index arr[0] holds the first value of the list, and the rest follow it.\n`,
+      'docs/cut-fm.md': `---\ndescription: ${pad}see [the configuration reference](https://ex.com/docs/configuration#options) for more\n---\n# CutFm\n`,
+      'docs/cut-code.md': `# CutCode\n\n${pad}run \`npm run build -- --out-dir build/production\` first.\n`,
+    });
+    const txt = site.read('llms.txt');
+    const line = (title) => txt.split('\n').find((l) => l.startsWith(`- [${title}]`)) || '';
+    checkEqual(
+      'body description link becomes its text',
+      line('LinkDesc'),
+      '- [LinkDesc](https://ex.com/docs/link): See the installation guide to add it.',
+    );
+    const balanced = (l) => {
+      const desc = l.slice(l.indexOf('): ') + 3);
+      return (desc.match(/`/g) || []).length % 2 === 0 && !/\[[^\]]*$/.test(desc);
+    };
+    check('truncation never leaves an open link', balanced(line('CutLink')), line('CutLink'));
+    check('truncation never leaves an open code span', balanced(line('CutCode')), line('CutCode'));
+    check('truncated descriptions end with ...', line('CutCode').endsWith('...'), line('CutCode'));
+    check('front matter link cut is closed', balanced(line('CutFm')), line('CutFm'));
+    checkEqual(
+      'plain brackets keep the 147-character cut',
+      line('CutPlain'),
+      `- [CutPlain](https://ex.com/docs/cut-plain): ${`${pad}index arr[0] holds the first value of the list, and the rest follow it.`.substring(0, 147)}...`,
+    );
+  }
+
+  {
     const r = await runSite(
       { 'docs/b.md': '---\ntitle: "Multi\\nLine title"\n---\nbody' },
       { generateMarkdownFiles: true, generateLLMsFullTxt: false },
