@@ -89,6 +89,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `import Y, { toc } from './_y.mdx'` forms lost the partial body and leaked
   the import line, and a partial used with element children
   (`<P><b>x</b></P>`) was not replaced.
+- **`preserveComponents` couldn't keep `<Table>`-style components or
+  `<TabItem>`**: HTML tag stripping matched names case-insensitively, so a
+  component such as `<Table>` or `<B>` was stripped as HTML, and `<TabItem>`
+  became a label line before the preserve check ran, leaving an unbalanced
+  `</TabItem>`. HTML stripping matches lowercase element names only, and a
+  preserved `TabItem` keeps its tag.
+- **Tab labels read the wrong attribute or kept quotes**: `data-label="x"`
+  was read as `label`, and `label={"Python"}` produced `**"Python"**`. The
+  attribute name must follow whitespace, and a brace expression holding a
+  single string or template literal yields the literal's text.
+- **Page titles could break llms.txt links and headings**: a title containing
+  `]`, `[`, or `\` ended or nested the link text, and a multi-line title split
+  the TOC line and the `## ` / `# ` heading. Titles are collapsed to one line,
+  and link text escapes `\`, `[`, and `]`.
+- **TOC descriptions stopped at the first line break**: with no frontmatter
+  `description`, a hard-wrapped first paragraph was cut at its first line.
+  The paragraph's lines are joined before the 150-character truncation.
+  Whitespace runs in every TOC description collapse to one space.
+- **Blog posts were listed under the last docs section's heading**: with
+  several `docsDir` sections and `includeBlog`, blog links followed the last
+  section's links in llms.txt. They're grouped under a `## Blog` heading.
+- **`useRelativeUrls`, `rewriteImageUrls`, and `warnOnIgnoredFiles` accepted
+  any value**: `useRelativeUrls: 'false'` passed validation and enabled the
+  option. These options must be booleans.
+- **`logLevel` leaked between plugin instances**: the level was module-wide,
+  so with two instances the last one constructed set the level for both
+  (a `quiet` instance printed output). Each instance's `postBuild` logs at its
+  own level, including when Docusaurus runs the instances concurrently.
+- **Duplicate llms-full.txt headings had no space before the suffix**: a
+  repeated title became `## Guide(Install)` or `## Intro(3)`. The suffix
+  follows a space: `## Guide (Install)`, `## Intro (3)`. This changes the
+  llms-full.txt headings of sites with duplicate page titles.
+- **`rewriteImageUrls` skipped some relative image paths**: `![a](img/x.png)`
+  (no `./`), `![a](<./my img.png>)`, and `![a](./my%20img.png)` kept their
+  source paths. Markdown image paths that aren't absolute, root-relative, or
+  aliases are rewritten, percent-decoded for the asset lookup as Docusaurus
+  does, and spaces in the asset URL are percent-encoded.
 
 ### Documentation
 

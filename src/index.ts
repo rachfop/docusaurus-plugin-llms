@@ -15,6 +15,7 @@ import { PluginOptions, PluginContext, CustomLLMFile, DocsSection, VersionConfig
 import { collectDocFiles, generateStandardLLMFiles, generateCustomLLMFiles } from './generator';
 import {
   setLogLevel,
+  withLogLevel,
   LogLevel,
   logger,
   getErrorMessage,
@@ -137,6 +138,9 @@ function validatePluginOptions(options: PluginOptions): void {
     'generateMarkdownFiles',
     'preserveDirectoryStructure',
     'addMdExtension',
+    'warnOnIgnoredFiles',
+    'rewriteImageUrls',
+    'useRelativeUrls',
   ] as const;
 
   for (const option of booleanOptions) {
@@ -631,7 +635,8 @@ export default function docusaurusPluginLLMs(
     verbose: LogLevel.VERBOSE,
   };
   // `??`, not `||`: LogLevel.QUIET is 0, which `||` would turn into NORMAL.
-  setLogLevel(logLevelMap[logLevel] ?? LogLevel.NORMAL);
+  const instanceLogLevel = logLevelMap[logLevel] ?? LogLevel.NORMAL;
+  setLogLevel(instanceLogLevel);
 
   const { siteDir, siteConfig, outDir } = context;
 
@@ -695,92 +700,97 @@ export default function docusaurusPluginLLMs(
      * Generates LLM-friendly documentation files after the build is complete
      */
     async postBuild(props?: Props & { content: unknown }): Promise<void> {
-      logger.info('Generating LLM-friendly documentation...');
+      // Run under this instance's own logLevel: Docusaurus runs every plugin's
+      // postBuild concurrently, so the module-wide level may be another
+      // instance's.
+      return withLogLevel(instanceLogLevel, async () => {
+        logger.info('Generating LLM-friendly documentation...');
 
-      try {
-        const routesPaths = props?.routesPaths;
-        if (routesPaths) {
-          logger.verbose(
-            `routesPaths available: ${routesPaths.length} routes — sample: ${routesPaths.slice(0, 5).join(', ')}`,
-          );
-        } else {
-          logger.verbose(
-            'routesPaths NOT available in postBuild props — URL resolution will use file-path fallback',
-          );
-        }
-
-        // Build the image asset map once when rewriteImageUrls is enabled; it is
-        // keyed off the build output and shared across all versions.
-        let imageAssetMap: Map<string, string[]> | undefined;
-        if (rewriteImageUrls) {
-          logger.verbose('Building image asset map for URL rewriting...');
-          imageAssetMap = await buildImageAssetMap(pluginContext.outDir);
-          logger.verbose(`Image asset map: ${imageAssetMap.size} unique image basenames indexed`);
-        }
-
-        const resolvedVersions = resolveVersions(
-          options,
-          siteDir,
-          siteConfig,
-          docsSections,
-          docsDir,
-        );
-        // Non-root versions each own a route-path prefix; the root version
-        // excludes these so its links don't leak into a versioned subtree.
-        const otherPrefixes = resolvedVersions
-          .map((v) => v.pathPrefix)
-          .filter((prefix) => prefix !== '');
-        const isMultiVersion = options.versions !== undefined;
-
-        for (const version of resolvedVersions) {
-          const routePrefix = version.pathPrefix ? `/${version.pathPrefix}` : '';
-          const versionContext: PluginContext = {
-            ...pluginContext,
-            routesPaths,
-            imageAssetMap,
-            docsSections: version.docsSections,
-            docsDir: version.docsSections[0].path,
-            outputSubdir: version.pathPrefix,
-            markdownPaths: { usedPaths: new Set(), docPaths: new Map() },
-            // Only scope routes in multi-version mode; the single default
-            // version keeps the original whole-site matching behavior.
-            routePrefix: isMultiVersion ? routePrefix : undefined,
-            siblingPrefixes: isMultiVersion
-              ? otherPrefixes
-                  .filter((prefix) => prefix !== version.pathPrefix)
-                  .map((prefix) => `/${prefix}`)
-              : undefined,
-            options: {
-              ...pluginContext.options,
-              version: version.label,
-              customLLMFiles: version.customLLMFiles,
-              includeOrder: version.includeOrder,
-            },
-          };
-
-          if (isMultiVersion) {
-            logger.info(
-              `Generating LLM files for version '${version.name}'` + ` -> /${version.pathPrefix}`,
+        try {
+          const routesPaths = props?.routesPaths;
+          if (routesPaths) {
+            logger.verbose(
+              `routesPaths available: ${routesPaths.length} routes — sample: ${routesPaths.slice(0, 5).join(', ')}`,
+            );
+          } else {
+            logger.verbose(
+              'routesPaths NOT available in postBuild props — URL resolution will use file-path fallback',
             );
           }
 
-          const allDocFiles = await collectDocFiles(versionContext);
-          if (!isNonEmptyArray(allDocFiles)) {
-            logger.warn(`No documents found for version '${version.name}'. Skipping.`);
-            continue;
+          // Build the image asset map once when rewriteImageUrls is enabled; it is
+          // keyed off the build output and shared across all versions.
+          let imageAssetMap: Map<string, string[]> | undefined;
+          if (rewriteImageUrls) {
+            logger.verbose('Building image asset map for URL rewriting...');
+            imageAssetMap = await buildImageAssetMap(pluginContext.outDir);
+            logger.verbose(`Image asset map: ${imageAssetMap.size} unique image basenames indexed`);
           }
 
-          await generateStandardLLMFiles(versionContext, allDocFiles);
-          await generateCustomLLMFiles(versionContext, allDocFiles);
-
-          logger.info(
-            `Stats: ${allDocFiles.length} documents processed` +
-              (isMultiVersion ? ` for version '${version.name}'` : ''),
+          const resolvedVersions = resolveVersions(
+            options,
+            siteDir,
+            siteConfig,
+            docsSections,
+            docsDir,
           );
+          // Non-root versions each own a route-path prefix; the root version
+          // excludes these so its links don't leak into a versioned subtree.
+          const otherPrefixes = resolvedVersions
+            .map((v) => v.pathPrefix)
+            .filter((prefix) => prefix !== '');
+          const isMultiVersion = options.versions !== undefined;
+
+          for (const version of resolvedVersions) {
+            const routePrefix = version.pathPrefix ? `/${version.pathPrefix}` : '';
+            const versionContext: PluginContext = {
+              ...pluginContext,
+              routesPaths,
+              imageAssetMap,
+              docsSections: version.docsSections,
+              docsDir: version.docsSections[0].path,
+              outputSubdir: version.pathPrefix,
+              markdownPaths: { usedPaths: new Set(), docPaths: new Map() },
+              // Only scope routes in multi-version mode; the single default
+              // version keeps the original whole-site matching behavior.
+              routePrefix: isMultiVersion ? routePrefix : undefined,
+              siblingPrefixes: isMultiVersion
+                ? otherPrefixes
+                    .filter((prefix) => prefix !== version.pathPrefix)
+                    .map((prefix) => `/${prefix}`)
+                : undefined,
+              options: {
+                ...pluginContext.options,
+                version: version.label,
+                customLLMFiles: version.customLLMFiles,
+                includeOrder: version.includeOrder,
+              },
+            };
+
+            if (isMultiVersion) {
+              logger.info(
+                `Generating LLM files for version '${version.name}'` + ` -> /${version.pathPrefix}`,
+              );
+            }
+
+            const allDocFiles = await collectDocFiles(versionContext);
+            if (!isNonEmptyArray(allDocFiles)) {
+              logger.warn(`No documents found for version '${version.name}'. Skipping.`);
+              continue;
+            }
+
+            await generateStandardLLMFiles(versionContext, allDocFiles);
+            await generateCustomLLMFiles(versionContext, allDocFiles);
+
+            logger.info(
+              `Stats: ${allDocFiles.length} documents processed` +
+                (isMultiVersion ? ` for version '${version.name}'` : ''),
+            );
+          }
+        } catch (err: unknown) {
+          logger.error(`Error generating LLM documentation: ${getErrorMessage(err)}`);
         }
-      } catch (err: unknown) {
-        logger.error(`Error generating LLM documentation: ${getErrorMessage(err)}`);
-      }
+      });
     },
   };
 }

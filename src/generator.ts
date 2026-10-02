@@ -33,21 +33,43 @@ import {
 } from './content';
 
 /**
+ * Collapse every whitespace run (including newlines) in a title to one space,
+ * so the title stays on a single markdown line.
+ */
+function singleLineTitle(title: string): string {
+  return title.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Format a title as markdown link text: one line, with `\`, `[`, and `]`
+ * backslash-escaped so the title can't close the link early or nest a link.
+ */
+function escapeLinkText(title: string): string {
+  return singleLineTitle(title).replace(/[\\[\]]/g, '\\$&');
+}
+
+/**
  * Clean a description for use in a TOC item
  * @param description - The original description
+ * @param fromFrontMatter - Whether the description came from front matter
  * @returns Cleaned description suitable for TOC
  */
-function cleanDescriptionForToc(description: string): string {
+function cleanDescriptionForToc(description: string, fromFrontMatter: boolean = true): string {
   if (!isNonEmptyString(description)) return '';
 
-  // Get just the first line for TOC display
+  // A front matter description contributes its first line. A description
+  // taken from the page body is its first paragraph, whose lines are often
+  // hard-wrapped, so its lines are joined into one.
   const lines = description.split('\n');
-  const firstLine = lines.length > 0 ? lines[0] : '';
+  const firstLine = fromFrontMatter ? (lines.length > 0 ? lines[0] : '') : lines.join(' ');
 
   // Remove heading markers only at the beginning of the line
   // Be careful to only remove actual heading markers (# followed by space at beginning)
   // and not hashtag symbols that are part of the content (inline hashtags)
-  const cleaned = firstLine.replace(/^(#+)\s+/g, '');
+  const cleaned = firstLine
+    .replace(/^(#+)\s+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   // Truncate if too long (150 characters max with ellipsis)
   return cleaned.length > 150 ? cleaned.substring(0, 147) + '...' : cleaned;
@@ -133,16 +155,18 @@ export async function generateLLMFile(
 
       const batchSections = batch.map((doc) => {
         // Generate unique header using the utility function
-        const uniqueHeader = ensureUniqueIdentifier(doc.title, usedHeaders, (counter) => {
+        // The header is one line: a newline in the title would end the heading.
+        const headerTitle = singleLineTitle(doc.title) || doc.title;
+        const uniqueHeader = ensureUniqueIdentifier(headerTitle, usedHeaders, (counter) => {
           // Try to make it more descriptive by adding the file path info if available
           if (isNonEmptyString(doc.path) && counter === 2) {
             const pathParts = doc.path.split('/');
             const folderName = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : '';
             if (isNonEmptyString(folderName)) {
-              return `(${folderName.charAt(0).toUpperCase() + folderName.slice(1)})`;
+              return ` (${folderName.charAt(0).toUpperCase() + folderName.slice(1)})`;
             }
           }
-          return `(${counter})`;
+          return ` (${counter})`;
         });
 
         // Drop the body's own H1 when it repeats the title (the `## {header}`
@@ -178,6 +202,16 @@ export async function generateLLMFile(
     // Generate links-only file
     const docsHaveSections = docs.some((doc) => doc.section);
 
+    const tocLine = (doc: DocInfo): string => {
+      const cleanedDescription = cleanDescriptionForToc(
+        doc.description,
+        isNonEmptyString(doc.frontMatter?.description),
+      );
+      let linkUrl = addMdExtension ? applyMdExtension(doc.url) : doc.url;
+      if (useRelativeUrls) linkUrl = toRelativeUrl(linkUrl);
+      return `- [${escapeLinkText(doc.title)}](${linkUrl})${cleanedDescription ? `: ${cleanedDescription}` : ''}`;
+    };
+
     let tocContent: string;
 
     if (docsHaveSections) {
@@ -188,14 +222,7 @@ export async function generateLLMFile(
         if (!sectionMap.has(sectionKey)) {
           sectionMap.set(sectionKey, []);
         }
-        const cleanedDescription = cleanDescriptionForToc(doc.description);
-        let linkUrl = addMdExtension ? applyMdExtension(doc.url) : doc.url;
-        if (useRelativeUrls) linkUrl = toRelativeUrl(linkUrl);
-        sectionMap
-          .get(sectionKey)!
-          .push(
-            `- [${doc.title}](${linkUrl})${cleanedDescription ? `: ${cleanedDescription}` : ''}`,
-          );
+        sectionMap.get(sectionKey)!.push(tocLine(doc));
       }
 
       const sectionBlocks: string[] = [];
@@ -206,12 +233,7 @@ export async function generateLLMFile(
 
       tocContent = sectionBlocks.join('\n\n');
     } else {
-      const tocItems = docs.map((doc) => {
-        const cleanedDescription = cleanDescriptionForToc(doc.description);
-        let linkUrl = addMdExtension ? applyMdExtension(doc.url) : doc.url;
-        if (useRelativeUrls) linkUrl = toRelativeUrl(linkUrl);
-        return `- [${doc.title}](${linkUrl})${cleanedDescription ? `: ${cleanedDescription}` : ''}`;
-      });
+      const tocItems = docs.map(tocLine);
       tocContent = `## Table of Contents\n\n${tocItems.join('\n')}`;
     }
 

@@ -162,7 +162,7 @@ async function run() {
     expect('no body H1 in full file', !/^# Install$/m.test(out), out);
     expect('inner heading nested under doc header', /^### Requirements$/m.test(out), out);
     expect('no triple blank lines', !/\n\n\n\n/.test(out), out);
-    expect('unique disambiguated headers', out.includes('## Install(Api)'), out);
+    expect('unique disambiguated headers', out.includes('## Install (Api)'), out);
     fs.rmSync(dir, { recursive: true, force: true });
   }
 

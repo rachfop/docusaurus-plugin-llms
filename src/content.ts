@@ -316,11 +316,20 @@ export async function resolvePartialImports(
 
 /**
  * Extract an attribute value from a JSX tag's attribute run: the value of
- * `name`, whether double-quoted, single-quoted, or a brace expression.
+ * `name`, whether double-quoted, single-quoted, or a brace expression. The
+ * name must follow whitespace, so `label` never matches inside `data-label`.
+ * A brace expression holding a single string literal (`{"x"}`, `{'x'}`, or a
+ * template literal without `${}`) yields the literal's text.
  */
 function extractTagAttr(tag: string, name: string): string | undefined {
-  const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|\\{([^{}]*)\\})`));
-  const raw = m?.[1] ?? m?.[2] ?? m?.[3];
+  const m = tag.match(new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|\\{([^{}]*)\\})`));
+  let raw = m?.[1] ?? m?.[2];
+  const expression = m?.[3];
+  if (raw === undefined && isDefined(expression)) {
+    const literal = expression.trim().match(/^(?:"([^"]*)"|'([^']*)'|`([^`]*)`)$/);
+    const text = literal?.[1] ?? literal?.[2] ?? literal?.[3];
+    raw = isDefined(text) && !text.includes('${') ? text : expression;
+  }
   return isNonEmptyString(raw) ? raw : undefined;
 }
 
@@ -373,7 +382,11 @@ export function cleanMarkdownContent(
 
   // Convert <img> to a markdown image, keeping its alt text; image-URL
   // rewriting runs after cleaning and then applies to the src too.
-  cleaned = cleaned.replace(new RegExp(`<img\\b${TAG_ATTRS}/?>`, 'gi'), (tag) => {
+  //
+  // HTML element names here and below are matched lowercase only: in MDX a
+  // capitalized name (<Img>, <Table>) is a component, which the JSX pass
+  // further down strips or keeps per preserveComponents.
+  cleaned = cleaned.replace(new RegExp(`<img\\b${TAG_ATTRS}/?>`, 'g'), (tag) => {
     const src = quotedTagAttr(tag, 'src');
     return src ? `![${quotedTagAttr(tag, 'alt') ?? ''}](${src})` : '';
   });
@@ -382,19 +395,16 @@ export function cleanMarkdownContent(
   // keeping the text boundaries they marked: adjacent table cells get a ` | `
   // separator, and a run of block-level tags becomes one newline (a space
   // inside a markdown table row, where a newline would break the row).
-  cleaned = cleaned.replace(new RegExp(`</t[dh]\\s*>\\s*<t[dh]\\b${TAG_ATTRS}>`, 'gi'), ' | ');
+  cleaned = cleaned.replace(new RegExp(`</t[dh]\\s*>\\s*<t[dh]\\b${TAG_ATTRS}>`, 'g'), ' | ');
   const blockTag = `</?(?:div|p|br|hr|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\\b${TAG_ATTRS}/?>`;
   cleaned = cleaned.replace(
-    new RegExp(`(?:${blockTag}[ \\t]*)+`, 'gi'),
+    new RegExp(`(?:${blockTag}[ \\t]*)+`, 'g'),
     (_run, offset: number, str: string) => {
       const lineStart = str.lastIndexOf('\n', offset - 1) + 1;
       return /^[ \t]*\|/.test(str.slice(lineStart, offset)) ? ' ' : '\n';
     },
   );
-  cleaned = cleaned.replace(
-    new RegExp(`</?(?:span|a|strong|em|b|i|u)\\b${TAG_ATTRS}/?>`, 'gi'),
-    '',
-  );
+  cleaned = cleaned.replace(new RegExp(`</?(?:span|a|strong|em|b|i|u)\\b${TAG_ATTRS}/?>`, 'g'), '');
 
   // Emit the label of Docusaurus's <TabItem> as a bold line before the tab
   // body (with a `value` fallback, matching what Docusaurus renders). Without
@@ -402,9 +412,15 @@ export function cleanMarkdownContent(
   // label prop is silently lost (#64). TAG_ATTRS keeps the match alive through
   // `>` inside quoted values (e.g. label="A > B"); a [^>]* scan would cut the
   // tag short and leak the remainder as prose.
+  // A preserved TabItem keeps its tag as written, like any preserved component.
+  const preserve = new Set(preserveComponents);
   const tabItemOpen = new RegExp(`<TabItem\\b${TAG_ATTRS}>`, 'g');
   cleaned = cleaned.replace(tabItemOpen, (tag) => {
-    const label = extractTagAttr(tag, 'label') ?? extractTagAttr(tag, 'value');
+    if (preserve.has('TabItem')) return tag;
+    // Restore first: a template-literal label (label={`x`}) was masked as
+    // inline code along with the rest of the content.
+    const source = restore(tag);
+    const label = extractTagAttr(source, 'label') ?? extractTagAttr(source, 'value');
     return label ? `\n\n**${label}**\n\n` : '';
   });
 
@@ -412,7 +428,6 @@ export function cleanMarkdownContent(
   // <TabItem>, <Admonition>), keeping their inner text content — except for
   // components the site explicitly opted out of via preserveComponents,
   // whose tags are left untouched in the output.
-  const preserve = new Set(preserveComponents);
   const jsxTag = new RegExp(`<(/?)([A-Z][A-Za-z0-9.]*)\\b((?:${TAG_ATTRS}))(/?)>`, 'g');
   cleaned = cleaned.replace(jsxTag, (tag, slash, name, attrs) => {
     if (preserve.has(name)) return tag;
@@ -518,8 +533,11 @@ export function createMarkdownContent(
     .join('\n');
   const descriptionLine = includeMetadata && description ? `\n\n${blockquoted}\n` : '\n';
 
+  // A newline in the title would end the heading and leak the rest as prose.
+  const headingTitle = title.replace(/\s*[\r\n]+\s*/g, ' ');
+
   result +=
-    `# ${title}${descriptionLine}
+    `# ${headingTitle}${descriptionLine}
 ${content}`.trim() + '\n';
 
   return result;
