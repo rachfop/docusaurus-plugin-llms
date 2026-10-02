@@ -1,14 +1,18 @@
+---
+description: Recommended option combinations for API reference, tutorials, and multi-language docs, plus checks for the deployed output.
+---
+
 # Best practices
 
-This page collects recommended option combinations for common documentation
-shapes, plus notes on performance and backward compatibility. All the options
-mentioned here are covered in detail on the [options](./configuration.md) and
-[content cleaning](./content-cleaning.md) pages.
+This page collects recommended option combinations for common kinds of
+documentation, plus notes on deployment and performance. For each option's
+full reference, see [configuration options](./configuration.md) and
+[content cleaning](./content-cleaning.md).
 
 ## API documentation
 
-Auto-generated API docs (OpenAPI output, for example) tend to carry React
-component imports and short sections that just repeat their own heading. Turn on
+Auto-generated API docs (OpenAPI output, for example) carry React component
+imports and short sections that repeat their own heading. Turn on
 both content-cleaning options and generate a single full-content file so an LLM
 can read the whole reference at once:
 
@@ -79,13 +83,13 @@ files](./content-generation.md) for the full field reference, including
 
 ## Validating the deployed output
 
-This plugin generates a correct `llms.txt` at build time, but serving-layer
-config can break it in production: host redirect rules, `trailingSlash`
-interactions, and docs restructures all bite after the build goes green.
-Docusaurus sites have shipped zero-byte llms.txt files and dead links this way.
+The plugin builds `llms.txt` from your site's build routes and can't see the
+deployed site. Host redirect rules, `trailingSlash` settings, and docs restructures can
+break the served `llms.txt` after a green build, leaving an empty file or dead
+links.
 
-[llms-txt-check](https://github.com/portdeveloper/llms-txt-check) verifies the
-deployed file against what your site actually serves:
+[llms-txt-check](https://github.com/portdeveloper/llms-txt-check) checks the
+deployed file against what your site serves:
 
 ```yaml
 - run: npx llms-txt-check https://your-docs-site.com
@@ -97,28 +101,10 @@ after the site is live.
 
 ## Performance considerations
 
-Content cleaning is cheap:
+The plugin does all its work in the `postBuild` hook, after Docusaurus has
+built the site, and the cleaning options add little time to that step.
 
-- Both cleaning options add minimal processing overhead.
-- Cleaning runs on the content after HTML tag removal.
-- The work happens only during LLM file generation in the `postBuild` hook, so
-  there's no effect on the rest of your site's build.
-
-For very large sites, tune `processingBatchSize` (a `number`, default `100`) to
-control memory use. Lower it (for example `50`) on memory-constrained runners or
-sites with 1000+ documents; raise it on high-memory systems for faster
-processing. See [large sites](./ordering-and-paths.md) for details.
-
-## Backward compatibility
-
-Every option that changes output defaults to off or to the previous behavior, so
-existing configurations keep working untouched:
-
-- `excludeImports` and `removeDuplicateHeadings` default to `false`. Only
-  configs that explicitly enable them see cleaned output.
-- `generateMarkdownFiles` defaults to `false`, so the plugin links to your
-  original pages unless you opt in.
-- `rewriteImageUrls` defaults to `false`, preserving the original relative image
-  paths.
-
-You only get the new behavior when you turn it on.
+The plugin holds every processed document in memory while it writes
+`llms-full.txt`, so memory use grows with the size of your docs. On a
+memory-constrained runner, give Node.js more heap with
+`NODE_OPTIONS=--max-old-space-size=4096`.

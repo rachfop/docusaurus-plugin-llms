@@ -1,14 +1,20 @@
+---
+description: Strip HTML, MDX imports, and repeated heading text from generated files, and rewrite relative image URLs.
+---
+
 # Content cleaning
 
-Documentation written for humans often carries markup that adds noise for a language model: MDX import statements, HTML wrappers, and auto-generated content that just echoes its own heading. The plugin can strip these before writing `llms.txt`, `llms-full.txt`, and any individual markdown files, so the output stays compact and readable.
+Documentation written for humans carries markup that adds noise for a language model: MDX import statements, HTML wrappers, and auto-generated text that repeats its own heading. The plugin strips this markup before it writes `llms-full.txt` and any individual Markdown files.
 
-Some cleaning always happens. Regardless of your options, the plugin removes common HTML tags (`<div>`, `<span>`, `<img>`, and so on) and MDX/JSX component tags (PascalCase elements like `<Tabs>` or `<Admonition>`), keeping their inner text. Docusaurus's `<TabItem>` gets special handling: its `label` (or `value`, when no label is set) is emitted as a bold line before the tab body, so tabbed sections keep their structure in the generated markdown. Other PascalCase tags you can exempt from stripping with the `preserveComponents` option, described below. The remaining cleaning options are opt-in: `excludeImports`, `removeDuplicateHeadings`, and `rewriteImageUrls`. Each defaults to `false`, so existing configurations keep their current output until you enable them.
+Some cleaning always runs. The plugin removes common HTML tags (`<div>`, `<span>`, `<img>`, and so on) and MDX/JSX component tags (PascalCase elements like `<Tabs>` or `<Admonition>`), and keeps their inner text. Docusaurus's `<TabItem>` is a special case: the plugin writes its `label` (or `value`, when no label is set) as a bold line before the tab body, so tabbed sections keep their structure. To keep other component tags, list them in [`preserveComponents`](#preserving-component-tags-preservecomponents).
 
-Cleaning runs after code blocks are masked out, so fenced code and inline code are never touched. An `import` line or an HTML snippet shown inside a code sample stays exactly as written.
+The other cleaning options are opt-in, and each defaults to `false`: `excludeImports`, `removeDuplicateHeadings`, and `rewriteImageUrls`.
+
+Cleaning skips fenced code and inline code, so an `import` line or an HTML snippet inside a code sample is left as written.
 
 ## Import statement removal (`excludeImports`)
 
-`excludeImports` is a `boolean` (default `false`). When `true`, it removes JavaScript and TypeScript `import` statements from your MDX content. These lines are rarely useful to an LLM and add clutter, especially in API docs that pull in many theme components.
+`excludeImports` is a `boolean` (default `false`). When `true`, it removes JavaScript and TypeScript `import` statements from your MDX content. These lines carry no content for an LLM, and API docs that pull in many theme components can open with a dozen of them.
 
 The option strips the common `import` forms: named imports, default imports, namespace imports (`import * as ...`), and side-effect imports (`import "...";`). Given an MDX file that starts with a block of component imports:
 
@@ -39,13 +45,13 @@ To enable it:
 }
 ```
 
-Import lines inside a fenced code block are left alone, since the masking step protects code samples. This option pairs naturally with [Docusaurus partials](https://docusaurus.io/docs/markdown-features/react#importing-markdown), whose imports are resolved and inlined during processing.
+Import lines inside a fenced code block are left alone. Imports of [Docusaurus partials](https://docusaurus.io/docs/markdown-features/react#importing-markdown) are resolved and inlined whether or not this option is set; see [how partials are resolved](./content-generation.md#how-partials-are-resolved).
 
 ## Duplicate heading removal (`removeDuplicateHeadings`)
 
 `removeDuplicateHeadings` is a `boolean` (default `false`). When `true`, it removes a line that repeats its heading text immediately below the heading. This pattern is common in auto-generated API docs, where each entry renders both a heading and a body line containing the same text.
 
-The removal is deliberately narrow: the plugin only drops the next non-empty line after a heading when that line exactly matches the heading text and is not itself a heading. Blank lines between the heading and the repeated text are preserved, and a lower-level heading of the same wording is never removed. Given a file where each entry duplicates its title:
+The plugin drops the next non-empty line after a heading only when that line matches the heading text and is itself plain text, not a heading. Blank lines between the heading and the repeated text are preserved, and a lower-level heading of the same wording is never removed. Given a file where each entry duplicates its title:
 
 ```markdown
 # Create deliverable
@@ -111,40 +117,14 @@ Two special cases run regardless of this option:
 - `<TabItem>` is never preserved as a raw tag. Instead, its `label` (or `value` when no label is set) is emitted as a bold line before the tab body, so a tabbed section degrades into a readable plain-markdown outline. This needs no configuration.
 - Tags inside fenced code blocks or inline code spans are never touched by any cleaning step, including this one.
 
-## Combined content cleaning
+## Choose cleaning options by content type
 
-You can enable both options together for the cleanest output:
+Which options to enable depends on how the docs were written:
 
-```js
-module.exports = {
-  plugins: [
-    [
-      'docusaurus-plugin-llms',
-      {
-        excludeImports: true,
-        removeDuplicateHeadings: true,
+- Hand-written guides: leave both options off, or set `excludeImports: true` on MDX-heavy sites. `removeDuplicateHeadings` can drop a line you wrote on purpose.
+- API reference and other generated content: set both options to `true` to remove imports and repeated heading text.
 
-        // Other options work normally:
-        generateLLMsTxt: true,
-        generateLLMsFullTxt: true,
-        docsDir: 'docs',
-      },
-    ],
-  ],
-};
-```
-
-## Content cleaning by use case
-
-Pick the combination that matches your content:
-
-- Minimal cleanup (the default): set both options to `false` to preserve all original content, including import statements. This suits hand-written docs without redundant patterns.
-
-- Import cleanup only: set `excludeImports: true` and `removeDuplicateHeadings: false`. This removes technical imports from MDX-heavy sites while keeping every line of prose intact.
-
-- Full cleanup: set both to `true`. This is the recommended setting for API reference and other auto-generated content, since it removes both imports and echoed heading text for the most concise output.
-
-Here's the full-cleanup configuration:
+The configuration for generated content:
 
 ```js
 {
@@ -153,9 +133,11 @@ Here's the full-cleanup configuration:
 }
 ```
 
+For more combinations, see [best practices](./best-practices.md).
+
 ## Image URL rewriting (`rewriteImageUrls`)
 
-`rewriteImageUrls` is a `boolean` (default `false`). Docusaurus source files reference images with paths relative to the source file:
+`rewriteImageUrls` is a `boolean` (default `false`). When `true`, the plugin rewrites relative image references to absolute URLs of the images in the build output. Docusaurus source files reference images with paths relative to the source file:
 
 ```md
 ![Architecture diagram](./img/arch.png)
@@ -199,17 +181,20 @@ The plugin resolves each reference by basename:
 1. After the build, it scans `build/assets/images/` and builds a lookup map from each original basename to its list of hashed build paths.
 2. For every relative image reference in the generated content, it extracts the basename and looks it up in the map.
 3. On a single match, it rewrites the path directly.
-4. On multiple matches (two images share a filename), it reads the source file and compares its bytes against each candidate, using the exact match.
+4. On multiple matches (two images share a filename), it compares the source image's bytes against each candidate and uses the one that matches.
 5. On no match (a placeholder image, or a file in an unprocessed section), it keeps the original relative path.
 
 ### Limitations
 
-A few constraints follow from scanning the build output:
+Because the plugin works from the build output, rewriting has these limits:
 
-- Only images that Docusaurus actually bundled into `build/assets/images/` are rewritten. An image no rendered page references isn't in the build and can't be rewritten.
-- Rewriting applies to both individual `.md` files (when `generateMarkdownFiles: true`) and `llms-full.txt`.
-- The option defaults to `false` to preserve backward compatibility.
+- Only images that Docusaurus bundled into `build/assets/images/` are rewritten. An image that no rendered page references isn't in the build, so its path stays relative.
+- Rewriting applies to Markdown image syntax (`![alt](path)`). Cleaning strips HTML `<img>` tags before rewriting runs.
+- Rewriting applies to individual `.md` files (when `generateMarkdownFiles: true`), `llms-full.txt`, and full-content custom LLM files.
+- With `useRelativeUrls: true`, rewritten image URLs stay absolute.
 
 ## Related pages
 
-- [Installation](./installation.md)
+- [Generating individual Markdown files](./markdown-files.md)
+- [Best practices](./best-practices.md)
+- [Configuration options](./configuration.md#content-cleaning)
