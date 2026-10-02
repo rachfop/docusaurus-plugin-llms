@@ -119,11 +119,12 @@ const TAG_ATTRS =
  * Regex source matching one ES import statement on its own line(s): `import
  * X from '...'`, `import { a, b } from '...'` (braces may span lines),
  * `import * as ns from '...'`, `import X, { a } from '...'`, or a side-effect
- * `import '...'`. A line of prose that starts with "import" has no quoted
- * module specifier and never matches.
+ * `import '...'`, optionally with an import attribute (`with { type: 'json' }`)
+ * and a trailing line or block comment. A line of prose that starts with
+ * "import" has no quoted module specifier and never matches.
  */
 const IMPORT_STATEMENT =
-  /^[ \t]*import\s+(?:(?:type\s+)?(?:[\w$]+(?:\s*,\s*(?:\{[^}]*\}|\*\s*as\s+[\w$]+))?|\{[^}]*\}|\*\s*as\s+[\w$]+)\s*from\s*)?['"][^'"\n]+['"][ \t]*;?[ \t]*$/
+  /^[ \t]*import\s+(?:(?:type\s+)?(?:[\w$]+(?:\s*,\s*(?:\{[^}]*\}|\*\s*as\s+[\w$]+))?|\{[^}]*\}|\*\s*as\s+[\w$]+)\s*from\s*)?['"][^'"\n]+['"](?:[ \t]+(?:with|assert)[ \t]*\{[^}\n]*\})?[ \t]*;?[ \t]*(?:\/\/[^\n]*|\/\*[^\n]*?\*\/)?[ \t]*$/
     .source;
 
 /** Remove ES import statements, leaving every other line as written. */
@@ -337,6 +338,31 @@ function extractTagAttr(tag: string, name: string): string | undefined {
 }
 
 /**
+ * Map each line's start offset to the content indentation of the list item the
+ * line continues (the width of the item's marker and its indentation), or -1
+ * outside a list. A line continues a list item when the nearest unindented
+ * line above it, skipping blank and indented lines, is a list item. One pass
+ * over the text.
+ */
+function listItemIndents(text: string): Map<number, number> {
+  const result = new Map<number, number>();
+  let itemIndent = -1;
+  let start = 0;
+  while (start <= text.length) {
+    const nl = text.indexOf('\n', start);
+    const end = nl === -1 ? text.length : nl;
+    const line = text.slice(start, end);
+    result.set(start, itemIndent);
+    const item = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]+(?=\S)/.exec(line);
+    if (item) itemIndent = item[0].length;
+    else if (/^\S/.test(line)) itemIndent = -1;
+    if (nl === -1) break;
+    start = nl + 1;
+  }
+  return result;
+}
+
+/**
  * Extract a quoted HTML attribute value from a tag. The name must follow
  * whitespace, so `src` never matches inside `data-src`.
  */
@@ -400,11 +426,30 @@ export function cleanMarkdownContent(
   // inside a markdown table row, where a newline would break the row).
   cleaned = cleaned.replace(new RegExp(`</t[dh]\\s*>\\s*<t[dh]\\b${TAG_ATTRS}>`, 'g'), ' | ');
   const blockTag = `</?(?:div|p|br|hr|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\\b${TAG_ATTRS}/?>`;
+  // A run at the start or end of a line is dropped. A line that starts with
+  // the run takes the content indentation of the list item it continues, so
+  // the text stays in the item; outside a list its indentation is dropped
+  // too, since four spaces of indentation would make it a code block. A run mid-line breaks the line and continues on the line's
+  // content indentation (after a list marker).
+  const itemIndents = listItemIndents(cleaned);
   cleaned = cleaned.replace(
-    new RegExp(`(?:${blockTag}[ \\t]*)+`, 'g'),
-    (_run, offset: number, str: string) => {
+    new RegExp(`([ \\t]*)((?:${blockTag}[ \\t]*)+)`, 'g'),
+    (_match, indent: string, run: string, offset: number, str: string) => {
       const lineStart = str.lastIndexOf('\n', offset - 1) + 1;
-      return /^[ \t]*\|/.test(str.slice(lineStart, offset)) ? ' ' : '\n';
+      const before = str.slice(lineStart, offset);
+      if (/^[ \t]*\|/.test(before + indent)) return ' ';
+      const lineEnd = str.indexOf('\n', offset);
+      const after = str.slice(
+        offset + indent.length + run.length,
+        lineEnd === -1 ? str.length : lineEnd,
+      );
+      if (before === '') {
+        const itemIndent = itemIndents.get(lineStart) ?? -1;
+        return itemIndent < 0 ? '' : ' '.repeat(itemIndent);
+      }
+      if (/^[ \t]*$/.test(after)) return '';
+      const contentIndent = /^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?/.exec(before)?.[0] ?? '';
+      return `\n${' '.repeat(contentIndent.length)}`;
     },
   );
   cleaned = cleaned.replace(new RegExp(`</?(?:span|a|strong|em|b|i|u)\\b${TAG_ATTRS}/?>`, 'g'), '');
