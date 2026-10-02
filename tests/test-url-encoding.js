@@ -44,146 +44,147 @@ const testCases = [
     name: 'Encodes spaces in filename',
     filename: 'hello world.md',
     expectedUrlPath: '/docs/hello%20world',
-    content: '# Hello World\n\nThis is a test document with spaces in the filename.'
+    content: '# Hello World\n\nThis is a test document with spaces in the filename.',
   },
   {
     name: 'Encodes unicode characters',
     filename: 'über.md',
     expectedUrlPath: '/docs/%C3%BCber',
-    content: '# Über\n\nThis document has unicode characters in the filename.'
+    content: '# Über\n\nThis document has unicode characters in the filename.',
   },
   {
     name: 'Encodes special characters - hash',
     filename: 'file#1.md',
     expectedUrlPath: '/docs/file%231',
-    content: '# File #1\n\nThis document has a hash in the filename.'
+    content: '# File #1\n\nThis document has a hash in the filename.',
   },
   {
     name: 'Encodes special characters - question mark',
     filename: 'what?.md',
     expectedUrlPath: '/docs/what%3F',
-    content: '# What?\n\nThis document has a question mark in the filename.'
+    content: '# What?\n\nThis document has a question mark in the filename.',
   },
   {
     name: 'Encodes special characters - ampersand',
     filename: 'rock&roll.md',
     expectedUrlPath: '/docs/rock%26roll',
-    content: '# Rock & Roll\n\nThis document has an ampersand in the filename.'
+    content: '# Rock & Roll\n\nThis document has an ampersand in the filename.',
   },
   {
     name: 'Encodes spaces in nested path',
     filename: 'my folder/my file.md',
     expectedUrlPath: '/docs/my%20folder/my%20file',
-    content: '# Nested File\n\nThis is a nested file with spaces in both directory and filename.'
+    content: '# Nested File\n\nThis is a nested file with spaces in both directory and filename.',
   },
   {
     name: 'Encodes multiple special characters',
     filename: 'hello world & über.md',
     expectedUrlPath: '/docs/hello%20world%20%26%20%C3%BCber',
-    content: '# Complex Filename\n\nThis has multiple special characters.'
+    content: '# Complex Filename\n\nThis has multiple special characters.',
   },
   {
     name: 'Preserves already encoded segments',
     filename: 'hello%20world.md',
     expectedUrlPath: '/docs/hello%20world',
-    content: '# Pre-encoded\n\nThis filename is already URL encoded.'
+    content: '# Pre-encoded\n\nThis filename is already URL encoded.',
   },
   {
     name: 'Handles parentheses',
     filename: 'file (version 2).md',
     expectedUrlPath: '/docs/file%20(version%202)',
-    content: '# File Version 2\n\nThis has parentheses in the filename.'
+    content: '# File Version 2\n\nThis has parentheses in the filename.',
   },
   {
     name: 'Handles plus signs',
     filename: 'C++.md',
     expectedUrlPath: '/docs/C%2B%2B',
-    content: '# C++\n\nThis is about C++ programming.'
+    content: '# C++\n\nThis is about C++ programming.',
   },
   {
     name: 'Normal filename without special characters',
     filename: 'normal-file.md',
     expectedUrlPath: '/docs/normal-file',
-    content: '# Normal File\n\nThis has no special characters.'
+    content: '# Normal File\n\nThis has no special characters.',
   },
   {
     name: 'Encodes equals sign',
     filename: 'math=fun.md',
     expectedUrlPath: '/docs/math%3Dfun',
-    content: '# Math = Fun\n\nThis has an equals sign in the filename.'
+    content: '# Math = Fun\n\nThis has an equals sign in the filename.',
   },
   {
     name: 'Prevents double-encoding of already encoded spaces',
     filename: 'hello%20world.md',
     expectedUrlPath: '/docs/hello%20world',
-    content: '# Pre-encoded Spaces\n\nThis filename has already encoded spaces.'
+    content: '# Pre-encoded Spaces\n\nThis filename has already encoded spaces.',
   },
   {
     name: 'Prevents double-encoding of already encoded special chars',
     filename: 'rock%26roll.md',
     expectedUrlPath: '/docs/rock%26roll',
-    content: '# Pre-encoded Ampersand\n\nThis filename has already encoded ampersand.'
+    content: '# Pre-encoded Ampersand\n\nThis filename has already encoded ampersand.',
   },
   {
     name: 'Handles mixed encoded and unencoded segments',
     filename: 'hello%20world/test file.md',
     expectedUrlPath: '/docs/hello%20world/test%20file',
-    content: '# Mixed Encoding\n\nFirst segment encoded, second not.'
+    content: '# Mixed Encoding\n\nFirst segment encoded, second not.',
   },
   {
     name: 'Handles unreserved characters without encoding',
     filename: 'test-file_name.md',
     expectedUrlPath: '/docs/test-file_name',
-    content: '# Unreserved Characters\n\nDashes and underscores should not be encoded.'
+    content: '# Unreserved Characters\n\nDashes and underscores should not be encoded.',
   },
   {
     name: 'Handles tilde character (unreserved)',
     filename: 'file~backup.md',
     expectedUrlPath: '/docs/file~backup',
-    content: '# Tilde Character\n\nTilde is an unreserved character.'
+    content: '# Tilde Character\n\nTilde is an unreserved character.',
   },
   {
     name: 'Preserves valid partial encoding',
     filename: 'bad%2encoding.md',
     expectedUrlPath: '/docs/bad%2encoding',
-    content: '# Partial Encoding\n\nThis has valid percent encoding (%2e) and is preserved.'
+    content: '# Partial Encoding\n\nThis has valid percent encoding (%2e) and is preserved.',
   },
   {
     name: 'Encodes brackets',
     filename: 'test[1].md',
     expectedUrlPath: '/docs/test%5B1%5D',
-    content: '# Brackets\n\nThis has square brackets in the filename.'
+    content: '# Brackets\n\nThis has square brackets in the filename.',
   },
   {
     name: 'Encodes pipe character',
     filename: 'option|value.md',
     expectedUrlPath: '/docs/option%7Cvalue',
-    content: '# Pipe Character\n\nThis has a pipe in the filename.'
+    content: '# Pipe Character\n\nThis has a pipe in the filename.',
   },
   {
     name: 'Preserves already encoded unicode',
     filename: '%C3%BCber.md',
     expectedUrlPath: '/docs/%C3%BCber',
-    content: '# Pre-encoded Unicode\n\nThis is über pre-encoded.'
+    content: '# Pre-encoded Unicode\n\nThis is über pre-encoded.',
   },
   {
     name: 'Handles semicolon',
     filename: 'key;value.md',
     expectedUrlPath: '/docs/key%3Bvalue',
-    content: '# Semicolon\n\nThis has a semicolon in the filename.'
+    content: '# Semicolon\n\nThis has a semicolon in the filename.',
   },
   {
     name: 'Handles comma',
     filename: 'one,two,three.md',
     expectedUrlPath: '/docs/one%2Ctwo%2Cthree',
-    content: '# Comma\n\nThis has commas in the filename.'
+    content: '# Comma\n\nThis has commas in the filename.',
   },
   {
     name: 'Handles truly malformed encoding',
     filename: 'bad%ZZencoding.md',
     expectedUrlPath: '/docs/bad%25ZZencoding',
-    content: '# Truly Malformed\n\nThis has truly malformed percent encoding that will throw an error.'
-  }
+    content:
+      '# Truly Malformed\n\nThis has truly malformed percent encoding that will throw an error.',
+  },
 ];
 
 async function runUrlEncodingTests() {
@@ -209,19 +210,12 @@ async function runUrlEncodingTests() {
         await createTestFile(filePath, testCase.content);
 
         // Process the markdown file
-        const docInfo = await processMarkdownFile(
-          filePath,
-          baseDir,
-          siteUrl,
-          'docs'
-        );
+        const docInfo = await processMarkdownFile(filePath, baseDir, siteUrl, 'docs');
 
         // Validate the URL
         const expectedUrl = `${siteUrl}${testCase.expectedUrlPath}`;
         if (docInfo.url !== expectedUrl) {
-          throw new Error(
-            `Expected URL "${expectedUrl}", got "${docInfo.url}"`
-          );
+          throw new Error(`Expected URL "${expectedUrl}", got "${docInfo.url}"`);
         }
 
         // Validate that the URL is properly encoded by attempting to construct it
@@ -236,7 +230,6 @@ async function runUrlEncodingTests() {
 
         console.log(`✅ PASS - Generated URL: ${docInfo.url}`);
         passed++;
-
       } catch (error) {
         console.log(`❌ FAIL: ${error.message}`);
         failed++;
@@ -255,10 +248,14 @@ async function runUrlEncodingTests() {
 }
 
 // Run the tests
-runUrlEncodingTests().then(success => {
-  console.log(success ? '🎉 All URL encoding tests passed!' : '❌ Some URL encoding tests failed.');
-  if (!success) process.exit(1);
-}).catch(error => {
-  console.error('Test runner error:', error);
-  process.exit(1);
-});
+runUrlEncodingTests()
+  .then((success) => {
+    console.log(
+      success ? '🎉 All URL encoding tests passed!' : '❌ Some URL encoding tests failed.',
+    );
+    if (!success) process.exit(1);
+  })
+  .catch((error) => {
+    console.error('Test runner error:', error);
+    process.exit(1);
+  });

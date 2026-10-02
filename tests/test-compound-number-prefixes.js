@@ -26,10 +26,10 @@ const testCases = [
       title: 'Version 1.6.X',
       path: 'docs/03--1.6.X/intro.md',
       content: 'Release notes.',
-      url: 'https://example.com/docs/03--1.6.X/intro'
+      url: 'https://example.com/docs/03--1.6.X/intro',
     },
     expectedPath: '1.6.X/intro.md',
-    expectedUrl: 'https://example.com/1.6.X/intro.md'
+    expectedUrl: 'https://example.com/1.6.X/intro.md',
   },
   {
     name: 'compound prefix "01--1.6.2" resolves to clean "1.6.2"',
@@ -37,10 +37,10 @@ const testCases = [
       title: 'Patch 1.6.2',
       path: 'docs/01--1.6.2/notes.md',
       content: 'Patch notes.',
-      url: 'https://example.com/docs/01--1.6.2/notes'
+      url: 'https://example.com/docs/01--1.6.2/notes',
     },
     expectedPath: '1.6.2/notes.md',
-    expectedUrl: 'https://example.com/1.6.2/notes.md'
+    expectedUrl: 'https://example.com/1.6.2/notes.md',
   },
   {
     name: 'plain single-dash ordering prefix "02-guide" still strips to "guide"',
@@ -48,10 +48,10 @@ const testCases = [
       title: 'Guide',
       path: 'docs/02-guide/02-vulnerabilidades-cves.md',
       content: 'Guide content.',
-      url: 'https://example.com/docs/02-guide/02-vulnerabilidades-cves'
+      url: 'https://example.com/docs/02-guide/02-vulnerabilidades-cves',
     },
     expectedPath: 'guide/vulnerabilidades-cves.md',
-    expectedUrl: 'https://example.com/guide/vulnerabilidades-cves.md'
+    expectedUrl: 'https://example.com/guide/vulnerabilidades-cves.md',
   },
   {
     name: 'version-like name "7.0-foo" (no ordering prefix) is preserved',
@@ -59,10 +59,10 @@ const testCases = [
       title: 'Seven',
       path: 'docs/7.0-foo/index.md',
       content: 'Seven content.',
-      url: 'https://example.com/docs/7.0-foo/page'
+      url: 'https://example.com/docs/7.0-foo/page',
     },
     expectedPath: '7.0-foo/page.md',
-    expectedUrl: 'https://example.com/7.0-foo/page.md'
+    expectedUrl: 'https://example.com/7.0-foo/page.md',
   },
   {
     name: 'non-prefixed name "release-notes" is untouched',
@@ -70,11 +70,11 @@ const testCases = [
       title: 'Release Notes',
       path: 'docs/release-notes/index.md',
       content: 'Notes.',
-      url: 'https://example.com/docs/release-notes/latest'
+      url: 'https://example.com/docs/release-notes/latest',
     },
     expectedPath: 'release-notes/latest.md',
-    expectedUrl: 'https://example.com/release-notes/latest.md'
-  }
+    expectedUrl: 'https://example.com/release-notes/latest.md',
+  },
 ];
 
 async function runTests() {
@@ -100,7 +100,7 @@ async function runTests() {
         'https://example.com',
         'docs',
         [],
-        false // preserveDirectoryStructure: false → flatten relative to docs root
+        false, // preserveDirectoryStructure: false → flatten relative to docs root
       );
 
       let ok = true;
@@ -109,9 +109,17 @@ async function runTests() {
       if (!fs.existsSync(fullPath)) {
         console.log(`❌ FAIL - Expected file at "${testCase.expectedPath}" not found`);
         // Surface what was actually written to aid debugging.
-        const walk = d => fs.readdirSync(d, { withFileTypes: true })
-          .flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
-        console.log(`   Actual files: ${walk(testDir).map(f => path.relative(testDir, f)).join(', ')}`);
+        const walk = (d) =>
+          fs
+            .readdirSync(d, { withFileTypes: true })
+            .flatMap((e) =>
+              e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)],
+            );
+        console.log(
+          `   Actual files: ${walk(testDir)
+            .map((f) => path.relative(testDir, f))
+            .join(', ')}`,
+        );
         ok = false;
       }
 
@@ -152,7 +160,7 @@ async function runTests() {
   }
 }
 
-runTests().catch(error => {
+runTests().catch((error) => {
   console.error('Test runner error:', error);
   process.exit(1);
 });

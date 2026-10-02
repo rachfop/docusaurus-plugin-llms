@@ -15,8 +15,13 @@ const { cleanMarkdownContent, createMarkdownContent } = require('../lib/utils');
 let passed = 0;
 let failed = 0;
 function expect(name, cond, detail) {
-  if (cond) { console.log(`  ✅ PASS: ${name}`); passed++; }
-  else { console.log(`  ❌ FAIL: ${name}\n     ${detail}`); failed++; }
+  if (cond) {
+    console.log(`  ✅ PASS: ${name}`);
+    passed++;
+  } else {
+    console.log(`  ❌ FAIL: ${name}\n     ${detail}`);
+    failed++;
+  }
 }
 
 function run() {
@@ -25,7 +30,7 @@ function run() {
   // 1. '>' inside a quoted label value.
   {
     const out = cleanMarkdownContent(
-      '<Tabs>\n<TabItem label="A > B" value="x">\nBody.\n</TabItem>\n</Tabs>'
+      '<Tabs>\n<TabItem label="A > B" value="x">\nBody.\n</TabItem>\n</Tabs>',
     );
     expect('label with > emitted intact', out.includes('**A > B**'), out);
     expect('no tag fragment leaked', !out.includes('value='), out);
@@ -49,11 +54,7 @@ function run() {
     const out = createMarkdownContent('Title', 'line one\nline two', 'Body.');
     expect('first line quoted', out.includes('> line one'), out);
     expect('second line quoted', out.includes('> line two'), out);
-    expect(
-      'no unquoted second line',
-      !/^line two$/m.test(out.split('Body.')[0]),
-      out
-    );
+    expect('no unquoted second line', !/^line two$/m.test(out.split('Body.')[0]), out);
   }
 
   // 5. Single-line description unchanged (no regression).

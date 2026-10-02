@@ -6,14 +6,18 @@
  * Run with: node tests/test-content-cleaning-fences.js
  */
 
-const assert = require('assert');
 const { cleanMarkdownContent, extractTitle, rewriteRelativeImageUrls } = require('../lib/utils');
 
 let passed = 0;
 let failed = 0;
 function expect(name, cond, detail) {
-  if (cond) { console.log(`  ✅ PASS: ${name}`); passed++; }
-  else { console.log(`  ❌ FAIL: ${name}\n     ${detail}`); failed++; }
+  if (cond) {
+    console.log(`  ✅ PASS: ${name}`);
+    passed++;
+  } else {
+    console.log(`  ❌ FAIL: ${name}\n     ${detail}`);
+    failed++;
+  }
 }
 
 async function run() {
@@ -30,7 +34,11 @@ async function run() {
     ].join('\n');
     const out = cleanMarkdownContent(input);
     expect('HTML preserved inside code fence', out.includes('<div class="x"><p>hi</p></div>'), out);
-    expect('HTML stripped in prose', out.includes('Prose with bold text.') && !out.includes('<strong>'), out);
+    expect(
+      'HTML stripped in prose',
+      out.includes('Prose with bold text.') && !out.includes('<strong>'),
+      out,
+    );
   }
 
   // 2. excludeImports strips real imports but not import lines inside code.
@@ -46,8 +54,12 @@ async function run() {
       '```',
     ].join('\n');
     const out = cleanMarkdownContent(input, true);
-    expect('real MDX import removed', !out.includes("@site/src/Foo"), out);
-    expect('import lines in code block preserved', out.includes('import os') && out.includes('import sys'), out);
+    expect('real MDX import removed', !out.includes('@site/src/Foo'), out);
+    expect(
+      'import lines in code block preserved',
+      out.includes('import os') && out.includes('import sys'),
+      out,
+    );
   }
 
   // 3. JSX component tags stripped in prose (content kept); preserved in code.
@@ -60,8 +72,16 @@ async function run() {
       '```',
     ].join('\n');
     const out = cleanMarkdownContent(input);
-    expect('JSX tags stripped in prose, text kept', out.includes('Alpha') && !out.match(/<Tabs>[^`]*Alpha/), out);
-    expect('JSX preserved inside code fence', out.includes('<TabItem value="b">Beta</TabItem>'), out);
+    expect(
+      'JSX tags stripped in prose, text kept',
+      out.includes('Alpha') && !out.match(/<Tabs>[^`]*Alpha/),
+      out,
+    );
+    expect(
+      'JSX preserved inside code fence',
+      out.includes('<TabItem value="b">Beta</TabItem>'),
+      out,
+    );
   }
 
   // 4. Inline code with angle brackets is preserved.
@@ -93,7 +113,11 @@ async function run() {
   {
     const content = '# API reference for `MyClass`\n\nBody.';
     const title = extractTitle({}, content, '/x/file.md');
-    expect('inline code in heading restored in title', title === 'API reference for `MyClass`', JSON.stringify(title));
+    expect(
+      'inline code in heading restored in title',
+      title === 'API reference for `MyClass`',
+      JSON.stringify(title),
+    );
   }
 
   // 5c. A longer closing fence (4 backticks closing a 3-backtick block) is still
@@ -101,9 +125,17 @@ async function run() {
   {
     const input = ['```js', '<Widget />', '````', '', '<Widget />'].join('\n');
     const out = cleanMarkdownContent(input);
-    expect('longer closing fence still masks block', out.includes('<Widget />\n````') || out.includes('<Widget />'), out);
+    expect(
+      'longer closing fence still masks block',
+      out.includes('<Widget />\n````') || out.includes('<Widget />'),
+      out,
+    );
     // The prose <Widget /> after the block should be stripped.
-    expect('JSX after code block stripped', out.trimEnd().endsWith('````') || !out.split('````')[1]?.includes('<Widget'), out);
+    expect(
+      'JSX after code block stripped',
+      out.trimEnd().endsWith('````') || !out.split('````')[1]?.includes('<Widget'),
+      out,
+    );
   }
 
   // 5d. A stray backtick does not swallow across a blank line (inline spans are
@@ -111,7 +143,7 @@ async function run() {
   {
     const input = ['Para with ` stray backtick', '', "import X from 'x';", '', 'more `'].join('\n');
     const out = cleanMarkdownContent(input, true);
-    expect('import after stray backtick still removed', !out.includes("import X from"), out);
+    expect('import after stray backtick still removed', !out.includes('import X from'), out);
   }
 
   // 6. Image rewriting skips image syntax shown inside a code block.
@@ -124,8 +156,18 @@ async function run() {
       '```',
     ].join('\n');
     const assetMap = new Map([['logo.png', ['/assets/images/logo-abc123.png']]]);
-    const out = await rewriteRelativeImageUrls(content, '/site/docs/page.md', assetMap, 'https://s.com/', '/site/build');
-    expect('real image rewritten', out.includes('https://s.com/assets/images/logo-abc123.png'), out);
+    const out = await rewriteRelativeImageUrls(
+      content,
+      '/site/docs/page.md',
+      assetMap,
+      'https://s.com/',
+      '/site/build',
+    );
+    expect(
+      'real image rewritten',
+      out.includes('https://s.com/assets/images/logo-abc123.png'),
+      out,
+    );
     expect('image inside code fence left as-is', out.includes('![example](./img/logo.png)'), out);
   }
 
@@ -134,5 +176,11 @@ async function run() {
 }
 
 run()
-  .then(ok => { console.log(ok ? '🎉 All content-cleaning fence tests passed!' : '❌ Some tests failed.'); process.exit(ok ? 0 : 1); })
-  .catch(err => { console.error('Test execution error:', err); process.exit(1); });
+  .then((ok) => {
+    console.log(ok ? '🎉 All content-cleaning fence tests passed!' : '❌ Some tests failed.');
+    process.exit(ok ? 0 : 1);
+  })
+  .catch((err) => {
+    console.error('Test execution error:', err);
+    process.exit(1);
+  });

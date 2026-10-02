@@ -35,8 +35,13 @@ const { generateLLMFile, generateIndividualMarkdownFiles } = require('../lib/gen
 let passed = 0;
 let failed = 0;
 function expect(name, cond, detail) {
-  if (cond) { console.log(`  ✅ PASS: ${name}`); passed++; }
-  else { console.log(`  ❌ FAIL: ${name}\n     ${JSON.stringify(detail)}`); failed++; }
+  if (cond) {
+    console.log(`  ✅ PASS: ${name}`);
+    passed++;
+  } else {
+    console.log(`  ❌ FAIL: ${name}\n     ${JSON.stringify(detail)}`);
+    failed++;
+  }
 }
 
 async function run() {
@@ -67,7 +72,10 @@ async function run() {
   }
   {
     // Regex metacharacters in the title must not break the match.
-    const out = stripDuplicateTitleHeading('# Config.* files (+ more)\n\nBody.', 'Config.* files (+ more)');
+    const out = stripDuplicateTitleHeading(
+      '# Config.* files (+ more)\n\nBody.',
+      'Config.* files (+ more)',
+    );
     expect('metachar title stripped', out.startsWith('Body.'), out);
   }
   {
@@ -75,15 +83,24 @@ async function run() {
     // The fence (with its sample heading) survives verbatim; exactly one
     // heading remains in the output, the fenced one.
     const headingCount = (out.match(/^# Install$/gm) || []).length;
-    expect('fenced copy kept, real one stripped',
-      out.includes('```\n# Install\n```') && headingCount === 1 && out.includes('Body.'), out);
+    expect(
+      'fenced copy kept, real one stripped',
+      out.includes('```\n# Install\n```') && headingCount === 1 && out.includes('Body.'),
+      out,
+    );
   }
   {
-    const out = stripDuplicateDescriptionParagraph('Install the package.\n\n## Next\n', 'Install the package.');
+    const out = stripDuplicateDescriptionParagraph(
+      'Install the package.\n\n## Next\n',
+      'Install the package.',
+    );
     expect('duplicate description paragraph stripped', out.startsWith('## Next'), out);
   }
   {
-    const out = stripDuplicateDescriptionParagraph('A different intro.\n\n## Next\n', 'Install the package.');
+    const out = stripDuplicateDescriptionParagraph(
+      'A different intro.\n\n## Next\n',
+      'Install the package.',
+    );
     expect('differing paragraph kept', out.startsWith('A different intro.'), out);
   }
   {
@@ -91,19 +108,26 @@ async function run() {
     // block; a partial-prefix overlap must never match.
     const out = stripDuplicateDescriptionParagraph(
       '# T\n\nFirst wrapped line\nsecond line here.\n\n## Next\n',
-      'First wrapped line\nsecond line here.'
+      'First wrapped line\nsecond line here.',
     );
-    expect('multi-line description paragraph stripped',
-      !out.includes('First wrapped line') && out.includes('## Next'), out);
+    expect(
+      'multi-line description paragraph stripped',
+      !out.includes('First wrapped line') && out.includes('## Next'),
+      out,
+    );
   }
   {
     // The description must consume the whole paragraph; a description that
     // merely prefixes a longer body line is not a duplicate.
     const out = stripDuplicateDescriptionParagraph(
       '# T\n\nA longer body line than the description.\n\n## Next\n',
-      'A longer body line'
+      'A longer body line',
     );
-    expect('partial-prefix line kept', out.includes('A longer body line than the description.'), out);
+    expect(
+      'partial-prefix line kept',
+      out.includes('A longer body line than the description.'),
+      out,
+    );
   }
 
   // --- end-to-end: llms-full.txt ---
@@ -168,11 +192,23 @@ async function run() {
     const install = fs.readFileSync(path.join(dir, 'docs', 'install.md'), 'utf8');
     const count = (s, re) => (s.match(re) || []).length;
     expect('single H1 in individual file', count(install, /^# Install$/m) === 1, install);
-    expect('description paragraph not duplicated', count(install, /Install the package\./gm) === 1, install);
-    expect('inner headings untouched in individual file', /^## Requirements$/m.test(install), install);
+    expect(
+      'description paragraph not duplicated',
+      count(install, /Install the package\./gm) === 1,
+      install,
+    );
+    expect(
+      'inner headings untouched in individual file',
+      /^## Requirements$/m.test(install),
+      install,
+    );
 
     const fm = fs.readFileSync(path.join(dir, 'docs', 'fm.md'), 'utf8');
-    expect('frontmatter-description file keeps body paragraph', fm.includes('Body first paragraph differs.'), fm);
+    expect(
+      'frontmatter-description file keeps body paragraph',
+      fm.includes('Body first paragraph differs.'),
+      fm,
+    );
     fs.rmSync(dir, { recursive: true, force: true });
   }
 
@@ -180,7 +216,7 @@ async function run() {
   return failed === 0;
 }
 
-run().then(ok => {
+run().then((ok) => {
   console.log(ok ? '🎉 All output-assembly tests passed!' : '❌ Some tests failed.');
   process.exit(ok ? 0 : 1);
 });

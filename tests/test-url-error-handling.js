@@ -8,11 +8,6 @@
  * - Edge cases that could crash the build
  */
 
-const assert = require('assert');
-const path = require('path');
-const fs = require('fs').promises;
-const os = require('os');
-
 console.log('Testing URL constructor error handling...\n');
 
 /**
@@ -21,7 +16,7 @@ console.log('Testing URL constructor error handling...\n');
 function constructUrlWithResolvedUrl(resolvedUrl, siteUrl) {
   try {
     return new URL(resolvedUrl, siteUrl).toString();
-  } catch (error) {
+  } catch {
     console.warn(`Invalid URL construction: ${resolvedUrl} with base ${siteUrl}. Using fallback.`);
     // Fallback to string concatenation with proper path joining
     const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
@@ -37,7 +32,7 @@ function constructUrlWithFallback(siteUrl, pathPart) {
   try {
     const baseUrl = new URL(siteUrl);
     return `${baseUrl.origin}/${pathPart}`;
-  } catch (error) {
+  } catch {
     console.warn(`Invalid siteUrl: ${siteUrl}. Using fallback.`);
     // Fallback to string concatenation with proper path joining
     const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
@@ -53,7 +48,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com',
     shouldSucceed: true,
     expectedOutput: 'https://example.com/docs/intro',
-    description: 'Valid URLs should construct normally'
+    description: 'Valid URLs should construct normally',
   },
   {
     name: 'Invalid characters in resolvedUrl',
@@ -61,7 +56,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com',
     shouldSucceed: true, // Should handle with fallback
     expectedPattern: /https:\/\/example\.com\/docs\//,
-    description: 'Invalid characters should trigger fallback'
+    description: 'Invalid characters should trigger fallback',
   },
   {
     name: 'Malformed siteUrl',
@@ -69,7 +64,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'not-a-valid-url',
     shouldSucceed: true, // Should handle with fallback
     expectedOutput: 'not-a-valid-url/docs/intro',
-    description: 'Malformed siteUrl should use fallback'
+    description: 'Malformed siteUrl should use fallback',
   },
   {
     name: 'Empty resolvedUrl',
@@ -77,7 +72,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com',
     shouldSucceed: true,
     expectedOutput: 'https://example.com/',
-    description: 'Empty resolvedUrl should construct base URL'
+    description: 'Empty resolvedUrl should construct base URL',
   },
   {
     name: 'Special characters in path',
@@ -85,7 +80,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com',
     shouldSucceed: true,
     expectedPattern: /https:\/\/example\.com\/docs\/api\/v1\//,
-    description: 'Special characters should be handled'
+    description: 'Special characters should be handled',
   },
   {
     name: 'Path with spaces',
@@ -93,7 +88,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com',
     shouldSucceed: true,
     expectedPattern: /https:\/\/example\.com\/docs\//,
-    description: 'Spaces in path should be handled'
+    description: 'Spaces in path should be handled',
   },
   {
     name: 'Unicode characters in path',
@@ -101,7 +96,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com',
     shouldSucceed: true,
     expectedPattern: /https:\/\/example\.com\/docs\//,
-    description: 'Unicode characters should be handled'
+    description: 'Unicode characters should be handled',
   },
   {
     name: 'Relative path without leading slash',
@@ -109,7 +104,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com',
     shouldSucceed: true,
     expectedPattern: /https:\/\/example\.com/,
-    description: 'Relative paths should be normalized'
+    description: 'Relative paths should be normalized',
   },
   {
     name: 'SiteUrl with trailing slash',
@@ -117,7 +112,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com/',
     shouldSucceed: true,
     expectedPattern: /https:\/\/example\.com/,
-    description: 'Trailing slashes should be handled'
+    description: 'Trailing slashes should be handled',
   },
   {
     name: 'SiteUrl with port',
@@ -125,7 +120,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com:3000',
     shouldSucceed: true,
     expectedOutput: 'https://example.com:3000/docs/intro',
-    description: 'Ports should be preserved'
+    description: 'Ports should be preserved',
   },
   {
     name: 'Null-like strings',
@@ -133,7 +128,7 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com',
     shouldSucceed: true,
     expectedOutput: 'https://example.com/docs/null',
-    description: 'Null-like strings should work'
+    description: 'Null-like strings should work',
   },
   {
     name: 'Very long path',
@@ -141,8 +136,8 @@ const resolvedUrlTestCases = [
     siteUrl: 'https://example.com',
     shouldSucceed: true,
     expectedPattern: /https:\/\/example\.com\/docs\//,
-    description: 'Very long paths should be handled'
-  }
+    description: 'Very long paths should be handled',
+  },
 ];
 
 // Test cases for fallback URL construction
@@ -153,7 +148,7 @@ const fallbackUrlTestCases = [
     pathPart: 'docs/intro',
     shouldSucceed: true,
     expectedOutput: 'https://example.com/docs/intro',
-    description: 'Valid siteUrl should construct normally'
+    description: 'Valid siteUrl should construct normally',
   },
   {
     name: 'Malformed siteUrl',
@@ -161,7 +156,7 @@ const fallbackUrlTestCases = [
     pathPart: 'docs/intro',
     shouldSucceed: true, // Should handle with fallback
     expectedOutput: 'not-a-url/docs/intro',
-    description: 'Malformed siteUrl should use fallback'
+    description: 'Malformed siteUrl should use fallback',
   },
   {
     name: 'Empty siteUrl',
@@ -169,7 +164,7 @@ const fallbackUrlTestCases = [
     pathPart: 'docs/intro',
     shouldSucceed: true,
     expectedOutput: '/docs/intro',
-    description: 'Empty siteUrl should use fallback'
+    description: 'Empty siteUrl should use fallback',
   },
   {
     name: 'SiteUrl with subpath',
@@ -177,7 +172,7 @@ const fallbackUrlTestCases = [
     pathPart: 'docs/intro',
     shouldSucceed: true,
     expectedOutput: 'https://example.com/docs/intro',
-    description: 'SiteUrl with subpath should use origin'
+    description: 'SiteUrl with subpath should use origin',
   },
   {
     name: 'SiteUrl with query params',
@@ -185,7 +180,7 @@ const fallbackUrlTestCases = [
     pathPart: 'docs/intro',
     shouldSucceed: true,
     expectedOutput: 'https://example.com/docs/intro',
-    description: 'Query params in siteUrl should be ignored'
+    description: 'Query params in siteUrl should be ignored',
   },
   {
     name: 'SiteUrl with hash',
@@ -193,7 +188,7 @@ const fallbackUrlTestCases = [
     pathPart: 'docs/intro',
     shouldSucceed: true,
     expectedOutput: 'https://example.com/docs/intro',
-    description: 'Hash in siteUrl should be ignored'
+    description: 'Hash in siteUrl should be ignored',
   },
   {
     name: 'Special characters in siteUrl',
@@ -201,8 +196,8 @@ const fallbackUrlTestCases = [
     pathPart: 'docs/intro',
     shouldSucceed: true, // Should handle with fallback
     expectedPattern: /docs\/intro/,
-    description: 'Special characters should trigger fallback'
-  }
+    description: 'Special characters should trigger fallback',
+  },
 ];
 
 // Run tests for resolvedUrl construction

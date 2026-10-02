@@ -23,7 +23,7 @@ async function setupTestFiles() {
   // Clean up if exists
   try {
     await fs.rm(siteDir, { recursive: true });
-  } catch (err) {
+  } catch {
     // Ignore if doesn't exist
   }
 
@@ -43,7 +43,7 @@ The editor saves automatically.`;
 
   await fs.writeFile(
     path.join(siteDir, 'src', 'partials', 'opening-the-editor.mdx'),
-    partialContent
+    partialContent,
   );
 
   // A doc importing the partial via the @site alias, using it both in
@@ -94,7 +94,7 @@ async function runTest() {
       undefined, // resolvedUrl
       undefined, // imageAssetMap
       undefined, // outDir
-      siteDir // siteDir — used to resolve @site/ imports
+      siteDir, // siteDir — used to resolve @site/ imports
     );
 
     let allTestsPassed = true;
@@ -126,7 +126,9 @@ async function runTest() {
     // Test 4: list-context usage also resolved
     const occurrences = (result.content.match(/Select your project and click/g) || []).length;
     if (occurrences < 2) {
-      console.log(`❌ Test 4 failed: expected partial content in both block and list context (found ${occurrences})`);
+      console.log(
+        `❌ Test 4 failed: expected partial content in both block and list context (found ${occurrences})`,
+      );
       allTestsPassed = false;
     } else {
       console.log('✅ Test 4 passed: partial resolved in list context too');
@@ -150,7 +152,7 @@ async function runTest() {
     // Clean up test files
     try {
       await fs.rm(siteDir, { recursive: true });
-    } catch (err) {
+    } catch {
       // Ignore cleanup errors
     }
   }
