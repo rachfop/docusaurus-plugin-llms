@@ -11,14 +11,14 @@ const { generateIndividualMarkdownFiles } = require('../lib/generator');
 // Helper to create a test document
 function createTestDoc(filename, frontMatter = {}) {
   const baseName = path.basename(filename, '.md');
-  
+
   return {
     title: `${baseName} Title`,
     path: `docs/${filename}`,
     content: `This is ${baseName} content.`,
     description: `${baseName} documentation`,
     url: `https://example.com/docs/${filename}`,
-    frontMatter
+    frontMatter,
   };
 }
 
@@ -34,13 +34,15 @@ function cleanupTestDirectory(dir) {
 function validateFilePaths(testDir, expectedPath, fallbackPath) {
   const expectedFullPath = path.join(testDir, expectedPath);
   const fallbackFullPath = path.join(testDir, fallbackPath);
-  
+
   if (!fs.existsSync(expectedFullPath)) {
     throw new Error(`Expected file at path "${expectedPath}" not found`);
   }
-  
+
   if (expectedPath !== fallbackPath && fs.existsSync(fallbackFullPath)) {
-    throw new Error(`Fallback file at path "${fallbackPath}" should not exist when frontmatter is used`);
+    throw new Error(
+      `Fallback file at path "${fallbackPath}" should not exist when frontmatter is used`,
+    );
   }
 }
 
@@ -50,26 +52,26 @@ const testCases = [
     name: 'Uses slug for filename when slug present',
     doc: createTestDoc('guides/config.md', { slug: 'custom-config-slug' }),
     expectedPath: 'guides/custom-config-slug.md',
-    fallbackPath: 'guides/config.md'
+    fallbackPath: 'guides/config.md',
   },
   {
     name: 'Prioritizes slug over id when both present',
     doc: createTestDoc('api/reference.md', { slug: 'api-slug', id: 'api-id' }),
-    expectedPath: 'api/api-slug.md', 
-    fallbackPath: 'api/reference.md'
+    expectedPath: 'api/api-slug.md',
+    fallbackPath: 'api/reference.md',
   },
   {
     name: 'Uses id for filename when only id present',
     doc: createTestDoc('tutorials/basic.md', { id: 'tutorial-basic-id' }),
     expectedPath: 'tutorials/tutorial-basic-id.md',
-    fallbackPath: 'tutorials/basic.md'
+    fallbackPath: 'tutorials/basic.md',
   },
   {
     name: 'Uses original filename when no slug or id',
     doc: createTestDoc('getting-started.md', { sidebar_position: 1, tags: ['guide'] }),
     expectedPath: 'getting-started.md',
-    fallbackPath: 'getting-started.md'
-  }
+    fallbackPath: 'getting-started.md',
+  },
 ];
 
 // Numeric prefix stripping tests
@@ -86,7 +88,7 @@ const numericPrefixTestCases = [
       content: 'content',
       description: 'desc',
       url: 'https://example.com/docs/01-introduction/01-getting-started',
-      frontMatter: {}
+      frontMatter: {},
     },
     expectedPath: 'docs/introduction/getting-started.md',
     expectedUrl: 'https://example.com/docs/introduction/getting-started.md',
@@ -100,7 +102,7 @@ const numericPrefixTestCases = [
       content: 'content',
       description: 'desc',
       url: 'https://example.com/docs/02-guide/03-setup/04-install',
-      frontMatter: {}
+      frontMatter: {},
     },
     expectedPath: 'docs/guide/setup/install.md',
     expectedUrl: 'https://example.com/docs/guide/setup/install.md',
@@ -114,7 +116,7 @@ const numericPrefixTestCases = [
       content: 'content',
       description: 'desc',
       url: 'https://example.com/docs/api/reference',
-      frontMatter: {}
+      frontMatter: {},
     },
     expectedPath: 'docs/api/reference.md',
     expectedUrl: 'https://example.com/docs/api/reference.md',
@@ -128,7 +130,7 @@ const numericPrefixTestCases = [
       content: 'content',
       description: 'desc',
       url: '',
-      frontMatter: {}
+      frontMatter: {},
     },
     expectedPath: 'introduction/getting-started.md',
     expectedUrl: 'https://example.com/introduction/getting-started.md',
@@ -138,7 +140,7 @@ const numericPrefixTestCases = [
 
 async function runFilenameTests() {
   console.log('Running filename tests...\n');
-  
+
   const testDir = path.join(__dirname, 'test-filenames');
   const siteUrl = 'https://example.com';
   let passed = 0;
@@ -147,22 +149,22 @@ async function runFilenameTests() {
   try {
     for (const testCase of testCases) {
       console.log(`Test: ${testCase.name}`);
-      
+
       try {
         cleanupTestDirectory(testDir);
-        
+
         const result = await generateIndividualMarkdownFiles(
           [testCase.doc],
           testDir,
           siteUrl,
           'docs',
           [],
-          false // preserveDirectoryStructure = false
+          false, // preserveDirectoryStructure = false
         );
 
         // Validate file paths
         validateFilePaths(testDir, testCase.expectedPath, testCase.fallbackPath);
-        
+
         // Validate URL
         const expectedUrl = `${siteUrl}/${testCase.expectedPath}`;
         if (result[0].url !== expectedUrl) {
@@ -171,7 +173,6 @@ async function runFilenameTests() {
 
         console.log(`✅ PASS`);
         passed++;
-
       } catch (error) {
         console.log(`❌ FAIL: ${error.message}`);
         failed++;
@@ -193,7 +194,7 @@ async function runFilenameTests() {
           siteUrl,
           'docs',
           [],
-          preserve
+          preserve,
         );
 
         const expectedFullPath = path.join(testDir, testCase.expectedPath);
@@ -212,7 +213,6 @@ async function runFilenameTests() {
         failed++;
       }
     }
-
   } finally {
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true });
@@ -228,10 +228,12 @@ async function runFilenameTests() {
 }
 
 // Run the tests
-runFilenameTests().then(success => {
-  console.log(success ? '🎉 All filename tests passed!' : '❌ Some filename tests failed.');
-  if (!success) process.exit(1);
-}).catch(error => {
-  console.error('Test runner error:', error);
-  process.exit(1);
-});
+runFilenameTests()
+  .then((success) => {
+    console.log(success ? '🎉 All filename tests passed!' : '❌ Some filename tests failed.');
+    if (!success) process.exit(1);
+  })
+  .catch((error) => {
+    console.error('Test runner error:', error);
+    process.exit(1);
+  });

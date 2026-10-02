@@ -16,7 +16,10 @@ import { readFile } from './files';
  * removal, image-URL rewriting, heading detection — never alter code samples.
  * Returns the masked string plus a `restore()` that swaps the code back in.
  */
-export function maskCodeSegments(content: string): { masked: string; restore: (s: string) => string } {
+export function maskCodeSegments(content: string): {
+  masked: string;
+  restore: (s: string) => string;
+} {
   const segments: string[] = [];
   const store = (code: string): string => {
     const token = `￼CODE${segments.length}￼`;
@@ -30,7 +33,7 @@ export function maskCodeSegments(content: string): { masked: string; restore: (s
   // structure is unchanged.
   let masked = content.replace(
     /(^|\n)([ \t]*(?:`{3,}[^\n]*\n[\s\S]*?\n[ \t]*`{3,}|~{3,}[^\n]*\n[\s\S]*?\n[ \t]*~{3,})[ \t]*)(?=\n|$)/g,
-    (_match, lead, block) => `${lead}${store(block)}`
+    (_match, lead, block) => `${lead}${store(block)}`,
   );
 
   // Then inline code spans (`code`, ``co`de``) — a span never crosses a line.
@@ -65,7 +68,8 @@ export function extractTitle(data: any, content: string, filePath: string): stri
   }
 
   // Finally use filename
-  return path.basename(filePath, path.extname(filePath))
+  return path
+    .basename(filePath, path.extname(filePath))
     .replace(/-/g, ' ')
     .replace(/\b\w/g, (c: string) => c.toUpperCase());
 }
@@ -89,7 +93,8 @@ function escapeRegex(str: string): string {
  * makes the whole tag fail to match and stay intact in the output, which is
  * the safe failure direction (visible leftover rather than silent corruption).
  */
-const TAG_ATTRS = /(?:\s+[^\s=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\}|[^\s>]+))?)*\s*/.source;
+const TAG_ATTRS =
+  /(?:\s+[^\s=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\}|[^\s>]+))?)*\s*/.source;
 
 /**
  * Resolve and inline partial imports in markdown content
@@ -103,7 +108,7 @@ export async function resolvePartialImports(
   content: string,
   filePath: string,
   importChain: Set<string> = new Set(),
-  siteDir: string = process.cwd()
+  siteDir: string = process.cwd(),
 ): Promise<string> {
   let resolved = content;
 
@@ -112,7 +117,8 @@ export async function resolvePartialImports(
   // Pattern 2: import { PartialName } from './_partial.mdx'
   // Pattern 3: import PartialName from '@site/src/partials/partial.mdx'
   // Create a fresh regex for each invocation to avoid lastIndex state leakage
-  const createImportRegex = () => /^\s*import\s+(?:(\w+)|{\s*(\w+)\s*})\s+from\s+['"]([^'"]+\.mdx?)['"];?\s*$/gm;
+  const createImportRegex = () =>
+    /^\s*import\s+(?:(\w+)|{\s*(\w+)\s*})\s+from\s+['"]([^'"]+\.mdx?)['"];?\s*$/gm;
   const imports = new Map<string, string>();
 
   // First pass: collect all imports
@@ -160,12 +166,18 @@ export async function resolvePartialImports(
 
         // Remove the import statement to prevent infinite recursion
         resolved = resolved.replace(
-          new RegExp(`^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`, 'gm'),
-          ''
+          new RegExp(
+            `^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`,
+            'gm',
+          ),
+          '',
         );
 
         // Remove JSX usage of this component
-        const jsxRegex = new RegExp(`<${escapedComponentName}${TAG_ATTRS}\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`, 'gm');
+        const jsxRegex = new RegExp(
+          `<${escapedComponentName}${TAG_ATTRS}\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`,
+          'gm',
+        );
         resolved = resolved.replace(jsxRegex, '');
 
         continue;
@@ -180,7 +192,12 @@ export async function resolvePartialImports(
       const { content: partialMarkdown } = matter(partialContent);
 
       // Recursively resolve imports in the partial with the updated chain
-      const resolvedPartial = await resolvePartialImports(partialMarkdown, partialPath, newChain, siteDir);
+      const resolvedPartial = await resolvePartialImports(
+        partialMarkdown,
+        partialPath,
+        newChain,
+        siteDir,
+      );
 
       // Escape special regex characters in component name and import path
       const escapedComponentName = escapeRegex(componentName);
@@ -188,14 +205,20 @@ export async function resolvePartialImports(
 
       // Remove the import statement
       resolved = resolved.replace(
-        new RegExp(`^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`, 'gm'),
-        ''
+        new RegExp(
+          `^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`,
+          'gm',
+        ),
+        '',
       );
 
       // Replace JSX usage with the partial content
       // Handle both self-closing tags and tags with content
       // <PartialName /> or <PartialName></PartialName> or <PartialName>...</PartialName>
-      const jsxRegex = new RegExp(`<${escapedComponentName}${TAG_ATTRS}(?:/>|>[^<]*</${escapedComponentName}>)`, 'g');
+      const jsxRegex = new RegExp(
+        `<${escapedComponentName}${TAG_ATTRS}(?:/>|>[^<]*</${escapedComponentName}>)`,
+        'g',
+      );
       // Drop the partial's own import lines before splicing: they reference
       // components (e.g. '@theme/Tabs') that are meaningless in plain
       // markdown, and inside list context they would leak as literal text.
@@ -203,21 +226,19 @@ export async function resolvePartialImports(
       // Mask code first: a Swift or Kotlin sample inside the partial can open
       // with `import Foundation`, which the line-based strip below would
       // otherwise delete from the middle of the fence.
-      const { masked: maskedPartial, restore: restorePartial } =
-        maskCodeSegments(resolvedPartial);
+      const { masked: maskedPartial, restore: restorePartial } = maskCodeSegments(resolvedPartial);
       const partialInlined = restorePartial(
-        maskedPartial
-          .replace(/^\s*import\s+.*$/gm, '')
-          .replace(/\n{3,}/g, '\n\n')
+        maskedPartial.replace(/^\s*import\s+.*$/gm, '').replace(/\n{3,}/g, '\n\n'),
       ).trim();
       // Function form: a string replacement would interpret `$` sequences
       // ($&, $1, $$, $' ...) in the partial's content — corrupting shell
       // samples like `echo $1` or `kill $$` that are extremely common in
       // documentation code blocks.
       resolved = resolved.replace(jsxRegex, () => partialInlined);
-
     } catch (error: unknown) {
-      logger.warn(`Failed to resolve partial import '${importPath}' (imported by ${filePath}): ${getErrorMessage(error)}`);
+      logger.warn(
+        `Failed to resolve partial import '${importPath}' (imported by ${filePath}): ${getErrorMessage(error)}`,
+      );
 
       // Remove both the import statement AND the JSX usage even if partial can't be resolved
       // This prevents leaving broken references in the output
@@ -228,13 +249,19 @@ export async function resolvePartialImports(
 
       // Remove the import statement
       resolved = resolved.replace(
-        new RegExp(`^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`, 'gm'),
-        ''
+        new RegExp(
+          `^\\s*import\\s+(?:${escapedComponentName}|{\\s*${escapedComponentName}\\s*})\\s+from\\s+['"]${escapedImportPath}['"];?\\s*$`,
+          'gm',
+        ),
+        '',
       );
 
       // Remove JSX usage of this component
       // Handle both self-closing tags (<Component />) and regular tags with content (<Component>...</Component>)
-      const jsxRegex = new RegExp(`<${escapedComponentName}${TAG_ATTRS}\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`, 'gm');
+      const jsxRegex = new RegExp(
+        `<${escapedComponentName}${TAG_ATTRS}\\/?>(?:[\\s\\S]*?<\\/${escapedComponentName}>)?`,
+        'gm',
+      );
       resolved = resolved.replace(jsxRegex, '');
     }
   }
@@ -260,7 +287,12 @@ function extractTagAttr(tag: string, name: string): string | undefined {
  * @param preserveComponents - PascalCase component names whose tags are left untouched
  * @returns Cleaned content
  */
-export function cleanMarkdownContent(content: string, excludeImports: boolean = false, removeDuplicateHeadings: boolean = false, preserveComponents: string[] = []): string {
+export function cleanMarkdownContent(
+  content: string,
+  excludeImports: boolean = false,
+  removeDuplicateHeadings: boolean = false,
+  preserveComponents: string[] = [],
+): string {
   // Mask code blocks / inline code so the strips below never touch code samples
   // (e.g. an HTML or `import` example shown inside a fenced block).
   const { masked, restore } = maskCodeSegments(content);
@@ -280,8 +312,11 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
 
   // Remove common HTML tags (code blocks are already masked out above).
   cleaned = cleaned.replace(
-    new RegExp(`</?(?:div|span|p|br|hr|img|a|strong|em|b|i|u|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\\b${TAG_ATTRS}/?>`, 'gi'),
-    ''
+    new RegExp(
+      `</?(?:div|span|p|br|hr|img|a|strong|em|b|i|u|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody)\\b${TAG_ATTRS}/?>`,
+      'gi',
+    ),
+    '',
   );
 
   // Emit the label of Docusaurus's <TabItem> as a bold line before the tab
@@ -314,31 +349,31 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
     const lines = cleaned.split('\n');
     const processedLines: string[] = [];
     let i = 0;
-    
+
     while (i < lines.length) {
       const currentLine = lines[i];
-      
+
       // Check if current line is a heading (accounting for leading whitespace)
       const headingMatch = currentLine.match(/^\s*(#+)\s+(.+)$/);
       if (headingMatch) {
         const headingText = headingMatch[2].trim();
-        
+
         processedLines.push(currentLine);
         i++;
-        
+
         // Look ahead for potential redundant content
         // Skip empty lines
         while (i < lines.length && lines[i].trim() === '') {
           processedLines.push(lines[i]);
           i++;
         }
-        
+
         // Check if the next non-empty line just repeats the heading text
         // but is NOT itself a heading (to avoid removing valid headings of different levels)
         if (i < lines.length) {
           const nextLine = lines[i].trim();
           const nextLineIsHeading = /^\s*#+\s+/.test(nextLine);
-          
+
           // Only remove if it exactly matches the heading text AND is not a heading itself
           if (nextLine === headingText && !nextLineIsHeading) {
             // Skip this redundant line
@@ -350,7 +385,7 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
         i++;
       }
     }
-    
+
     cleaned = processedLines.join('\n');
   }
 
@@ -358,10 +393,11 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
   cleaned = restore(cleaned);
 
   // Normalize whitespace
-  cleaned = cleaned.replace(/\r\n/g, '\n')
+  cleaned = cleaned
+    .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-    
+
   return cleaned;
 }
 
@@ -375,32 +411,36 @@ export function cleanMarkdownContent(content: string, excludeImports: boolean = 
  * @returns Formatted markdown content
  */
 export function createMarkdownContent(
-  title: string, 
-  description: string = '', 
+  title: string,
+  description: string = '',
   content: string = '',
   includeMetadata: boolean = true,
-  frontMatter?: Record<string, any>
+  frontMatter?: Record<string, any>,
 ): string {
   let result = '';
-  
+
   // Add frontmatter if provided
   if (isDefined(frontMatter) && Object.keys(frontMatter).length > 0) {
     result += '---\n';
     result += YAML.stringify(frontMatter, {
       lineWidth: 0,
       defaultStringType: 'QUOTE_DOUBLE',
-      defaultKeyType: 'PLAIN'
+      defaultKeyType: 'PLAIN',
     });
     result += '---\n\n';
   }
-  
+
   // Blockquote every line so a multi-line description stays a valid markdown
   // blockquote; quoting only the first would leave later lines as prose under
   // the heading.
-  const blockquoted = description.split('\n').map(l => `> ${l}`).join('\n');
+  const blockquoted = description
+    .split('\n')
+    .map((l) => `> ${l}`)
+    .join('\n');
   const descriptionLine = includeMetadata && description ? `\n\n${blockquoted}\n` : '\n';
 
-  result += `# ${title}${descriptionLine}
+  result +=
+    `# ${title}${descriptionLine}
 ${content}`.trim() + '\n';
 
   return result;
@@ -417,7 +457,10 @@ ${content}`.trim() + '\n';
  */
 export function stripDuplicateDescriptionParagraph(content: string, description: string): string {
   if (!isNonEmptyString(description)) return content;
-  const descLines = description.trim().split('\n').map((l) => l.trim());
+  const descLines = description
+    .trim()
+    .split('\n')
+    .map((l) => l.trim());
   const lines = content.split('\n');
   let inFence = false;
   let fenceChar = '';
@@ -425,8 +468,13 @@ export function stripDuplicateDescriptionParagraph(content: string, description:
     const line = lines[i];
     const fenceMatch = /^([ \t]*)(`{3,}|~{3,})/.exec(line);
     if (fenceMatch) {
-      if (!inFence) { inFence = true; fenceChar = fenceMatch[2][0]; }
-      else if (fenceChar === fenceMatch[2][0]) { inFence = false; fenceChar = ''; }
+      if (!inFence) {
+        inFence = true;
+        fenceChar = fenceMatch[2][0];
+      } else if (fenceChar === fenceMatch[2][0]) {
+        inFence = false;
+        fenceChar = '';
+      }
       continue;
     }
     if (inFence) continue;
@@ -435,8 +483,10 @@ export function stripDuplicateDescriptionParagraph(content: string, description:
     // line or end of content so a prefix of a longer paragraph never matches.
     const candidate = lines.slice(i, i + descLines.length).map((l) => l.trim());
     const blockEnd = lines[i + descLines.length];
-    if (candidate.join('\n') === descLines.join('\n')
-      && (blockEnd === undefined || blockEnd.trim() === '')) {
+    if (
+      candidate.join('\n') === descLines.join('\n') &&
+      (blockEnd === undefined || blockEnd.trim() === '')
+    ) {
       // Remove the paragraph block plus the blank lines that follow it, so
       // the gap does not double; a mid-body match keeps one blank-line gap
       // between the surviving neighbors instead of joining their paragraphs.

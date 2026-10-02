@@ -15,10 +15,10 @@
   --site-radius: 0.5rem;
   --site-radius-lg: 0.75rem;
 
-  --ifm-font-family-base: 'Inter', ui-sans-serif, system-ui, -apple-system,
-    'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --ifm-font-family-monospace: 'IBM Plex Mono', ui-monospace, 'SF Mono',
-    Menlo, Consolas, monospace;
+  --ifm-font-family-base:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  --ifm-font-family-monospace: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --ifm-heading-font-weight: 600;
   --ifm-font-color-base: #3f3f3f;
   --ifm-heading-color: var(--site-fg);

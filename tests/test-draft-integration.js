@@ -14,7 +14,7 @@ async function runDraftIntegrationTest() {
   const testDir = path.join(__dirname, 'test-draft-integration');
   const docsDir = path.join(testDir, 'docs');
   const buildDir = path.join(testDir, 'build');
-  
+
   // Clean up and create directories
   if (fs.existsSync(testDir)) {
     fs.rmSync(testDir, { recursive: true });
@@ -33,7 +33,7 @@ title: Introduction
 
 # Introduction
 
-Welcome to our documentation.`
+Welcome to our documentation.`,
     },
     {
       path: path.join(docsDir, 'draft-feature.md'),
@@ -44,7 +44,7 @@ draft: true
 
 # New Feature
 
-This is a draft feature that should not appear in llms.txt.`
+This is a draft feature that should not appear in llms.txt.`,
     },
     {
       path: path.join(docsDir, 'guide.md'),
@@ -55,7 +55,7 @@ draft: false
 
 # User Guide
 
-This is the user guide.`
+This is the user guide.`,
     },
     {
       path: path.join(docsDir, 'api.md'),
@@ -65,7 +65,7 @@ title: API Reference
 
 # API Reference
 
-API documentation goes here.`
+API documentation goes here.`,
     },
     {
       path: path.join(docsDir, 'wip.md'),
@@ -76,8 +76,8 @@ draft: true
 
 # Work in Progress
 
-This page is still being written and should not be published.`
-    }
+This page is still being written and should not be published.`,
+    },
   ];
 
   // Write test files
@@ -94,8 +94,8 @@ This page is still being written and should not be published.`
     outDir: buildDir,
     options: {
       docsDir: 'docs',
-      outputDir: 'llms'
-    }
+      outputDir: 'llms',
+    },
   };
 
   try {
@@ -111,9 +111,9 @@ This page is still being written and should not be published.`
       [], // includePatterns
       [], // ignorePatterns
       [], // orderPatterns
-      true // includeUnmatched
+      true, // includeUnmatched
     );
-    
+
     console.log(`Processed ${processedDocs.length} non-draft files`);
 
     // Generate LLM files
@@ -128,7 +128,7 @@ This page is still being written and should not be published.`
       'Documentation',
       'Documentation for the project',
       false, // includeContent
-      undefined // version
+      undefined, // version
     );
 
     // Generate full content file
@@ -139,25 +139,28 @@ This page is still being written and should not be published.`
       'Documentation',
       'Documentation for the project',
       true, // includeContent
-      undefined // version
+      undefined, // version
     );
 
     // Read and verify the generated files
     console.log('\nVerifying generated files...');
-    
+
     const llmsTxt = fs.readFileSync(path.join(outputDir, 'llms.txt'), 'utf-8');
     const llmsFullTxt = fs.readFileSync(path.join(outputDir, 'llms-full.txt'), 'utf-8');
-    
+
     // Debug: Show what's in the files
     console.log('\nContent of llms.txt:');
     console.log(llmsTxt.substring(0, 500) + '...');
     console.log('\nTotal processed files:', processedDocs.length);
-    console.log('Files:', processedDocs.map(f => f.title));
+    console.log(
+      'Files:',
+      processedDocs.map((f) => f.title),
+    );
 
     // Check that draft pages are not included
     const draftTitles = ['New Feature (Draft)', 'Work in Progress'];
     const publishedTitles = ['Introduction', 'User Guide', 'API Reference'];
-    
+
     let passed = 0;
     let failed = 0;
 
@@ -218,7 +221,6 @@ This page is still being written and should not be published.`
     }
 
     return failed === 0;
-
   } catch (error) {
     console.error('Integration test error:', error);
     // Clean up on error
@@ -231,12 +233,12 @@ This page is still being written and should not be published.`
 
 // Run the test
 runDraftIntegrationTest()
-  .then(success => {
+  .then((success) => {
     if (!success) {
       process.exit(1);
     }
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('Test runner error:', error);
     process.exit(1);
   });

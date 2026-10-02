@@ -25,9 +25,9 @@ const mockContext = {
     title: 'Test Site',
     tagline: 'Test tagline',
     url: 'https://example.com',
-    baseUrl: '/'
+    baseUrl: '/',
   },
-  outDir: '/tmp/test-site/build'
+  outDir: '/tmp/test-site/build',
 };
 
 let passed = 0;
@@ -49,7 +49,7 @@ function test(name, fn) {
 
 test('preserveDirectoryStructure: true is stored in pluginContext.options', () => {
   const plugin = docusaurusPluginLLMs(mockContext, {
-    preserveDirectoryStructure: true
+    preserveDirectoryStructure: true,
   });
   // The plugin object itself doesn't expose context, so we verify by inspecting
   // that the plugin initialised without error and is the correct shape.
@@ -76,8 +76,8 @@ test('preserveDirectoryStructure: false flows correctly - generator honours it',
         path: 'docs/guide/intro.md',
         content: 'Introduction content.',
         description: 'Intro guide',
-        url: 'https://example.com/docs/guide/intro'
-      }
+        url: 'https://example.com/docs/guide/intro',
+      },
     ];
 
     const result = await generateIndividualMarkdownFiles(
@@ -86,7 +86,7 @@ test('preserveDirectoryStructure: false flows correctly - generator honours it',
       'https://example.com',
       'docs',
       [], // keepFrontMatter
-      false // preserveDirectoryStructure = false → strip docs/ prefix
+      false, // preserveDirectoryStructure = false → strip docs/ prefix
     );
 
     // With preserveDirectoryStructure: false the docs/ prefix must be stripped
@@ -95,21 +95,21 @@ test('preserveDirectoryStructure: false flows correctly - generator honours it',
 
     assert.ok(
       fs.existsSync(expectedFullPath),
-      `Expected file at "${expectedRelPath}" (docs/ prefix stripped) when preserveDirectoryStructure=false`
+      `Expected file at "${expectedRelPath}" (docs/ prefix stripped) when preserveDirectoryStructure=false`,
     );
 
     // The docs/ prefixed path must NOT exist
     const wrongPath = path.join(testDir, 'docs/guide/intro.md');
     assert.ok(
       !fs.existsSync(wrongPath),
-      'File should NOT exist under docs/ subdir when preserveDirectoryStructure=false'
+      'File should NOT exist under docs/ subdir when preserveDirectoryStructure=false',
     );
 
     // Result doc should reflect the stripped path
     assert.strictEqual(
       result[0].path,
       `/${expectedRelPath}`,
-      `doc.path should be "/${expectedRelPath}", got "${result[0].path}"`
+      `doc.path should be "/${expectedRelPath}", got "${result[0].path}"`,
     );
   } finally {
     if (fs.existsSync(testDir)) {
@@ -134,8 +134,8 @@ test('preserveDirectoryStructure: true flows correctly - generator preserves doc
         path: 'docs/guide/intro.md',
         content: 'Introduction content.',
         description: 'Intro guide',
-        url: 'https://example.com/docs/guide/intro'
-      }
+        url: 'https://example.com/docs/guide/intro',
+      },
     ];
 
     const result = await generateIndividualMarkdownFiles(
@@ -144,7 +144,7 @@ test('preserveDirectoryStructure: true flows correctly - generator preserves doc
       'https://example.com',
       'docs',
       [], // keepFrontMatter
-      true // preserveDirectoryStructure = true → keep docs/ prefix
+      true, // preserveDirectoryStructure = true → keep docs/ prefix
     );
 
     // With preserveDirectoryStructure: true the full path including docs/ must exist
@@ -153,13 +153,13 @@ test('preserveDirectoryStructure: true flows correctly - generator preserves doc
 
     assert.ok(
       fs.existsSync(expectedFullPath),
-      `Expected file at "${expectedRelPath}" (docs/ prefix kept) when preserveDirectoryStructure=true`
+      `Expected file at "${expectedRelPath}" (docs/ prefix kept) when preserveDirectoryStructure=true`,
     );
 
     assert.strictEqual(
       result[0].path,
       `/${expectedRelPath}`,
-      `doc.path should be "/${expectedRelPath}", got "${result[0].path}"`
+      `doc.path should be "/${expectedRelPath}", got "${result[0].path}"`,
     );
   } finally {
     if (fs.existsSync(testDir)) {
@@ -176,21 +176,21 @@ test('plugin initialises with non-default preserveDirectoryStructure: false', ()
   const plugin = docusaurusPluginLLMs(mockContext, {
     preserveDirectoryStructure: false,
     processingBatchSize: 50,
-    warnOnIgnoredFiles: true
+    warnOnIgnoredFiles: true,
   });
   assert.strictEqual(plugin.name, 'docusaurus-plugin-llms');
 });
 
 test('processingBatchSize: custom value accepted', () => {
   const plugin = docusaurusPluginLLMs(mockContext, {
-    processingBatchSize: 25
+    processingBatchSize: 25,
   });
   assert.strictEqual(plugin.name, 'docusaurus-plugin-llms');
 });
 
 test('warnOnIgnoredFiles: true accepted', () => {
   const plugin = docusaurusPluginLLMs(mockContext, {
-    warnOnIgnoredFiles: true
+    warnOnIgnoredFiles: true,
   });
   assert.strictEqual(plugin.name, 'docusaurus-plugin-llms');
 });

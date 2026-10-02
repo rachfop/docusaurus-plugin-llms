@@ -11,8 +11,13 @@ const { cleanMarkdownContent } = require('../lib/utils');
 let passed = 0;
 let failed = 0;
 function expect(name, cond, detail) {
-  if (cond) { console.log(`  ✅ PASS: ${name}`); passed++; }
-  else { console.log(`  ❌ FAIL: ${name}\n     ${detail}`); failed++; }
+  if (cond) {
+    console.log(`  ✅ PASS: ${name}`);
+    passed++;
+  } else {
+    console.log(`  ❌ FAIL: ${name}\n     ${detail}`);
+    failed++;
+  }
 }
 
 function run() {
@@ -48,7 +53,11 @@ function run() {
   {
     const input = '<TabItem>Just a body.</TabItem>';
     const out = cleanMarkdownContent(input);
-    expect('unlabeled TabItem: body kept, no stray bold', out.includes('Just a body.') && !out.includes('**'), out);
+    expect(
+      'unlabeled TabItem: body kept, no stray bold',
+      out.includes('Just a body.') && !out.includes('**'),
+      out,
+    );
   }
 
   // 4. Multiple TabItems keep their order and pairing.
@@ -64,16 +73,22 @@ function run() {
     const alpha = out.indexOf('Alpha body.');
     const b = out.indexOf('**Option B**');
     const beta = out.indexOf('Beta body.');
-    expect('labels precede their bodies in order',
+    expect(
+      'labels precede their bodies in order',
       a !== -1 && a < alpha && alpha < b && b < beta,
-      JSON.stringify({ a, alpha, b, beta, out }));
+      JSON.stringify({ a, alpha, b, beta, out }),
+    );
   }
 
   // 5. preserveComponents leaves the named component's tags untouched.
   {
     const input = '<PackageManagerTabs command="add my-package" />';
     const out = cleanMarkdownContent(input, false, false, ['PackageManagerTabs']);
-    expect('preserved tag intact', out.includes('<PackageManagerTabs command="add my-package" />'), out);
+    expect(
+      'preserved tag intact',
+      out.includes('<PackageManagerTabs command="add my-package" />'),
+      out,
+    );
   }
 
   // 6. preserveComponents is name-exact: other PascalCase tags still stripped.

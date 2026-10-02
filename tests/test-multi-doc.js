@@ -40,12 +40,12 @@ function createTempSite() {
 
   fs.writeFileSync(
     path.join(tmpDir, 'docs', 'getting-started.md'),
-    '---\ntitle: Getting Started\ndescription: Start here.\n---\n\n# Getting Started\n\nStart here.'
+    '---\ntitle: Getting Started\ndescription: Start here.\n---\n\n# Getting Started\n\nStart here.',
   );
 
   fs.writeFileSync(
     path.join(tmpDir, 'api', 'authentication.md'),
-    '---\ntitle: Authentication\ndescription: API auth docs.\n---\n\n# Authentication\n\nAPI auth docs.'
+    '---\ntitle: Authentication\ndescription: API auth docs.\n---\n\n# Authentication\n\nAPI auth docs.',
   );
 
   return { tmpDir, outDir };
@@ -69,12 +69,12 @@ function createMismatchedPathSite() {
 
   fs.writeFileSync(
     path.join(tmpDir, 'team-a', 'docs', 'getting-started.md'),
-    '---\ntitle: Getting Started\ndescription: Start here.\n---\n\n# Getting Started\n\nStart here.'
+    '---\ntitle: Getting Started\ndescription: Start here.\n---\n\n# Getting Started\n\nStart here.',
   );
 
   fs.writeFileSync(
     path.join(tmpDir, 'team-b', 'docs', 'faq.md'),
-    '---\ntitle: FAQ\ndescription: Team B FAQ.\n---\n\n# FAQ\n\nTeam B FAQ.'
+    '---\ntitle: FAQ\ndescription: Team B FAQ.\n---\n\n# FAQ\n\nTeam B FAQ.',
   );
 
   return { tmpDir, outDir };
@@ -118,7 +118,7 @@ async function testTwoLabeledSections() {
     // Documentation heading should appear before API Reference heading
     assert.ok(
       content.indexOf('## Documentation') < content.indexOf('## API Reference'),
-      'Expected Documentation section before API Reference section'
+      'Expected Documentation section before API Reference section',
     );
 
     pass(name);
@@ -173,9 +173,15 @@ async function testStringDocsDirBackwardCompat() {
 
     assert.ok(content.includes('Getting Started'), 'Expected docs content in output');
     // Should NOT contain api content since we only specified docs
-    assert.ok(!content.includes('Authentication'), 'Should not include api content with string docsDir: docs');
+    assert.ok(
+      !content.includes('Authentication'),
+      'Should not include api content with string docsDir: docs',
+    );
     // Should not contain section headings for single section
-    assert.ok(!content.includes('## docs'), 'Should not have section heading for single string docsDir');
+    assert.ok(
+      !content.includes('## docs'),
+      'Should not have section heading for single string docsDir',
+    );
 
     pass(name);
   } catch (err) {
@@ -191,9 +197,7 @@ async function testSingleArrayEntry() {
   const { tmpDir, outDir } = createTempSite();
   try {
     const p = plugin(makeMockContext(tmpDir, outDir), {
-      docsDir: [
-        { path: 'api', routeBasePath: 'api', label: 'API Reference' },
-      ],
+      docsDir: [{ path: 'api', routeBasePath: 'api', label: 'API Reference' }],
       llmsTxtFilename: 'llms-test4.txt',
       llmsFullTxtFilename: 'llms-full-test4.txt',
     });
@@ -203,9 +207,15 @@ async function testSingleArrayEntry() {
 
     assert.ok(content.includes('Authentication'), 'Expected api content in output');
     // Single section should NOT have section grouping headings
-    assert.ok(!content.includes('## API Reference'), 'Should not have section heading for single-entry array');
+    assert.ok(
+      !content.includes('## API Reference'),
+      'Should not have section heading for single-entry array',
+    );
     // Should not contain docs content
-    assert.ok(!content.includes('Getting Started'), 'Should not include docs content when only api section configured');
+    assert.ok(
+      !content.includes('Getting Started'),
+      'Should not include docs content when only api section configured',
+    );
 
     pass(name);
   } catch (err) {
@@ -221,29 +231,32 @@ async function testValidationRejectsInvalidArray() {
   try {
     // Missing routeBasePath
     assert.throws(
-      () => plugin(makeMockContext('/tmp', '/tmp/out'), {
-        docsDir: [{ path: 'docs' }],
-      }),
+      () =>
+        plugin(makeMockContext('/tmp', '/tmp/out'), {
+          docsDir: [{ path: 'docs' }],
+        }),
       /docsDir\[0\]\.routeBasePath must be a non-empty string/,
-      'Expected error for missing routeBasePath'
+      'Expected error for missing routeBasePath',
     );
 
     // Missing path
     assert.throws(
-      () => plugin(makeMockContext('/tmp', '/tmp/out'), {
-        docsDir: [{ routeBasePath: 'docs' }],
-      }),
+      () =>
+        plugin(makeMockContext('/tmp', '/tmp/out'), {
+          docsDir: [{ routeBasePath: 'docs' }],
+        }),
       /docsDir\[0\]\.path must be a non-empty string/,
-      'Expected error for missing path'
+      'Expected error for missing path',
     );
 
     // Empty label
     assert.throws(
-      () => plugin(makeMockContext('/tmp', '/tmp/out'), {
-        docsDir: [{ path: 'docs', routeBasePath: 'docs', label: '   ' }],
-      }),
+      () =>
+        plugin(makeMockContext('/tmp', '/tmp/out'), {
+          docsDir: [{ path: 'docs', routeBasePath: 'docs', label: '   ' }],
+        }),
       /docsDir\[0\]\.label must be a non-empty string/,
-      'Expected error for whitespace-only label'
+      'Expected error for whitespace-only label',
     );
 
     pass(name);
@@ -299,17 +312,17 @@ async function testAllSectionsWithMismatchedPaths() {
 
     assert.ok(
       content.includes('(https://example.com/docs/team-a/getting-started)'),
-      `Expected clean URL for first section, got:\n${content}`
+      `Expected clean URL for first section, got:\n${content}`,
     );
     assert.ok(
       content.includes('(https://example.com/docs/team-b/faq)'),
-      `Expected clean URL for second section, got:\n${content}`
+      `Expected clean URL for second section, got:\n${content}`,
     );
     // The heading legitimately falls back to the raw path as a label — only
     // the URL itself must never contain it.
     assert.ok(
       !content.includes('docs/team-b/team-b'),
-      `URL must not leak the second section's filesystem path, got:\n${content}`
+      `URL must not leak the second section's filesystem path, got:\n${content}`,
     );
 
     pass(name);
@@ -337,9 +350,18 @@ async function testFlattenedMarkdownFilesForAllSections() {
     });
     await p.postBuild({ routesPaths: ['/docs/team-a/getting-started', '/docs/team-b/faq'] });
 
-    assert.ok(fs.existsSync(path.join(outDir, 'getting-started.md')), 'Expected first section file flattened to getting-started.md');
-    assert.ok(fs.existsSync(path.join(outDir, 'faq.md')), 'Expected second section file flattened to faq.md');
-    assert.ok(!fs.existsSync(path.join(outDir, 'team-b')), 'Second section filesystem directory must not leak into the flattened output');
+    assert.ok(
+      fs.existsSync(path.join(outDir, 'getting-started.md')),
+      'Expected first section file flattened to getting-started.md',
+    );
+    assert.ok(
+      fs.existsSync(path.join(outDir, 'faq.md')),
+      'Expected second section file flattened to faq.md',
+    );
+    assert.ok(
+      !fs.existsSync(path.join(outDir, 'team-b')),
+      'Second section filesystem directory must not leak into the flattened output',
+    );
 
     pass(name);
   } catch (err) {
@@ -357,7 +379,7 @@ async function testDocsRelativePatternMatchesAllSections() {
     fs.mkdirSync(path.join(tmpDir, 'team-b', 'docs', 'guides'), { recursive: true });
     fs.writeFileSync(
       path.join(tmpDir, 'team-b', 'docs', 'guides', 'setup.md'),
-      '---\ntitle: Setup Guide\ndescription: Team B setup guide.\n---\n\n# Setup Guide\n\nTeam B setup guide.'
+      '---\ntitle: Setup Guide\ndescription: Team B setup guide.\n---\n\n# Setup Guide\n\nTeam B setup guide.',
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
@@ -373,10 +395,19 @@ async function testDocsRelativePatternMatchesAllSections() {
         },
       ],
     });
-    await p.postBuild({ routesPaths: ['/docs/team-a/getting-started', '/docs/team-b/faq', '/docs/team-b/guides/setup'] });
+    await p.postBuild({
+      routesPaths: [
+        '/docs/team-a/getting-started',
+        '/docs/team-b/faq',
+        '/docs/team-b/guides/setup',
+      ],
+    });
 
     const content = fs.readFileSync(path.join(outDir, 'llms-guides-test9.txt'), 'utf8');
-    assert.ok(content.includes('Setup Guide'), `Expected team-b's guides/setup.md to match "guides/*.md", got:\n${content}`);
+    assert.ok(
+      content.includes('Setup Guide'),
+      `Expected team-b's guides/setup.md to match "guides/*.md", got:\n${content}`,
+    );
 
     pass(name);
   } catch (err) {
@@ -394,7 +425,7 @@ async function testSameBasenameAcrossSectionsDoesNotCollide() {
   try {
     fs.writeFileSync(
       path.join(tmpDir, 'team-a', 'docs', 'faq.md'),
-      '---\ntitle: FAQ\ndescription: Team A FAQ.\n---\n\n# FAQ\n\nTeam A FAQ.'
+      '---\ntitle: FAQ\ndescription: Team A FAQ.\n---\n\n# FAQ\n\nTeam A FAQ.',
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
@@ -406,15 +437,32 @@ async function testSameBasenameAcrossSectionsDoesNotCollide() {
       llmsTxtFilename: 'llms-test10.txt',
       llmsFullTxtFilename: 'llms-full-test10.txt',
     });
-    await p.postBuild({ routesPaths: ['/docs/team-a/getting-started', '/docs/team-a/faq', '/docs/team-b/faq'] });
+    await p.postBuild({
+      routesPaths: ['/docs/team-a/getting-started', '/docs/team-a/faq', '/docs/team-b/faq'],
+    });
 
     const content = fs.readFileSync(path.join(outDir, 'llms-test10.txt'), 'utf8');
 
-    assert.ok(content.includes('(https://example.com/docs/team-a/faq.md)'), `Expected team-a's faq at its own URL, got:\n${content}`);
-    assert.ok(content.includes('(https://example.com/docs/team-b/faq.md)'), `Expected team-b's faq at its own URL, got:\n${content}`);
-    assert.ok(!content.includes('faq-2'), `No file should need a "-2" suffix to disambiguate, got:\n${content}`);
-    assert.ok(fs.existsSync(path.join(outDir, 'docs', 'team-a', 'faq.md')), 'Expected team-a/faq.md written to its own section directory');
-    assert.ok(fs.existsSync(path.join(outDir, 'docs', 'team-b', 'faq.md')), 'Expected team-b/faq.md written to its own section directory');
+    assert.ok(
+      content.includes('(https://example.com/docs/team-a/faq.md)'),
+      `Expected team-a's faq at its own URL, got:\n${content}`,
+    );
+    assert.ok(
+      content.includes('(https://example.com/docs/team-b/faq.md)'),
+      `Expected team-b's faq at its own URL, got:\n${content}`,
+    );
+    assert.ok(
+      !content.includes('faq-2'),
+      `No file should need a "-2" suffix to disambiguate, got:\n${content}`,
+    );
+    assert.ok(
+      fs.existsSync(path.join(outDir, 'docs', 'team-a', 'faq.md')),
+      'Expected team-a/faq.md written to its own section directory',
+    );
+    assert.ok(
+      fs.existsSync(path.join(outDir, 'docs', 'team-b', 'faq.md')),
+      'Expected team-b/faq.md written to its own section directory',
+    );
 
     pass(name);
   } catch (err) {
@@ -437,7 +485,9 @@ async function main() {
   await testSameBasenameAcrossSectionsDoesNotCollide();
 
   console.log('\n' + '='.repeat(50));
-  console.log(`Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`);
+  console.log(
+    `Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`,
+  );
   console.log('='.repeat(50));
 
   if (failedTests > 0) {
@@ -445,7 +495,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Unexpected error:', err);
   process.exit(1);
 });

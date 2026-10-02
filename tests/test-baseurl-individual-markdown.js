@@ -24,14 +24,14 @@ const testCases = [
         path: 'docs/guides/intro.md',
         content: 'Intro content.',
         description: 'Getting started',
-        url: 'https://example.com/subpath/guides/intro'
-      }
+        url: 'https://example.com/subpath/guides/intro',
+      },
     ],
     preserveDirectoryStructure: false,
     siteUrl: 'https://example.com/subpath/',
     docsDir: 'docs',
     expectedPaths: ['guides/intro.md'],
-    expectedUrls: ['https://example.com/subpath/guides/intro.md']
+    expectedUrls: ['https://example.com/subpath/guides/intro.md'],
   },
   {
     name: 'multi-segment baseUrl - baseUrl stripped once from physical path',
@@ -41,14 +41,14 @@ const testCases = [
         path: 'docs/guides/intro.md',
         content: 'Intro content.',
         description: 'Getting started',
-        url: 'https://example.com/some/subpath/guides/intro'
-      }
+        url: 'https://example.com/some/subpath/guides/intro',
+      },
     ],
     preserveDirectoryStructure: false,
     siteUrl: 'https://example.com/some/subpath/',
     docsDir: 'docs',
     expectedPaths: ['guides/intro.md'],
-    expectedUrls: ['https://example.com/some/subpath/guides/intro.md']
+    expectedUrls: ['https://example.com/some/subpath/guides/intro.md'],
   },
   {
     name: 'multi-segment baseUrl - preserveDirectoryStructure true keeps docs/ but strips baseUrl',
@@ -58,14 +58,14 @@ const testCases = [
         path: 'docs/guides/intro.md',
         content: 'Intro content.',
         description: 'Getting started',
-        url: 'https://example.com/some/subpath/docs/guides/intro'
-      }
+        url: 'https://example.com/some/subpath/docs/guides/intro',
+      },
     ],
     preserveDirectoryStructure: true,
     siteUrl: 'https://example.com/some/subpath/',
     docsDir: 'docs',
     expectedPaths: ['docs/guides/intro.md'],
-    expectedUrls: ['https://example.com/some/subpath/docs/guides/intro.md']
+    expectedUrls: ['https://example.com/some/subpath/docs/guides/intro.md'],
   },
   {
     name: 'baseUrl-only page (slug: /) written as index.md',
@@ -75,14 +75,14 @@ const testCases = [
         path: 'docs/index.md',
         content: 'Home content.',
         description: 'Home page',
-        url: 'https://example.com/some/subpath/'
-      }
+        url: 'https://example.com/some/subpath/',
+      },
     ],
     preserveDirectoryStructure: false,
     siteUrl: 'https://example.com/some/subpath/',
     docsDir: 'docs',
     expectedPaths: ['index.md'],
-    expectedUrls: ['https://example.com/some/subpath/index.md']
+    expectedUrls: ['https://example.com/some/subpath/index.md'],
   },
   {
     name: 'root baseUrl - unaffected (no stripping)',
@@ -92,15 +92,15 @@ const testCases = [
         path: 'docs/guides/intro.md',
         content: 'Intro content.',
         description: 'Getting started',
-        url: 'https://example.com/guides/intro'
-      }
+        url: 'https://example.com/guides/intro',
+      },
     ],
     preserveDirectoryStructure: false,
     siteUrl: 'https://example.com',
     docsDir: 'docs',
     expectedPaths: ['guides/intro.md'],
-    expectedUrls: ['https://example.com/guides/intro.md']
-  }
+    expectedUrls: ['https://example.com/guides/intro.md'],
+  },
 ];
 
 async function runTests() {
@@ -127,7 +127,7 @@ async function runTests() {
         testCase.siteUrl,
         testCase.docsDir,
         [],
-        testCase.preserveDirectoryStructure
+        testCase.preserveDirectoryStructure,
       );
 
       let ok = true;
@@ -144,7 +144,9 @@ async function runTests() {
       // Published URL keeps baseUrl exactly once.
       for (let i = 0; i < result.length; i++) {
         if (result[i].url !== testCase.expectedUrls[i]) {
-          console.log(`❌ FAIL - Expected URL "${testCase.expectedUrls[i]}", got "${result[i].url}"`);
+          console.log(
+            `❌ FAIL - Expected URL "${testCase.expectedUrls[i]}", got "${result[i].url}"`,
+          );
           ok = false;
         }
       }
@@ -181,7 +183,7 @@ async function runTests() {
   }
 }
 
-runTests().catch(error => {
+runTests().catch((error) => {
   console.error('Test runner error:', error);
   process.exit(1);
 });

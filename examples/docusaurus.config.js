@@ -5,14 +5,14 @@
 // This is just an example file and doesn't need type checking
 const themes = {
   github: {},
-  dracula: {}
+  dracula: {},
 };
 
 const config = {
   title: 'My Documentation Site',
   tagline: 'Documentation made for humans and LLMs',
   favicon: 'img/favicon.ico',
-  
+
   url: 'https://my-website.com',
   baseUrl: '/',
 
@@ -28,9 +28,7 @@ const config = {
   },
 
   // Example 1: Basic usage
-  plugins: [
-    'docusaurus-plugin-llms',
-  ],
+  plugins: ['docusaurus-plugin-llms'],
 
   // Example 2: With options (uncomment to use)
   // plugins: [
@@ -160,4 +158,4 @@ const config = {
   },
 };
 
-module.exports = config; 
+module.exports = config;

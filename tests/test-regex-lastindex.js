@@ -23,10 +23,7 @@ title: Shared Component
 
 This is the shared content.`;
 
-  await fs.writeFile(
-    path.join(testDir, '_shared.mdx'),
-    partialContent
-  );
+  await fs.writeFile(path.join(testDir, '_shared.mdx'), partialContent);
 
   return testDir;
 }
@@ -71,8 +68,12 @@ async function runTests() {
       console.log('  ✅ PASS: Both calls resolved imports correctly\n');
     } else {
       console.log('  ❌ FAIL: State leakage detected');
-      console.log(`    First call - has content: ${hasPartialContent1}, no import: ${noImportStatement1}`);
-      console.log(`    Second call - has content: ${hasPartialContent2}, no import: ${noImportStatement2}\n`);
+      console.log(
+        `    First call - has content: ${hasPartialContent1}, no import: ${noImportStatement1}`,
+      );
+      console.log(
+        `    Second call - has content: ${hasPartialContent2}, no import: ${noImportStatement2}\n`,
+      );
       allTestsPassed = false;
     }
 
@@ -97,7 +98,9 @@ Second usage: <Shared />`;
       console.log('  ✅ PASS: Multiple usages resolved correctly\n');
     } else {
       console.log('  ❌ FAIL: Multiple usages not resolved correctly');
-      console.log(`    Content appears ${result3.split('Shared Content').length - 1} times (expected 2)`);
+      console.log(
+        `    Content appears ${result3.split('Shared Content').length - 1} times (expected 2)`,
+      );
       console.log(`    Contains import: ${result3.includes('import')}\n`);
       allTestsPassed = false;
     }
@@ -118,23 +121,23 @@ Second usage: <Shared />`;
     const results = await Promise.all(promises);
 
     // All results should have resolved the import correctly
-    const allResolved = results.every(result =>
-      result.includes('Shared Content') && !result.includes('import Shared')
+    const allResolved = results.every(
+      (result) => result.includes('Shared Content') && !result.includes('import Shared'),
     );
 
     if (allResolved) {
       console.log('  ✅ PASS: All 10 rapid calls resolved correctly\n');
     } else {
       console.log('  ❌ FAIL: Some rapid calls failed');
-      const failedCount = results.filter(result =>
-        !result.includes('Shared Content') || result.includes('import Shared')
+      const failedCount = results.filter(
+        (result) => !result.includes('Shared Content') || result.includes('import Shared'),
       ).length;
       console.log(`    Failed calls: ${failedCount}/10\n`);
       allTestsPassed = false;
     }
 
     // Test 4: Empty content after processing
-    console.log('Test 4: Regex doesn\'t skip matches');
+    console.log("Test 4: Regex doesn't skip matches");
 
     const contentWithMultipleImports = `import First from './_shared.mdx';
 import Second from './_shared.mdx';
@@ -157,7 +160,6 @@ import Third from './_shared.mdx';
       console.log(`  ❌ FAIL: Expected 3 imports, but resolved ${numberOfResolvedContent}\n`);
       allTestsPassed = false;
     }
-
   } catch (error) {
     console.error('Test error:', error);
     allTestsPassed = false;
@@ -181,7 +183,7 @@ import Third from './_shared.mdx';
 }
 
 // Run tests
-runTests().catch(err => {
+runTests().catch((err) => {
   console.error('Fatal error:', err);
   process.exit(1);
 });

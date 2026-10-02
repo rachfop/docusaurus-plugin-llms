@@ -70,10 +70,9 @@ function cleanup(tmpDir) {
 }
 
 function walk(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true })
-    .flatMap(e => e.isDirectory()
-      ? walk(path.join(dir, e.name))
-      : [path.join(dir, e.name)]);
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
 }
 
 // Test 1: slug: "/" root page resolves to `/` instead of stealing /some-section/intro
@@ -85,12 +84,12 @@ async function testRootSlugWins() {
     // Root page: bare filename tail "intro", but declares slug: "/".
     fs.writeFileSync(
       path.join(tmpDir, 'docs', 'intro.md'),
-      page('Home', 'Root body.', { slug: '"/"' })
+      page('Home', 'Root body.', { slug: '"/"' }),
     );
     // Unrelated nested page whose real route ends with /intro.
     fs.writeFileSync(
       path.join(tmpDir, 'docs', 'some-section', 'intro.md'),
-      page('Section Intro', 'Section body.')
+      page('Section Intro', 'Section body.'),
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
@@ -104,28 +103,31 @@ async function testRootSlugWins() {
     await p.postBuild({ routesPaths: ['/', '/some-section/intro'] });
 
     const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
-    const files = walk(outDir).map(f => path.relative(outDir, f).split(path.sep).join('/'));
+    const files = walk(outDir).map((f) => path.relative(outDir, f).split(path.sep).join('/'));
 
     // Root page got its index.md and the nested page kept its own path — no
     // suffixed duplicate (e.g. some-section/intro-2.md) was needed.
-    assert.ok(files.includes('index.md'), `root page should produce index.md; got ${files.join(', ')}`);
     assert.ok(
-      files.includes('some-section/intro.md'),
-      `nested page should keep some-section/intro.md; got ${files.join(', ')}`
+      files.includes('index.md'),
+      `root page should produce index.md; got ${files.join(', ')}`,
     );
     assert.ok(
-      !files.some(f => /intro-\d+\.md$/.test(f)),
-      `no suffixed duplicate should exist; got ${files.join(', ')}`
+      files.includes('some-section/intro.md'),
+      `nested page should keep some-section/intro.md; got ${files.join(', ')}`,
+    );
+    assert.ok(
+      !files.some((f) => /intro-\d+\.md$/.test(f)),
+      `no suffixed duplicate should exist; got ${files.join(', ')}`,
     );
 
     // Both documents are linked, each to its own route.
     assert.ok(
       llms.includes('https://example.com/index.md'),
-      'root page should be linked at the site root (index.md)'
+      'root page should be linked at the site root (index.md)',
     );
     assert.ok(
       llms.includes('https://example.com/some-section/intro.md'),
-      'nested page should be linked at /some-section/intro.md'
+      'nested page should be linked at /some-section/intro.md',
     );
 
     pass(name);
@@ -145,7 +147,7 @@ async function testExplicitSlugWins() {
     // File named legacy-name.md but routed at /guide/real-name via slug.
     fs.writeFileSync(
       path.join(tmpDir, 'docs', 'guide', 'legacy-name.md'),
-      page('Real Name', 'Body.', { slug: 'real-name' })
+      page('Real Name', 'Body.', { slug: 'real-name' }),
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
@@ -158,7 +160,7 @@ async function testExplicitSlugWins() {
     const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
     assert.ok(
       llms.includes('https://example.com/guide/real-name.md'),
-      'document should resolve to its slug-declared route /guide/real-name'
+      'document should resolve to its slug-declared route /guide/real-name',
     );
 
     pass(name);
@@ -179,7 +181,7 @@ async function testAbsoluteSlugFlattening() {
     // Nested file, but its absolute slug lifts it to the site root (/flat-page).
     fs.writeFileSync(
       path.join(tmpDir, 'docs', 'section', 'nested-page.md'),
-      page('Flat Page', 'Body.', { slug: '/flat-page' })
+      page('Flat Page', 'Body.', { slug: '/flat-page' }),
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
@@ -192,21 +194,21 @@ async function testAbsoluteSlugFlattening() {
     await p.postBuild({ routesPaths: ['/flat-page'] });
 
     const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
-    const files = walk(outDir).map(f => path.relative(outDir, f).split(path.sep).join('/'));
+    const files = walk(outDir).map((f) => path.relative(outDir, f).split(path.sep).join('/'));
 
     // The markdown lands at the flat route, and llms.txt links it there — no
     // stray /section/ prefix and no raw docs/ fallback path.
     assert.ok(
       files.includes('flat-page.md'),
-      `page should produce flat-page.md at the root; got ${files.join(', ')}`
+      `page should produce flat-page.md at the root; got ${files.join(', ')}`,
     );
     assert.ok(
       llms.includes('https://example.com/flat-page.md'),
-      'page should be linked at its absolute slug /flat-page.md'
+      'page should be linked at its absolute slug /flat-page.md',
     );
     assert.ok(
       !llms.includes('/section/'),
-      'link must not carry the source folder it was flattened out of'
+      'link must not carry the source folder it was flattened out of',
     );
 
     pass(name);
@@ -223,10 +225,7 @@ async function testNoOverrideUnaffected() {
   const { tmpDir, outDir } = makeSite();
   try {
     fs.mkdirSync(path.join(tmpDir, 'docs'), { recursive: true });
-    fs.writeFileSync(
-      path.join(tmpDir, 'docs', 'get-started.md'),
-      page('Get Started', 'Body.')
-    );
+    fs.writeFileSync(path.join(tmpDir, 'docs', 'get-started.md'), page('Get Started', 'Body.'));
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
       generateLLMsFullTxt: false,
@@ -238,7 +237,7 @@ async function testNoOverrideUnaffected() {
     const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
     assert.ok(
       llms.includes('https://example.com/get-started.md'),
-      'plain document should still resolve via its filename tail'
+      'plain document should still resolve via its filename tail',
     );
 
     pass(name);
@@ -256,7 +255,9 @@ async function main() {
   await testNoOverrideUnaffected();
 
   console.log('\n' + '='.repeat(50));
-  console.log(`Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`);
+  console.log(
+    `Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`,
+  );
   console.log('='.repeat(50));
 
   if (failedTests > 0) {
@@ -264,7 +265,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Unexpected error:', err);
   process.exit(1);
 });
