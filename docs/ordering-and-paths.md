@@ -15,24 +15,19 @@ By default the plugin emits documents in the order it discovers them. To impose 
 This example groups documents into sections that appear in the listed order:
 
 ```js
-includeOrder: [
-  'getting-started/*',
-  'guides/*',
-  'api/*',
-  'advanced/*',
-]
+includeOrder: ['getting-started/*', 'guides/*', 'api/*', 'advanced/*'];
 ```
 
 Because each file is claimed by the first pattern it matches, you can list specific files before a wildcard to pin them to the top of their group:
 
 ```js
 includeOrder: [
-  'getting-started/installation.md',   // this specific file first
-  'getting-started/quick-start.md',    // then this one
-  'getting-started/*.md',              // then the rest of getting-started
+  'getting-started/installation.md', // this specific file first
+  'getting-started/quick-start.md', // then this one
+  'getting-started/*.md', // then the rest of getting-started
   'api/core/*.md',
-  'api/**/*.md',                       // all remaining API docs
-]
+  'api/**/*.md', // all remaining API docs
+];
 ```
 
 ### Patterns match site-relative and docs-relative paths
@@ -61,10 +56,10 @@ Nesting depth follows the glob you write. `tutorials/beginner/**/*` matches begi
 
 ```js
 includeOrder: [
-  'tutorials/beginner/**/*',   // all beginner tutorials, any depth
-  'tutorials/intermediate/*',  // intermediate tutorials, one level
-  'tutorials/**/*',            // everything else under tutorials
-]
+  'tutorials/beginner/**/*', // all beginner tutorials, any depth
+  'tutorials/intermediate/*', // intermediate tutorials, one level
+  'tutorials/**/*', // everything else under tutorials
+];
 ```
 
 Custom LLM files have their own `orderPatterns` and `includeUnmatchedLast` fields. See [custom LLM files](./content-generation.md#generate-custom-llm-files) for details.

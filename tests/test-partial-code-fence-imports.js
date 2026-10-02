@@ -26,7 +26,7 @@ async function setupTestFiles() {
   // Clean up if exists
   try {
     await fs.rm(siteDir, { recursive: true });
-  } catch (err) {
+  } catch {
     // Ignore if doesn't exist
   }
 
@@ -59,7 +59,7 @@ Reference it inline as \`import Foundation\` when describing the sample.`;
 
   await fs.writeFile(
     path.join(siteDir, 'src', 'partials', 'adding-the-framework.mdx'),
-    partialContent
+    partialContent,
   );
 
   const mainContent = `---
@@ -100,16 +100,13 @@ async function runTest() {
       undefined, // resolvedUrl
       undefined, // imageAssetMap
       undefined, // outDir
-      siteDir // siteDir — used to resolve @site/ imports
+      siteDir, // siteDir — used to resolve @site/ imports
     );
 
     let allTestsPassed = true;
 
     // Test 1: backtick-fenced sample keeps its import lines
-    if (
-      !result.content.includes('import Foundation') ||
-      !result.content.includes('import UIKit')
-    ) {
+    if (!result.content.includes('import Foundation') || !result.content.includes('import UIKit')) {
       console.log('❌ Test 1 failed: Swift import lines stripped from fenced code block');
       allTestsPassed = false;
     } else {
@@ -157,7 +154,7 @@ async function runTest() {
     process.chdir(originalCwd);
     try {
       await fs.rm(siteDir, { recursive: true });
-    } catch (err) {
+    } catch {
       // Ignore cleanup errors
     }
   }

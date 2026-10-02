@@ -26,40 +26,40 @@ const testCases = [
         path: 'docs/config.md',
         content: 'Config 1 content',
         description: 'First config',
-        url: 'https://example.com/docs/config'
+        url: 'https://example.com/docs/config',
       },
       {
         title: 'Config 2',
         path: 'docs/config.md',
         content: 'Config 2 content',
         description: 'Second config',
-        url: 'https://example.com/docs/config'
+        url: 'https://example.com/docs/config',
       },
       {
         title: 'Config 3',
         path: 'docs/config.md',
         content: 'Config 3 content',
         description: 'Third config',
-        url: 'https://example.com/docs/config'
+        url: 'https://example.com/docs/config',
       },
       {
         title: 'Config 4',
         path: 'docs/config.md',
         content: 'Config 4 content',
         description: 'Fourth config',
-        url: 'https://example.com/docs/config'
+        url: 'https://example.com/docs/config',
       },
       {
         title: 'Config 5',
         path: 'docs/config.md',
         content: 'Config 5 content',
         description: 'Fifth config',
-        url: 'https://example.com/docs/config'
-      }
+        url: 'https://example.com/docs/config',
+      },
     ],
     expectedPaths: ['config.md', 'config-2.md', 'config-3.md', 'config-4.md', 'config-5.md'],
     siteUrl: 'https://example.com',
-    description: 'Should handle multiple collisions with counter increments'
+    description: 'Should handle multiple collisions with counter increments',
   },
   {
     name: 'Large number of collisions (100 files)',
@@ -68,14 +68,14 @@ const testCases = [
       path: 'docs/same-path.md',
       content: `Content ${i + 1}`,
       description: `Description ${i + 1}`,
-      url: 'https://example.com/docs/same-path'
+      url: 'https://example.com/docs/same-path',
     })),
     expectedPaths: [
       'same-path.md',
-      ...Array.from({ length: 99 }, (_, i) => `same-path-${i + 2}.md`)
+      ...Array.from({ length: 99 }, (_, i) => `same-path-${i + 2}.md`),
     ],
     siteUrl: 'https://example.com',
-    description: 'Should handle 100 collisions without hanging'
+    description: 'Should handle 100 collisions without hanging',
   },
   {
     name: 'Very large number of collisions (1000 files)',
@@ -84,14 +84,14 @@ const testCases = [
       path: 'docs/collision.md',
       content: `Content ${i + 1}`,
       description: `Description ${i + 1}`,
-      url: 'https://example.com/docs/collision'
+      url: 'https://example.com/docs/collision',
     })),
     expectedPaths: [
       'collision.md',
-      ...Array.from({ length: 999 }, (_, i) => `collision-${i + 2}.md`)
+      ...Array.from({ length: 999 }, (_, i) => `collision-${i + 2}.md`),
     ],
     siteUrl: 'https://example.com',
-    description: 'Should handle 1000 collisions efficiently'
+    description: 'Should handle 1000 collisions efficiently',
   },
   {
     name: 'Mixed nested paths with collisions',
@@ -101,34 +101,34 @@ const testCases = [
         path: 'docs/api/reference.md',
         content: 'API content 1',
         description: 'API 1',
-        url: 'https://example.com/docs/api/reference'
+        url: 'https://example.com/docs/api/reference',
       },
       {
         title: 'API Ref 2',
         path: 'docs/api/reference.md',
         content: 'API content 2',
         description: 'API 2',
-        url: 'https://example.com/docs/api/reference'
+        url: 'https://example.com/docs/api/reference',
       },
       {
         title: 'Guide',
         path: 'docs/guide.md',
         content: 'Guide content',
         description: 'Guide',
-        url: 'https://example.com/docs/guide'
+        url: 'https://example.com/docs/guide',
       },
       {
         title: 'API Ref 3',
         path: 'docs/api/reference.md',
         content: 'API content 3',
         description: 'API 3',
-        url: 'https://example.com/docs/api/reference'
-      }
+        url: 'https://example.com/docs/api/reference',
+      },
     ],
     expectedPaths: ['api/reference.md', 'api/reference-2.md', 'guide.md', 'api/reference-3.md'],
     siteUrl: 'https://example.com',
-    description: 'Should handle collisions in nested directories'
-  }
+    description: 'Should handle collisions in nested directories',
+  },
 ];
 
 // Run tests
@@ -154,7 +154,7 @@ async function runTests() {
         testCase.siteUrl,
         'docs',
         [],
-        false // Don't preserve directory structure for easier testing
+        false, // Don't preserve directory structure for easier testing
       );
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -167,7 +167,7 @@ async function runTests() {
       }
 
       // Check that all expected files exist
-      const generatedPaths = result.map(doc => {
+      const generatedPaths = result.map((doc) => {
         const urlPath = doc.path.replace(/^\/+/, '');
         return urlPath;
       });
@@ -176,7 +176,9 @@ async function runTests() {
       if (testCase.docs.length > 100) {
         const uniquePaths = new Set(generatedPaths);
         if (uniquePaths.size !== generatedPaths.length) {
-          throw new Error(`Duplicate paths found! Expected ${generatedPaths.length} unique paths, got ${uniquePaths.size}`);
+          throw new Error(
+            `Duplicate paths found! Expected ${generatedPaths.length} unique paths, got ${uniquePaths.size}`,
+          );
         }
         console.log(`  ✓ All ${generatedPaths.length} files have unique paths`);
       } else {
@@ -203,7 +205,6 @@ async function runTests() {
 
       console.log('  ✓ PASSED\n');
       passed++;
-
     } catch (error) {
       console.log(`  ✗ FAILED: ${error.message}\n`);
       failed++;
@@ -223,7 +224,7 @@ async function runTests() {
 }
 
 // Run the tests
-runTests().catch(err => {
+runTests().catch((err) => {
   console.error('Test execution failed:', err);
   process.exit(1);
 });

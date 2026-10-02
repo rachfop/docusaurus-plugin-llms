@@ -14,30 +14,21 @@ const DOCS_DIR = path.join(TEST_DIR, 'docs');
 async function setupTestFiles() {
   await fs.ensureDir(DOCS_DIR);
 
-  await fs.writeFile(
-    path.join(DOCS_DIR, 'simple.md'),
-    '# Simple\n\nSimple test file.'
-  );
+  await fs.writeFile(path.join(DOCS_DIR, 'simple.md'), '# Simple\n\nSimple test file.');
 
-  await fs.writeFile(
-    path.join(DOCS_DIR, '01-numbered.md'),
-    '# Numbered\n\nNumbered prefix file.'
-  );
+  await fs.writeFile(path.join(DOCS_DIR, '01-numbered.md'), '# Numbered\n\nNumbered prefix file.');
 
-  await fs.writeFile(
-    path.join(DOCS_DIR, '02-another.md'),
-    '# Another\n\nAnother numbered file.'
-  );
+  await fs.writeFile(path.join(DOCS_DIR, '02-another.md'), '# Another\n\nAnother numbered file.');
 
   await fs.ensureDir(path.join(DOCS_DIR, '01-category'));
   await fs.writeFile(
     path.join(DOCS_DIR, '01-category', 'nested.md'),
-    '# Nested\n\nNested file in numbered category.'
+    '# Nested\n\nNested file in numbered category.',
   );
 
   await fs.writeFile(
     path.join(DOCS_DIR, '01-category', '01-double.md'),
-    '# Double\n\nDouble numbered file.'
+    '# Double\n\nDouble numbered file.',
   );
 }
 
@@ -62,15 +53,12 @@ async function runTests() {
         routesPaths: ['/simple', '/numbered'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, 'simple.md'),
-        path.join(DOCS_DIR, '01-numbered.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, 'simple.md'), path.join(DOCS_DIR, '01-numbered.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
 
-      const simpleDoc = results.find(doc => doc.path === 'docs/simple.md');
-      const numberedDoc = results.find(doc => doc.path === 'docs/01-numbered.md');
+      const simpleDoc = results.find((doc) => doc.path === 'docs/simple.md');
+      const numberedDoc = results.find((doc) => doc.path === 'docs/01-numbered.md');
 
       if (simpleDoc && simpleDoc.url === 'https://example.com/simple') {
         console.log('  ✓ PASS: Suffix match for simple.md');
@@ -98,9 +86,7 @@ async function runTests() {
         routesPaths: ['/another'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, '02-another.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, '02-another.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -124,9 +110,7 @@ async function runTests() {
         routesPaths: ['/category/nested'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, '01-category', 'nested.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, '01-category', 'nested.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -150,9 +134,7 @@ async function runTests() {
         routesPaths: ['/category/double'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, '01-category', '01-double.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, '01-category', '01-double.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -175,9 +157,7 @@ async function runTests() {
         options: {},
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, 'simple.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, 'simple.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -201,9 +181,7 @@ async function runTests() {
         routesPaths: ['/another', '/nightly/another'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, '02-another.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, '02-another.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -226,7 +204,7 @@ async function runTests() {
       await fs.ensureDir(path.join(DOCS_DIR, 'manual'));
       await fs.writeFile(
         path.join(DOCS_DIR, 'manual', 'get-started.md'),
-        '# Get Started\n\nGet started guide.'
+        '# Get Started\n\nGet started guide.',
       );
 
       const context = {
@@ -237,9 +215,7 @@ async function runTests() {
         routesPaths: ['/manual/get-started'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, 'manual', 'get-started.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, 'manual', 'get-started.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -263,9 +239,7 @@ async function runTests() {
         routesPaths: ['/simple/'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, 'simple.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, 'simple.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -284,7 +258,7 @@ async function runTests() {
       await fs.ensureDir(path.join(DOCS_DIR, 'generics'));
       await fs.writeFile(
         path.join(DOCS_DIR, 'generics', 'generics.md'),
-        '# Generics\n\nGenerics documentation.'
+        '# Generics\n\nGenerics documentation.',
       );
 
       const context = {
@@ -295,9 +269,7 @@ async function runTests() {
         routesPaths: ['/generics'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, 'generics', 'generics.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, 'generics', 'generics.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -315,7 +287,7 @@ async function runTests() {
     {
       await fs.writeFile(
         path.join(DOCS_DIR, 'python_to_mojo.md'),
-        '---\nid: python-to-mojo\n---\n# Python to Mojo\n\nMigration guide.'
+        '---\nid: python-to-mojo\n---\n# Python to Mojo\n\nMigration guide.',
       );
 
       const context = {
@@ -326,9 +298,7 @@ async function runTests() {
         routesPaths: ['/python-to-mojo'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, 'python_to_mojo.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, 'python_to_mojo.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -346,7 +316,7 @@ async function runTests() {
     {
       await fs.writeFile(
         path.join(DOCS_DIR, 'intro.md'),
-        '---\nslug: /welcome\n---\n# Welcome\n\nWelcome page.'
+        '---\nslug: /welcome\n---\n# Welcome\n\nWelcome page.',
       );
 
       const context = {
@@ -357,9 +327,7 @@ async function runTests() {
         routesPaths: ['/welcome'],
       };
 
-      const allFiles = [
-        path.join(DOCS_DIR, 'intro.md'),
-      ];
+      const allFiles = [path.join(DOCS_DIR, 'intro.md')];
 
       const results = await processFilesWithPatterns(context, allFiles);
       const doc = results[0];
@@ -373,7 +341,6 @@ async function runTests() {
     }
 
     console.log('\n✓ All route resolution helper tests completed');
-
   } catch (err) {
     console.error('Test failed with error:', err);
     process.exit(1);
@@ -382,7 +349,7 @@ async function runTests() {
   }
 }
 
-runTests().catch(err => {
+runTests().catch((err) => {
   console.error('Unexpected error:', err);
   process.exit(1);
 });

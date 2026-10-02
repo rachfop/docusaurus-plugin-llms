@@ -8,7 +8,7 @@ async function setupTestFiles() {
   // Clean up if exists
   try {
     await fs.rm(testDir, { recursive: true });
-  } catch (err) {
+  } catch {
     // Ignore if doesn't exist
   }
 
@@ -29,10 +29,7 @@ import PartialB from './_partial-b.mdx';
 
 More content after importing B.`;
 
-  await fs.writeFile(
-    path.join(testDir, '_partial-a.mdx'),
-    partialAContent
-  );
+  await fs.writeFile(path.join(testDir, '_partial-a.mdx'), partialAContent);
 
   // Create partial B that imports partial A (circular!)
   const partialBContent = `---
@@ -49,10 +46,7 @@ import PartialA from './_partial-a.mdx';
 
 More content after importing A.`;
 
-  await fs.writeFile(
-    path.join(testDir, '_partial-b.mdx'),
-    partialBContent
-  );
+  await fs.writeFile(path.join(testDir, '_partial-b.mdx'), partialBContent);
 
   // Create a main document that imports partial A
   const mainContent = `---
@@ -72,10 +66,7 @@ import PartialA from './_partial-a.mdx';
 
 ## End`;
 
-  await fs.writeFile(
-    path.join(testDir, 'main.md'),
-    mainContent
-  );
+  await fs.writeFile(path.join(testDir, 'main.md'), mainContent);
 
   // Create another test case with self-import
   const selfImportContent = `---
@@ -90,10 +81,7 @@ import SelfImport from './_self-import.mdx';
 
 This should not cause infinite recursion.`;
 
-  await fs.writeFile(
-    path.join(testDir, '_self-import.mdx'),
-    selfImportContent
-  );
+  await fs.writeFile(path.join(testDir, '_self-import.mdx'), selfImportContent);
 
   const mainSelfContent = `---
 title: Main with Self Import
@@ -105,10 +93,7 @@ import SelfImport from './_self-import.mdx';
 
 <SelfImport />`;
 
-  await fs.writeFile(
-    path.join(testDir, 'main-self.md'),
-    mainSelfContent
-  );
+  await fs.writeFile(path.join(testDir, 'main-self.md'), mainSelfContent);
 
   return testDir;
 }
@@ -126,7 +111,7 @@ async function runTests() {
       path.join(testDir, 'main.md'),
       testDir,
       'https://example.com',
-      'docs'
+      'docs',
     );
 
     // The document should still be processed (not crash)
@@ -185,7 +170,7 @@ async function runTests() {
       path.join(testDir, 'main-self.md'),
       testDir,
       'https://example.com',
-      'docs'
+      'docs',
     );
 
     // The document should still be processed (not crash)
@@ -209,7 +194,6 @@ async function runTests() {
     }
 
     console.log('');
-
   } catch (error) {
     console.error('Test error:', error);
     allTestsPassed = false;
@@ -217,7 +201,7 @@ async function runTests() {
     // Clean up test directory
     try {
       await fs.rm(testDir, { recursive: true });
-    } catch (err) {
+    } catch {
       // Ignore cleanup errors
     }
   }
@@ -233,7 +217,7 @@ async function runTests() {
 }
 
 // Run tests
-runTests().catch(err => {
+runTests().catch((err) => {
   console.error('Fatal error:', err);
   process.exit(1);
 });

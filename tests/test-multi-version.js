@@ -70,13 +70,25 @@ async function testExplicitVersions() {
   try {
     fs.mkdirSync(path.join(tmpDir, 'docs'), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, 'stable-docs'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'docs', 'get-started.md'), page('Get Started', 'Nightly body.'));
-    fs.writeFileSync(path.join(tmpDir, 'stable-docs', 'get-started.md'), page('Get Started', 'Stable body.'));
+    fs.writeFileSync(
+      path.join(tmpDir, 'docs', 'get-started.md'),
+      page('Get Started', 'Nightly body.'),
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'stable-docs', 'get-started.md'),
+      page('Get Started', 'Stable body.'),
+    );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
       generateLLMsFullTxt: false,
       customLLMFiles: [
-        { filename: 'llms-guide.txt', title: 'Guide', description: 'Guide.', includePatterns: ['get-started.md'], fullContent: false },
+        {
+          filename: 'llms-guide.txt',
+          title: 'Guide',
+          description: 'Guide.',
+          includePatterns: ['get-started.md'],
+          fullContent: false,
+        },
       ],
       versions: [
         { name: 'nightly', label: 'Nightly', docsDir: 'docs', path: '' },
@@ -94,8 +106,14 @@ async function testExplicitVersions() {
     // Each version generates its custom files too, labeled with the version.
     const rootGuide = fs.readFileSync(path.join(outDir, 'llms-guide.txt'), 'utf8');
     const stableGuide = fs.readFileSync(path.join(outDir, 'stable', 'llms-guide.txt'), 'utf8');
-    assert.ok(rootGuide.includes('Version: Nightly'), 'root custom file should inherit the Nightly label');
-    assert.ok(stableGuide.includes('Version: v26.4'), 'stable custom file should inherit the v26.4 label');
+    assert.ok(
+      rootGuide.includes('Version: Nightly'),
+      'root custom file should inherit the Nightly label',
+    );
+    assert.ok(
+      stableGuide.includes('Version: v26.4'),
+      'stable custom file should inherit the v26.4 label',
+    );
 
     // Links are version-scoped: root -> /get-started, stable -> /stable/get-started.
     // (No .md suffix by default, since generateMarkdownFiles is off — issue #41.)
@@ -118,10 +136,13 @@ async function testAutoDetection() {
   try {
     fs.mkdirSync(path.join(tmpDir, 'docs'), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, 'versioned_docs', 'version-1'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'docs', 'get-started.md'), page('Get Started', 'Nightly body.'));
+    fs.writeFileSync(
+      path.join(tmpDir, 'docs', 'get-started.md'),
+      page('Get Started', 'Nightly body.'),
+    );
     fs.writeFileSync(
       path.join(tmpDir, 'versioned_docs', 'version-1', 'get-started.md'),
-      page('Get Started', 'Stable body.')
+      page('Get Started', 'Stable body.'),
     );
     fs.writeFileSync(path.join(tmpDir, 'versions.json'), JSON.stringify(['1']));
 
@@ -150,8 +171,14 @@ async function testAutoDetection() {
     const root = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
     const stable = fs.readFileSync(path.join(outDir, 'stable', 'llms.txt'), 'utf8');
 
-    assert.ok(root.includes('Version: Nightly'), 'auto: root should use the Nightly label from config');
-    assert.ok(stable.includes('Version: v26.4'), 'auto: stable should use the v26.4 label from config');
+    assert.ok(
+      root.includes('Version: Nightly'),
+      'auto: root should use the Nightly label from config',
+    );
+    assert.ok(
+      stable.includes('Version: v26.4'),
+      'auto: stable should use the v26.4 label from config',
+    );
     assert.ok(stable.includes('/stable/get-started'), 'auto: stable should link into /stable/');
     assert.ok(!root.includes('/stable/'), 'auto: root links should not leak into /stable/');
 
@@ -197,27 +224,33 @@ async function testValidation() {
     assert.throws(
       () => plugin(ctx(), { versions: 123 }),
       /versions must be an array of version objects or 'auto'/,
-      'non-array, non-auto value should throw'
+      'non-array, non-auto value should throw',
     );
     assert.throws(
       () => plugin(ctx(), { versions: [] }),
       /versions must contain at least one version object/,
-      'empty array should throw'
+      'empty array should throw',
     );
     assert.throws(
       () => plugin(ctx(), { versions: [{ path: 'x' }] }),
       /versions\[0\]\.name must be a non-empty string/,
-      'missing name should throw'
+      'missing name should throw',
     );
     assert.throws(
       () => plugin(ctx(), { versions: [{ name: 'a' }, { name: 'a' }] }),
       /versions\[1\]\.name 'a' is duplicated/,
-      'duplicate name should throw'
+      'duplicate name should throw',
     );
     assert.throws(
-      () => plugin(ctx(), { versions: [{ name: 'a', path: 'x' }, { name: 'b', path: 'x' }] }),
+      () =>
+        plugin(ctx(), {
+          versions: [
+            { name: 'a', path: 'x' },
+            { name: 'b', path: 'x' },
+          ],
+        }),
       /collides with another version/,
-      'colliding paths should throw'
+      'colliding paths should throw',
     );
 
     pass(name);
@@ -235,10 +268,13 @@ async function testAutoDetectionFromPlugins() {
   try {
     fs.mkdirSync(path.join(tmpDir, 'docs'), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, 'versioned_docs', 'version-1'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'docs', 'get-started.md'), page('Get Started', 'Nightly body.'));
+    fs.writeFileSync(
+      path.join(tmpDir, 'docs', 'get-started.md'),
+      page('Get Started', 'Nightly body.'),
+    );
     fs.writeFileSync(
       path.join(tmpDir, 'versioned_docs', 'version-1', 'get-started.md'),
-      page('Get Started', 'Stable body.')
+      page('Get Started', 'Stable body.'),
     );
     fs.writeFileSync(path.join(tmpDir, 'versions.json'), JSON.stringify(['1']));
 
@@ -286,7 +322,9 @@ async function main() {
   await testValidation();
 
   console.log('\n' + '='.repeat(50));
-  console.log(`Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`);
+  console.log(
+    `Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`,
+  );
   console.log('='.repeat(50));
 
   if (failedTests > 0) {
@@ -294,7 +332,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Unexpected error:', err);
   process.exit(1);
 });

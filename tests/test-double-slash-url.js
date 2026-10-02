@@ -28,50 +28,50 @@ const testCases = [
     siteUrl: 'https://example.com/',
     urlPath: 'docs/intro.md',
     expected: 'https://example.com/docs/intro.md',
-    description: 'siteUrl ending with / should not produce // when urlPath is appended'
+    description: 'siteUrl ending with / should not produce // when urlPath is appended',
   },
   {
     name: 'No trailing slash siteUrl remains correct',
     siteUrl: 'https://example.com',
     urlPath: 'docs/intro.md',
     expected: 'https://example.com/docs/intro.md',
-    description: 'siteUrl without trailing slash should produce correct URL'
+    description: 'siteUrl without trailing slash should produce correct URL',
   },
   {
     name: 'siteUrl with subpath ending in slash produces no double slash',
     siteUrl: 'https://example.com/mysite/',
     urlPath: 'docs/api/core.md',
     expected: 'https://example.com/mysite/docs/api/core.md',
-    description: 'siteUrl with sub-path ending in / should not produce //'
+    description: 'siteUrl with sub-path ending in / should not produce //',
   },
   {
     name: 'siteUrl with subpath without trailing slash is correct',
     siteUrl: 'https://example.com/mysite',
     urlPath: 'docs/api/core.md',
     expected: 'https://example.com/mysite/docs/api/core.md',
-    description: 'siteUrl with sub-path without trailing slash should produce correct URL'
+    description: 'siteUrl with sub-path without trailing slash should produce correct URL',
   },
   {
     name: 'Root baseUrl with nested urlPath produces no double slash',
     siteUrl: 'https://example.com/',
     urlPath: 'guides/advanced/setup.md',
     expected: 'https://example.com/guides/advanced/setup.md',
-    description: 'Deeply nested urlPath with root siteUrl should not produce //'
+    description: 'Deeply nested urlPath with root siteUrl should not produce //',
   },
   {
     name: 'URL with port and root slash produces no double slash',
     siteUrl: 'https://example.com:8080/',
     urlPath: 'docs/intro.md',
     expected: 'https://example.com:8080/docs/intro.md',
-    description: 'siteUrl with port ending in / should not produce //'
+    description: 'siteUrl with port ending in / should not produce //',
   },
   {
     name: 'Generated URL does not contain double slash anywhere',
     siteUrl: 'https://example.com/',
     urlPath: 'docs/intro.md',
     check: (result) => !result.replace('://', '').includes('//'),
-    description: 'The resulting URL must not contain // (excluding the protocol separator)'
-  }
+    description: 'The resulting URL must not contain // (excluding the protocol separator)',
+  },
 ];
 
 // Run tests
@@ -85,13 +85,13 @@ testCases.forEach((testCase, index) => {
     if (testCase.check) {
       assert.ok(
         testCase.check(result),
-        `URL "${result}" contains double slash (excluding protocol)`
+        `URL "${result}" contains double slash (excluding protocol)`,
       );
     } else {
       assert.strictEqual(
         result,
         testCase.expected,
-        `Expected "${testCase.expected}" but got "${result}"`
+        `Expected "${testCase.expected}" but got "${result}"`,
       );
     }
 

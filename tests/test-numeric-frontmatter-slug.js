@@ -67,10 +67,9 @@ function cleanup(tmpDir) {
 }
 
 function walk(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true })
-    .flatMap(e => e.isDirectory()
-      ? walk(path.join(dir, e.name))
-      : [path.join(dir, e.name)]);
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
 }
 
 // Test 1: unquoted numeric slug resolves to its numeric route and file name.
@@ -82,7 +81,7 @@ async function testNumericSlug() {
     // File named recap.md but routed at /2025 via an unquoted numeric slug.
     fs.writeFileSync(
       path.join(tmpDir, 'docs', 'recap.md'),
-      page('Year in review', 'Body.', { slug: 2025 })
+      page('Year in review', 'Body.', { slug: 2025 }),
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
@@ -92,13 +91,13 @@ async function testNumericSlug() {
     });
     await p.postBuild({ routesPaths: ['/2025'] });
 
-    const files = walk(outDir).map(f => path.relative(outDir, f).split(path.sep).join('/'));
+    const files = walk(outDir).map((f) => path.relative(outDir, f).split(path.sep).join('/'));
     const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
 
     assert.ok(files.includes('2025.md'), `expected 2025.md; got ${files.join(', ')}`);
     assert.ok(
       llms.includes('https://example.com/2025.md'),
-      'document should be linked at its numeric-slug route /2025.md'
+      'document should be linked at its numeric-slug route /2025.md',
     );
 
     pass(name);
@@ -115,10 +114,7 @@ async function testNumericId() {
   const { tmpDir, outDir } = makeSite();
   try {
     fs.mkdirSync(path.join(tmpDir, 'docs'), { recursive: true });
-    fs.writeFileSync(
-      path.join(tmpDir, 'docs', 'legacy.md'),
-      page('Legacy', 'Body.', { id: 2025 })
-    );
+    fs.writeFileSync(path.join(tmpDir, 'docs', 'legacy.md'), page('Legacy', 'Body.', { id: 2025 }));
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
       generateLLMsFullTxt: false,
@@ -127,13 +123,13 @@ async function testNumericId() {
     });
     await p.postBuild({ routesPaths: ['/2025'] });
 
-    const files = walk(outDir).map(f => path.relative(outDir, f).split(path.sep).join('/'));
+    const files = walk(outDir).map((f) => path.relative(outDir, f).split(path.sep).join('/'));
     const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
 
     assert.ok(files.includes('2025.md'), `expected 2025.md; got ${files.join(', ')}`);
     assert.ok(
       llms.includes('https://example.com/2025.md'),
-      'document should be linked at its numeric-id route /2025.md'
+      'document should be linked at its numeric-id route /2025.md',
     );
 
     pass(name);
@@ -152,7 +148,7 @@ async function testQuotedNumericSlug() {
     fs.mkdirSync(path.join(tmpDir, 'docs'), { recursive: true });
     fs.writeFileSync(
       path.join(tmpDir, 'docs', 'recap.md'),
-      page('Year in review', 'Body.', { slug: '"2025"' })
+      page('Year in review', 'Body.', { slug: '"2025"' }),
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
@@ -162,7 +158,7 @@ async function testQuotedNumericSlug() {
     });
     await p.postBuild({ routesPaths: ['/2025'] });
 
-    const files = walk(outDir).map(f => path.relative(outDir, f).split(path.sep).join('/'));
+    const files = walk(outDir).map((f) => path.relative(outDir, f).split(path.sep).join('/'));
     assert.ok(files.includes('2025.md'), `expected 2025.md; got ${files.join(', ')}`);
 
     pass(name);
@@ -183,7 +179,7 @@ async function testNumericTitle() {
     // heading" (or the filename) instead of "2025", so the label discriminates.
     fs.writeFileSync(
       path.join(tmpDir, 'docs', 'recap.md'),
-      `---\ntitle: 2025\ndescription: Recap page.\nslug: recap\n---\n\n# Recap heading\n\nBody.`
+      `---\ntitle: 2025\ndescription: Recap page.\nslug: recap\n---\n\n# Recap heading\n\nBody.`,
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir), {
@@ -194,10 +190,7 @@ async function testNumericTitle() {
     await p.postBuild({ routesPaths: ['/recap'] });
 
     const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
-    assert.ok(
-      llms.includes('[2025]'),
-      `numeric title should be the link label; got:\n${llms}`
-    );
+    assert.ok(llms.includes('[2025]'), `numeric title should be the link label; got:\n${llms}`);
 
     pass(name);
   } catch (err) {
@@ -214,7 +207,9 @@ async function main() {
   await testNumericTitle();
 
   console.log('\n' + '='.repeat(50));
-  console.log(`Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`);
+  console.log(
+    `Test Results: ${passedTests}/${passedTests + failedTests} passed, ${failedTests} failed`,
+  );
   console.log('='.repeat(50));
 
   if (failedTests > 0) {
@@ -222,7 +217,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Unexpected error:', err);
   process.exit(1);
 });

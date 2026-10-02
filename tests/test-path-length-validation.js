@@ -5,8 +5,6 @@
  */
 
 const { validatePathLength, shortenPathIfNeeded } = require('../lib/utils');
-const path = require('path');
-const os = require('os');
 
 const testCases = [
   // Windows path length tests
@@ -14,39 +12,39 @@ const testCases = [
     name: 'Short path on Windows should pass validation',
     platform: 'win32',
     path: 'C:\\Users\\test\\Documents\\file.md',
-    expectedValid: true
+    expectedValid: true,
   },
   {
     name: 'Path at Windows limit (260 chars) should fail validation',
     platform: 'win32',
     path: 'C:\\' + 'a'.repeat(258) + '.md',
-    expectedValid: false
+    expectedValid: false,
   },
   {
     name: 'Path exceeding Windows limit should fail validation',
     platform: 'win32',
     path: 'C:\\' + 'a'.repeat(300) + '.md',
-    expectedValid: false
+    expectedValid: false,
   },
   // Unix path length tests
   {
     name: 'Short path on Unix should pass validation',
     platform: 'linux',
     path: '/home/user/documents/file.md',
-    expectedValid: true
+    expectedValid: true,
   },
   {
     name: 'Path at Unix limit (4096 chars) should fail validation',
     platform: 'linux',
     path: '/' + 'a'.repeat(4095) + '.md',
-    expectedValid: false
+    expectedValid: false,
   },
   {
     name: 'Path exceeding Unix limit should fail validation',
     platform: 'linux',
     path: '/' + 'a'.repeat(5000) + '.md',
-    expectedValid: false
-  }
+    expectedValid: false,
+  },
 ];
 
 const shortenTestCases = [
@@ -55,7 +53,7 @@ const shortenTestCases = [
     fullPath: '/Users/test/output/docs/intro.md',
     outputDir: '/Users/test/output',
     relativePath: 'docs/intro.md',
-    shouldShorten: false
+    shouldShorten: false,
   },
   {
     name: 'Very long Windows path should be shortened to hash-based name',
@@ -64,7 +62,7 @@ const shortenTestCases = [
     outputDir: 'C:\\Users\\test\\output',
     relativePath: 'a'.repeat(300) + '.md',
     shouldShorten: true,
-    expectedPattern: /[a-f0-9]{8}\.md$/
+    expectedPattern: /[a-f0-9]{8}\.md$/,
   },
   {
     name: 'Very long Unix path should be shortened to hash-based name',
@@ -73,8 +71,8 @@ const shortenTestCases = [
     outputDir: '/Users/test/output',
     relativePath: 'a'.repeat(4200) + '.md',
     shouldShorten: true,
-    expectedPattern: /[a-f0-9]{8}\.md$/
-  }
+    expectedPattern: /[a-f0-9]{8}\.md$/,
+  },
 ];
 
 console.log('Running path length validation tests...\n');
@@ -83,7 +81,7 @@ let passed = 0;
 let failed = 0;
 
 // Test validatePathLength with platform override
-testCases.forEach(test => {
+testCases.forEach((test) => {
   const originalPlatform = process.platform;
 
   try {
@@ -91,7 +89,7 @@ testCases.forEach(test => {
     Object.defineProperty(process, 'platform', {
       value: test.platform,
       writable: true,
-      configurable: true
+      configurable: true,
     });
 
     const result = validatePathLength(test.path);
@@ -114,14 +112,14 @@ testCases.forEach(test => {
     Object.defineProperty(process, 'platform', {
       value: originalPlatform,
       writable: true,
-      configurable: true
+      configurable: true,
     });
   }
 });
 
 console.log('\nRunning path shortening tests...\n');
 
-shortenTestCases.forEach(test => {
+shortenTestCases.forEach((test) => {
   const originalPlatform = process.platform;
 
   try {
@@ -130,7 +128,7 @@ shortenTestCases.forEach(test => {
       Object.defineProperty(process, 'platform', {
         value: test.platform,
         writable: true,
-        configurable: true
+        configurable: true,
       });
     }
 
@@ -172,7 +170,7 @@ shortenTestCases.forEach(test => {
       Object.defineProperty(process, 'platform', {
         value: originalPlatform,
         writable: true,
-        configurable: true
+        configurable: true,
       });
     }
   }
@@ -187,20 +185,20 @@ try {
   Object.defineProperty(process, 'platform', {
     value: 'win32',
     writable: true,
-    configurable: true
+    configurable: true,
   });
 
   const outputDir = 'C:\\test\\output';
   const paths = [
     'docs\\' + 'a'.repeat(300) + 'file1.md',
     'docs\\' + 'b'.repeat(300) + 'file2.md',
-    'docs\\' + 'c'.repeat(300) + 'file3.md'
+    'docs\\' + 'c'.repeat(300) + 'file3.md',
   ];
 
   // Create very long paths that exceed Windows limit
-  const longPaths = paths.map(p => outputDir + '\\' + p);
+  const longPaths = paths.map((p) => outputDir + '\\' + p);
   const shortenedPaths = longPaths.map((fullPath, i) =>
-    shortenPathIfNeeded(fullPath, outputDir, paths[i])
+    shortenPathIfNeeded(fullPath, outputDir, paths[i]),
   );
 
   // Check that all shortened paths are unique
@@ -224,7 +222,7 @@ try {
   Object.defineProperty(process, 'platform', {
     value: originalPlatform,
     writable: true,
-    configurable: true
+    configurable: true,
   });
 }
 
@@ -237,7 +235,7 @@ try {
   Object.defineProperty(process, 'platform', {
     value: 'win32',
     writable: true,
-    configurable: true
+    configurable: true,
   });
 
   const outputDir = 'C:\\test\\output';
@@ -265,7 +263,7 @@ try {
   Object.defineProperty(process, 'platform', {
     value: originalPlatform2,
     writable: true,
-    configurable: true
+    configurable: true,
   });
 }
 

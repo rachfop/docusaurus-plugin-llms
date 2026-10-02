@@ -6,14 +6,18 @@
  * Run with: node tests/test-jsx-attr-stripping.js
  */
 
-const assert = require('assert');
 const { cleanMarkdownContent, resolvePartialImports } = require('../lib/utils');
 
 let passed = 0;
 let failed = 0;
 function expect(name, cond, detail) {
-  if (cond) { console.log(`  ✅ PASS: ${name}`); passed++; }
-  else { console.log(`  ❌ FAIL: ${name}\n     ${detail}`); failed++; }
+  if (cond) {
+    console.log(`  ✅ PASS: ${name}`);
+    passed++;
+  } else {
+    console.log(`  ❌ FAIL: ${name}\n     ${detail}`);
+    failed++;
+  }
 }
 
 async function run() {
@@ -23,7 +27,11 @@ async function run() {
   {
     const input = 'Questions? <a href="#" onClick={() => openChat()}>Contact us</a> anytime.';
     const out = cleanMarkdownContent(input);
-    expect('arrow fn in <a> attr: no fragment leaks', !out.includes('openChat') && !out.includes('>'), out);
+    expect(
+      'arrow fn in <a> attr: no fragment leaks',
+      !out.includes('openChat') && !out.includes('>'),
+      out,
+    );
     expect('arrow fn in <a> attr: inner text kept', out.includes('Contact us'), out);
   }
 
@@ -31,7 +39,11 @@ async function run() {
   {
     const input = '<Button onClick={() => doThing()}>Click me</Button> to proceed.';
     const out = cleanMarkdownContent(input);
-    expect('arrow fn in JSX attr: no fragment leaks', !out.includes('doThing') && !out.includes('>'), out);
+    expect(
+      'arrow fn in JSX attr: no fragment leaks',
+      !out.includes('doThing') && !out.includes('>'),
+      out,
+    );
     expect('arrow fn in JSX attr: inner text kept', out.includes('Click me'), out);
   }
 
@@ -39,12 +51,23 @@ async function run() {
   {
     const input = '<span title="a > b">threshold</span> note.';
     const out = cleanMarkdownContent(input);
-    expect('`>` in quoted attr: tag fully removed', out.includes('threshold note.') && !out.includes('title='), out);
+    expect(
+      '`>` in quoted attr: tag fully removed',
+      out.includes('threshold note.') && !out.includes('title='),
+      out,
+    );
   }
 
   // 4. Attributes spread across multiple lines still match.
   {
-    const input = ['<Admonition', '  type="tip"', '  onClick={() => open()}', '>', 'Body text.', '</Admonition>'].join('\n');
+    const input = [
+      '<Admonition',
+      '  type="tip"',
+      '  onClick={() => open()}',
+      '>',
+      'Body text.',
+      '</Admonition>',
+    ].join('\n');
     const out = cleanMarkdownContent(input);
     expect('multiline tag stripped', out.trim() === 'Body text.', out);
   }
@@ -54,7 +77,11 @@ async function run() {
   {
     const input = '<Button onClick={() => setState({a: {b: 1}})}>Go</Button>';
     const out = cleanMarkdownContent(input);
-    expect('deeply nested braces: opening tag left intact', out.includes('onClick={() => setState({a: {b: 1}})}'), out);
+    expect(
+      'deeply nested braces: opening tag left intact',
+      out.includes('onClick={() => setState({a: {b: 1}})}'),
+      out,
+    );
     expect('deeply nested braces: inner text kept', out.includes('Go'), out);
   }
 
@@ -62,7 +89,11 @@ async function run() {
   {
     const input = ['```jsx', '<a onClick={() => openChat()}>hi</a>', '```'].join('\n');
     const out = cleanMarkdownContent(input);
-    expect('arrow-fn JSX preserved inside code fence', out.includes('<a onClick={() => openChat()}>hi</a>'), out);
+    expect(
+      'arrow-fn JSX preserved inside code fence',
+      out.includes('<a onClick={() => openChat()}>hi</a>'),
+      out,
+    );
   }
 
   // 7. Unresolvable partial usage with an expression attribute is removed
@@ -76,7 +107,11 @@ async function run() {
       'After.',
     ].join('\n');
     const out = await resolvePartialImports(input, '/nonexistent/dir/page.mdx');
-    expect('missing partial with arrow-fn attr removed cleanly', !out.includes('track()') && out.includes('After.'), out);
+    expect(
+      'missing partial with arrow-fn attr removed cleanly',
+      !out.includes('track()') && out.includes('After.'),
+      out,
+    );
   }
 
   console.log(`\nPassed: ${passed}, Failed: ${failed}, Total: ${passed + failed}\n`);
@@ -84,5 +119,11 @@ async function run() {
 }
 
 run()
-  .then(ok => { console.log(ok ? '🎉 All attribute-aware stripping tests passed!' : '❌ Some tests failed.'); process.exit(ok ? 0 : 1); })
-  .catch(err => { console.error('Test execution error:', err); process.exit(1); });
+  .then((ok) => {
+    console.log(ok ? '🎉 All attribute-aware stripping tests passed!' : '❌ Some tests failed.');
+    process.exit(ok ? 0 : 1);
+  })
+  .catch((err) => {
+    console.error('Test execution error:', err);
+    process.exit(1);
+  });

@@ -14,7 +14,7 @@ async function setup() {
   // Clean up any existing test directory
   try {
     await fs.rm(TEST_DIR, { recursive: true, force: true });
-  } catch (err) {
+  } catch {
     // Directory doesn't exist, that's fine
   }
 
@@ -41,7 +41,7 @@ function createMockDocuments(count) {
       path: `/docs/doc-${i + 1}.md`,
       url: `https://example.com/docs/doc-${i + 1}`,
       content: `This is the content of document ${i + 1}.\n\nIt has multiple paragraphs.\n\nAnd some more text to make it realistic.`,
-      description: `Description for document ${i + 1}`
+      description: `Description for document ${i + 1}`,
     });
   }
   return docs;
@@ -66,7 +66,7 @@ async function testBatchProcessing() {
     true, // includeFullContent
     '1.0.0',
     undefined,
-    batchSize
+    batchSize,
   );
 
   // Verify the file was created
@@ -92,7 +92,9 @@ async function testBatchProcessing() {
   // Count the number of document headers
   const headerMatches = content.match(/## Document \d+/g);
   if (!headerMatches || headerMatches.length !== docCount) {
-    throw new Error(`Expected ${docCount} document headers, found ${headerMatches ? headerMatches.length : 0}`);
+    throw new Error(
+      `Expected ${docCount} document headers, found ${headerMatches ? headerMatches.length : 0}`,
+    );
   }
 
   console.log('✓ Successfully processed 250 documents with batch size of 50');
@@ -118,7 +120,7 @@ async function testSingleDocumentBatch() {
     true, // includeFullContent
     '1.0.0',
     undefined,
-    batchSize
+    batchSize,
   );
 
   // Verify the file was created
@@ -133,7 +135,9 @@ async function testSingleDocumentBatch() {
   // Count the number of document headers
   const headerMatches = content.match(/## Document \d+/g);
   if (!headerMatches || headerMatches.length !== docCount) {
-    throw new Error(`Expected ${docCount} document headers, found ${headerMatches ? headerMatches.length : 0}`);
+    throw new Error(
+      `Expected ${docCount} document headers, found ${headerMatches ? headerMatches.length : 0}`,
+    );
   }
 
   console.log('✓ Successfully processed 10 documents with batch size of 1');
@@ -156,7 +160,7 @@ async function testDefaultBatchSize() {
     'Test Documentation',
     'Test documentation with default batch size',
     true, // includeFullContent
-    '1.0.0'
+    '1.0.0',
   );
 
   // Verify the file was created
@@ -171,7 +175,9 @@ async function testDefaultBatchSize() {
   // Count the number of document headers
   const headerMatches = content.match(/## Document \d+/g);
   if (!headerMatches || headerMatches.length !== docCount) {
-    throw new Error(`Expected ${docCount} document headers, found ${headerMatches ? headerMatches.length : 0}`);
+    throw new Error(
+      `Expected ${docCount} document headers, found ${headerMatches ? headerMatches.length : 0}`,
+    );
   }
 
   console.log('✓ Successfully processed 150 documents with default batch size (100)');
@@ -196,7 +202,7 @@ async function testBatchOrderPreservation() {
     true, // includeFullContent
     '1.0.0',
     undefined,
-    batchSize
+    batchSize,
   );
 
   // Verify the file was created
@@ -205,14 +211,18 @@ async function testBatchOrderPreservation() {
   // Extract all document headers in order
   const headerMatches = content.match(/## Document \d+/g);
   if (!headerMatches || headerMatches.length !== docCount) {
-    throw new Error(`Expected ${docCount} document headers, found ${headerMatches ? headerMatches.length : 0}`);
+    throw new Error(
+      `Expected ${docCount} document headers, found ${headerMatches ? headerMatches.length : 0}`,
+    );
   }
 
   // Verify they are in sequential order
   for (let i = 0; i < headerMatches.length; i++) {
     const expectedHeader = `## Document ${i + 1}`;
     if (headerMatches[i] !== expectedHeader) {
-      throw new Error(`Document order mismatch at position ${i}: expected "${expectedHeader}", got "${headerMatches[i]}"`);
+      throw new Error(
+        `Document order mismatch at position ${i}: expected "${expectedHeader}", got "${headerMatches[i]}"`,
+      );
     }
   }
 
@@ -238,7 +248,7 @@ async function testBatchProcessingLinksOnly() {
     false, // links only, no full content
     '1.0.0',
     undefined,
-    batchSize
+    batchSize,
   );
 
   // Verify the file was created
@@ -251,13 +261,16 @@ async function testBatchProcessingLinksOnly() {
   const content = await fs.readFile(outputPath, 'utf-8');
 
   // Links-only files should have markdown links
-  const linkMatches = content.match(/\[Document \d+\]\(https:\/\/example\.com\/docs\/doc-\d+\.md\)/g);
+  const linkMatches = content.match(
+    /\[Document \d+\]\(https:\/\/example\.com\/docs\/doc-\d+\.md\)/g,
+  );
   if (!linkMatches || linkMatches.length !== docCount) {
     throw new Error(`Expected ${docCount} links, found ${linkMatches ? linkMatches.length : 0}`);
   }
 
   // File should be smaller than full content version
-  if (stats.size > 10000) { // Should be much smaller without full content
+  if (stats.size > 10000) {
+    // Should be much smaller without full content
     console.warn(`Warning: Links-only file seems larger than expected (${stats.size} bytes)`);
   }
 

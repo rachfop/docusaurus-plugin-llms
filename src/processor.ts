@@ -26,7 +26,7 @@ import {
   rewriteRelativeImageUrls,
   joinSiteUrl,
   getSiteBasePath,
-  stripSiteBasePath
+  stripSiteBasePath,
 } from './utils';
 
 /**
@@ -137,17 +137,19 @@ export async function processMarkdownFile(
   if (data.id !== undefined && !isNonEmptyString(data.id)) {
     data.id = undefined;
   }
-  
+
   // Resolve partial imports before processing. Code fences are masked first so
   // an `import` shown inside a code sample is left as written: partial
   // resolution treats only imports outside fences as real.
   const { masked, restore } = maskCodeSegments(markdownContent);
-  const resolvedContent = restore(await resolvePartialImports(masked, filePath, new Set(), siteDir));
-  
+  const resolvedContent = restore(
+    await resolvePartialImports(masked, filePath, new Set(), siteDir),
+  );
+
   const relativePath = path.relative(baseDir, filePath);
   // Convert to URL path format (replace backslashes with forward slashes on Windows)
   const normalizedPath = normalizePath(relativePath);
-  
+
   let fullUrl: string;
 
   if (isNonEmptyString(resolvedUrl)) {
@@ -157,7 +159,7 @@ export async function processMarkdownFile(
     // Fallback to the old path construction method
     // Convert .md extension to appropriate path
     const linkPathBase = normalizedPath.replace(/\.mdx?$/, '');
-    
+
     // Handle index files specially. Anchored to the end of the path, and matched
     // case-insensitively including "readme", to follow Docusaurus's own
     // directory-index convention.
@@ -194,48 +196,53 @@ export async function processMarkdownFile(
     let transformedPathPrefix = cleanPrefix;
     if (
       cleanPrefix &&
-      pathTransformation?.ignorePaths?.some(p => p.replace(/\/+$/, '') === cleanPrefix)
+      pathTransformation?.ignorePaths?.some((p) => p.replace(/\/+$/, '') === cleanPrefix)
     ) {
       transformedPathPrefix = '';
     }
-    
-    // Ensure path segments are URL-safe with sophisticated encoding detection
-    const encodedLinkPath = transformedLinkPath.split('/').map(segment => {
-      // Check if segment contains characters that need encoding
-      // Unreserved characters (per RFC 3986): A-Z a-z 0-9 - . _ ~
-      if (!/[^A-Za-z0-9\-._~]/.test(segment)) {
-        // Segment only contains unreserved characters, no encoding needed
-        return segment;
-      }
 
-      try {
-        // Try to decode - if it changes, it was already encoded
-        const decoded = decodeURIComponent(segment);
-        if (decoded !== segment) {
-          // Was already encoded, return as-is
+    // Ensure path segments are URL-safe with sophisticated encoding detection
+    const encodedLinkPath = transformedLinkPath
+      .split('/')
+      .map((segment) => {
+        // Check if segment contains characters that need encoding
+        // Unreserved characters (per RFC 3986): A-Z a-z 0-9 - . _ ~
+        if (!/[^A-Za-z0-9\-._~]/.test(segment)) {
+          // Segment only contains unreserved characters, no encoding needed
           return segment;
         }
-        // Not encoded, encode it
-        return encodeURIComponent(segment);
-      } catch {
-        // Malformed encoding, re-encode
-        return encodeURIComponent(segment);
-      }
-    }).join('/');
+
+        try {
+          // Try to decode - if it changes, it was already encoded
+          const decoded = decodeURIComponent(segment);
+          if (decoded !== segment) {
+            // Was already encoded, return as-is
+            return segment;
+          }
+          // Not encoded, encode it
+          return encodeURIComponent(segment);
+        } catch {
+          // Malformed encoding, re-encode
+          return encodeURIComponent(segment);
+        }
+      })
+      .join('/');
 
     // Construct URL by encoding path components, then combine with site URL
     // Segments are pre-encoded above (the URL constructor would decode some), so
     // joinSiteUrl just attaches the baseUrl-aware origin.
-    const pathPart = transformedPathPrefix ? `${transformedPathPrefix}/${encodedLinkPath}` : encodedLinkPath;
+    const pathPart = transformedPathPrefix
+      ? `${transformedPathPrefix}/${encodedLinkPath}`
+      : encodedLinkPath;
     fullUrl = joinSiteUrl(siteUrl, pathPart);
   }
 
   // Extract title
   const title = extractTitle(data, resolvedContent, filePath);
-  
+
   // Get description from frontmatter or first paragraph
   let description = '';
-  
+
   // First priority: Use frontmatter description if available
   if (isNonEmptyString(data.description)) {
     description = data.description;
@@ -261,7 +268,7 @@ export async function processMarkdownFile(
         break;
       }
     }
-    
+
     // Third priority: If still no description, use the first heading's content
     if (!description) {
       const firstHeadingMatch = resolvedContent.match(/^#\s+(.*?)$/m);
@@ -270,7 +277,7 @@ export async function processMarkdownFile(
       }
     }
   }
-  
+
   // Only remove heading markers at the beginning of descriptions or lines
   // This preserves # characters that are part of the content
   if (isNonEmptyString(description)) {
@@ -278,41 +285,49 @@ export async function processMarkdownFile(
     // Fix: Only remove # symbols at the beginning of lines or description
     // that are followed by a space (actual heading markers)
     description = description.replace(/^(#+)\s+/gm, '');
-    
+
     // Special handling for description frontmatter with heading markers
     if (isNonEmptyString(data.description) && data.description.startsWith('#')) {
       // If the description in frontmatter starts with a heading marker,
       // we should preserve it in the extracted description
       description = description.replace(/^#+\s+/, '');
     }
-    
+
     // Preserve inline hashtags (not heading markers)
     // We don't want to treat hashtags in the middle of content as headings
-    
+
     // Validate that the description doesn't contain markdown headings
     if (description.match(/^#+\s+/m)) {
       logger.warn(`Warning: Description for "${title}" may still contain heading markers`);
     }
-    
+
     // Warn if the description contains HTML tags
     if (/<[^>]+>/g.test(description)) {
       logger.warn(`Warning: Description for "${title}" contains HTML tags`);
     }
-    
+
     // Warn if the description is very long
     if (description.length > 500) {
-      logger.warn(`Warning: Description for "${title}" is very long (${description.length} characters)`);
+      logger.warn(
+        `Warning: Description for "${title}" is very long (${description.length} characters)`,
+      );
     }
   }
-  
+
   // Clean and process content (now with partials already resolved)
-  const cleanedContent = cleanMarkdownContent(resolvedContent, excludeImports, removeDuplicateHeadings, preserveComponents);
-  
+  const cleanedContent = cleanMarkdownContent(
+    resolvedContent,
+    excludeImports,
+    removeDuplicateHeadings,
+    preserveComponents,
+  );
+
   // Rewrite relative image URLs to absolute build-output URLs when requested
-  const finalContent = (imageAssetMap && outDir)
-    ? await rewriteRelativeImageUrls(cleanedContent, filePath, imageAssetMap, siteUrl, outDir)
-    : cleanedContent;
-  
+  const finalContent =
+    imageAssetMap && outDir
+      ? await rewriteRelativeImageUrls(cleanedContent, filePath, imageAssetMap, siteUrl, outDir)
+      : cleanedContent;
+
   return {
     title,
     path: normalizedPath,
@@ -342,23 +357,21 @@ function scopeRoutesToVersion(
   routesPaths: string[],
   basePath: string,
   routePrefix?: string,
-  siblingPrefixes?: string[]
+  siblingPrefixes?: string[],
 ): string[] {
   const prefix = routePrefix ? routePrefix.replace(/\/+$/, '') : '';
   if (prefix) {
-    return routesPaths.filter(route =>
-      isRouteUnder(stripSiteBasePath(route, basePath), prefix)
-    );
+    return routesPaths.filter((route) => isRouteUnder(stripSiteBasePath(route, basePath), prefix));
   }
 
   const siblings = (siblingPrefixes ?? [])
-    .map(sibling => sibling.replace(/\/+$/, ''))
+    .map((sibling) => sibling.replace(/\/+$/, ''))
     .filter(Boolean);
   if (siblings.length === 0) return routesPaths;
 
-  return routesPaths.filter(route => {
+  return routesPaths.filter((route) => {
     const relativeRoute = stripSiteBasePath(route, basePath);
-    return !siblings.some(sibling => isRouteUnder(relativeRoute, sibling));
+    return !siblings.some((sibling) => isRouteUnder(relativeRoute, sibling));
   });
 }
 
@@ -369,14 +382,11 @@ function scopeRoutesToVersion(
  * When multiple routes match, the shortest is preferred (typically the
  * stable/non-versioned route over a versioned one like /nightly/...).
  */
-function findMatchingRoute(
-  routesPaths: string[],
-  tail: string
-): string | undefined {
+function findMatchingRoute(routesPaths: string[], tail: string): string | undefined {
   const normalized = tail.toLowerCase().replace(/\/+$/, '');
   if (!normalized) return undefined;
 
-  const matches = routesPaths.filter(route => {
+  const matches = routesPaths.filter((route) => {
     const r = route.toLowerCase().replace(/\/+$/, '');
     return r === `/${normalized}` || r.endsWith(`/${normalized}`);
   });
@@ -418,20 +428,18 @@ function collapseMatchingTrailingSegment(urlPath: string): string {
 async function resolveDocumentUrl(
   filePath: string,
   baseDir: string,
-  context: PluginContext
+  context: PluginContext,
 ): Promise<string | undefined> {
   if (!context.routesPaths?.length) return undefined;
 
   // context.docsDir is only ever the first section's path, so find the
   // section that actually owns this file instead.
-  const matchedSection = context.docsSections?.find(s => {
+  const matchedSection = context.docsSections?.find((s) => {
     const abs = path.resolve(baseDir, s.path);
     return filePath.startsWith(abs + path.sep) || filePath.startsWith(abs + '/');
   });
   const { blogDir = 'blog', blogRouteBasePath = 'blog' } = context.options;
-  const isBlogFile = !matchedSection && filePath.startsWith(
-    path.join(baseDir, blogDir) + path.sep
-  );
+  const isBlogFile = !matchedSection && filePath.startsWith(path.join(baseDir, blogDir) + path.sep);
   const sectionFsPath = matchedSection?.path ?? (isBlogFile ? blogDir : context.docsDir);
 
   // In multi-version mode, restrict matching to routes owned by this version so
@@ -442,7 +450,7 @@ async function resolveDocumentUrl(
     context.routesPaths,
     basePath,
     context.routePrefix,
-    context.siblingPrefixes
+    context.siblingPrefixes,
   );
 
   // Also restrict to this file's own section (or the blog), so a same-named
@@ -461,10 +469,12 @@ async function resolveDocumentUrl(
     // so scoping doesn't silently fail and fall every doc back to heuristic URLs.
     const cleanRouteBase = routeBase.replace(/^\/+|\/+$/g, '');
     if (cleanRouteBase) {
-      const versionPrefix = context.routePrefix ? context.routePrefix.replace(/^\/+|\/+$/g, '') : '';
+      const versionPrefix = context.routePrefix
+        ? context.routePrefix.replace(/^\/+|\/+$/g, '')
+        : '';
       const scopedRouteBase = `/${[versionPrefix, cleanRouteBase].filter(Boolean).join('/')}`;
-      scopedRoutes = scopedRoutes.filter(r =>
-        isRouteUnder(stripSiteBasePath(r, basePath), scopedRouteBase)
+      scopedRoutes = scopedRoutes.filter((r) =>
+        isRouteUnder(stripSiteBasePath(r, basePath), scopedRouteBase),
       );
     }
   }
@@ -516,7 +526,7 @@ async function resolveDocumentUrl(
         // Look for an exact or trailing-slash-equivalent route, scoped to
         // this version and section (scopedRoutes was built above exactly for
         // this; searching all routesPaths would cross version subtrees).
-        const rootMatch = scopedRoutes.find(r => {
+        const rootMatch = scopedRoutes.find((r) => {
           const clean = stripSiteBasePath(r.replace(/\/+$/, '') || '/', basePath);
           return clean === sectionBase;
         });
@@ -534,8 +544,7 @@ async function resolveDocumentUrl(
       // file's directory.
       const parentDir = path.dirname(tail);
       const isAbsoluteSlug = rawSlug.startsWith('/');
-      const overriddenTail =
-        isAbsoluteSlug || parentDir === '.' ? slug : `${parentDir}/${slug}`;
+      const overriddenTail = isAbsoluteSlug || parentDir === '.' ? slug : `${parentDir}/${slug}`;
       const match = findMatchingRoute(scopedRoutes, overriddenTail);
       if (match) return match;
     }
@@ -575,7 +584,13 @@ async function resolveDocumentUrl(
  * Helper function to check if a file matches a pattern
  * Tries matching against multiple path variants for better usability
  */
-function matchesPattern(file: string, pattern: string, siteDir: string, docsDir: string, docsSections?: DocsSection[]): boolean {
+function matchesPattern(
+  file: string,
+  pattern: string,
+  siteDir: string,
+  docsDir: string,
+  docsSections?: DocsSection[],
+): boolean {
   const minimatchOptions = { matchBase: true };
 
   // Get site-relative path (e.g., "docs/quickstart/file.md")
@@ -589,9 +604,9 @@ function matchesPattern(file: string, pattern: string, siteDir: string, docsDir:
   // Get docs-relative path (e.g., "quickstart/file.md") against every
   // configured section, not just the first.
   const resolvedFile = path.resolve(file);
-  const sectionPaths = docsSections?.length ? docsSections.map(s => s.path) : [docsDir];
+  const sectionPaths = docsSections?.length ? docsSections.map((s) => s.path) : [docsDir];
 
-  return sectionPaths.some(sectionPath => {
+  return sectionPaths.some((sectionPath) => {
     const docsBaseDir = path.resolve(path.join(siteDir, sectionPath));
     if (!resolvedFile.startsWith(docsBaseDir)) return false;
     const docsRelativePath = normalizePath(path.relative(docsBaseDir, resolvedFile));
@@ -605,7 +620,7 @@ export async function processFilesWithPatterns(
   includePatterns: string[] = [],
   ignorePatterns: string[] = [],
   orderPatterns: string[] = [],
-  includeUnmatched: boolean = false
+  includeUnmatched: boolean = false,
 ): Promise<DocInfo[]> {
   const { siteDir, siteUrl, docsDir, docsSections } = context;
   const { blogDir = 'blog', blogRouteBasePath = 'blog' } = context.options;
@@ -614,18 +629,18 @@ export async function processFilesWithPatterns(
   let filteredFiles = allFiles;
 
   if (includePatterns.length > 0) {
-    filteredFiles = allFiles.filter(file => {
-      return includePatterns.some(pattern =>
-        matchesPattern(file, pattern, siteDir, docsDir, docsSections)
+    filteredFiles = allFiles.filter((file) => {
+      return includePatterns.some((pattern) =>
+        matchesPattern(file, pattern, siteDir, docsDir, docsSections),
       );
     });
   }
 
   // Apply ignore patterns
   if (ignorePatterns.length > 0) {
-    filteredFiles = filteredFiles.filter(file => {
-      return !ignorePatterns.some(pattern =>
-        matchesPattern(file, pattern, siteDir, docsDir, docsSections)
+    filteredFiles = filteredFiles.filter((file) => {
+      return !ignorePatterns.some((pattern) =>
+        matchesPattern(file, pattern, siteDir, docsDir, docsSections),
       );
     });
   }
@@ -638,25 +653,27 @@ export async function processFilesWithPatterns(
 
     // Process files according to orderPatterns
     for (const pattern of orderPatterns) {
-      const matchingFiles = filteredFiles.filter(file => {
-        return matchesPattern(file, pattern, siteDir, docsDir, docsSections) && !matchedFiles.has(file);
+      const matchingFiles = filteredFiles.filter((file) => {
+        return (
+          matchesPattern(file, pattern, siteDir, docsDir, docsSections) && !matchedFiles.has(file)
+        );
       });
-      
+
       for (const file of matchingFiles) {
         filesToProcess.push(file);
         matchedFiles.add(file);
       }
     }
-    
+
     // Add remaining files if includeUnmatched is true
     if (includeUnmatched) {
-      const remainingFiles = filteredFiles.filter(file => !matchedFiles.has(file));
+      const remainingFiles = filteredFiles.filter((file) => !matchedFiles.has(file));
       filesToProcess.push(...remainingFiles);
     }
   } else {
     filesToProcess = filteredFiles;
   }
-  
+
   // Process files in parallel using Promise.allSettled
   const results = await Promise.allSettled(
     filesToProcess.map(async (filePath) => {
@@ -665,9 +682,7 @@ export async function processFilesWithPatterns(
         // Directory-boundary match: a plain substring test would also fire
         // for sibling sections whose path merely starts with the blog dir
         // name (e.g. a 'blog-api' docs section vs blogDir 'blog').
-        const isBlogFile = filePath.startsWith(
-          path.join(siteDir, blogDir) + path.sep
-        );
+        const isBlogFile = filePath.startsWith(path.join(siteDir, blogDir) + path.sep);
 
         // Determine which section this file belongs to
         let pathPrefix: string;
@@ -679,9 +694,11 @@ export async function processFilesWithPatterns(
           pathPrefix = blogRouteBasePath;
           sectionFsPath = blogDir;
         } else if (context.docsSections && context.docsSections.length > 0) {
-          const matchedSection = context.docsSections.find(s => {
+          const matchedSection = context.docsSections.find((s) => {
             const sectionDir = path.join(siteDir, s.path);
-            return filePath.startsWith(sectionDir + path.sep) || filePath.startsWith(sectionDir + '/');
+            return (
+              filePath.startsWith(sectionDir + path.sep) || filePath.startsWith(sectionDir + '/')
+            );
           });
 
           if (matchedSection) {
@@ -724,13 +741,16 @@ export async function processFilesWithPatterns(
         logger.warn(`Error processing ${filePath}: ${getErrorMessage(err)}`);
         return null;
       }
-    })
+    }),
   );
 
   // Filter successful results and non-null DocInfo objects
   const processedDocs = results
-    .filter((r): r is PromiseFulfilledResult<DocInfo | null> => r.status === 'fulfilled' && r.value !== null)
-    .map(r => r.value as DocInfo);
+    .filter(
+      (r): r is PromiseFulfilledResult<DocInfo | null> =>
+        r.status === 'fulfilled' && r.value !== null,
+    )
+    .map((r) => r.value as DocInfo);
 
   return processedDocs;
-} 
+}

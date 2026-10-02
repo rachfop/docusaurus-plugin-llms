@@ -17,8 +17,13 @@ const { resolvePartialImports } = require('../lib/utils');
 let passed = 0;
 let failed = 0;
 function expect(name, cond, detail) {
-  if (cond) { console.log(`  ✅ PASS: ${name}`); passed++; }
-  else { console.log(`  ❌ FAIL: ${name}\n     ${detail}`); failed++; }
+  if (cond) {
+    console.log(`  ✅ PASS: ${name}`);
+    passed++;
+  } else {
+    console.log(`  ❌ FAIL: ${name}\n     ${detail}`);
+    failed++;
+  }
 }
 
 async function run() {
@@ -36,7 +41,7 @@ async function run() {
     ].join('\n');
     fs.writeFileSync(
       path.join(siteDir, 'docs', 'partials', '_shell.mdx'),
-      '```bash\n' + samples + '\n```'
+      '```bash\n' + samples + '\n```',
     );
 
     const pagePath = path.join(siteDir, 'docs', 'page.mdx');
@@ -80,5 +85,11 @@ async function run() {
 }
 
 run()
-  .then(ok => { console.log(ok ? '🎉 All $-replacement tests passed!' : '❌ Some tests failed.'); process.exit(ok ? 0 : 1); })
-  .catch(err => { console.error('Test execution error:', err); process.exit(1); });
+  .then((ok) => {
+    console.log(ok ? '🎉 All $-replacement tests passed!' : '❌ Some tests failed.');
+    process.exit(ok ? 0 : 1);
+  })
+  .catch((err) => {
+    console.error('Test execution error:', err);
+    process.exit(1);
+  });

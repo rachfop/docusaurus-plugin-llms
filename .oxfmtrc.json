@@ -1,0 +1,5 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "singleQuote": true,
+  "ignorePatterns": ["test-docs/**", "test-output/**", "website/build/**", "website/.docusaurus/**"]
+}

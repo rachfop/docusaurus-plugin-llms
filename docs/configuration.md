@@ -29,81 +29,81 @@ module.exports = {
 
 These options control which files the plugin writes and what they're named.
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `generateLLMsTxt` | `boolean` | `true` | Whether to generate the `llms.txt` links file. |
-| `generateLLMsFullTxt` | `boolean` | `true` | Whether to generate the `llms-full.txt` full-content file. |
-| `llmsTxtFilename` | `string` | `'llms.txt'` | Custom file name for the links file. |
-| `llmsFullTxtFilename` | `string` | `'llms-full.txt'` | Custom file name for the full-content file. |
-| `generateMarkdownFiles` | `boolean` | `false` | Generate an individual `.md` file per page and link to those from `llms.txt` in place of the original docs. |
-| `preserveDirectoryStructure` | `boolean` | `true` | Preserve the source directory structure in generated markdown files (for example `docs/server/config.md`). Only applies when `generateMarkdownFiles` is `true`. |
-| `keepFrontMatter` | `string[]` | none | Front matter keys to preserve in generated markdown files. Only applies when `generateMarkdownFiles` is `true`. |
+| Option                       | Type       | Default           | Description                                                                                                                                                     |
+| ---------------------------- | ---------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generateLLMsTxt`            | `boolean`  | `true`            | Whether to generate the `llms.txt` links file.                                                                                                                  |
+| `generateLLMsFullTxt`        | `boolean`  | `true`            | Whether to generate the `llms-full.txt` full-content file.                                                                                                      |
+| `llmsTxtFilename`            | `string`   | `'llms.txt'`      | Custom file name for the links file.                                                                                                                            |
+| `llmsFullTxtFilename`        | `string`   | `'llms-full.txt'` | Custom file name for the full-content file.                                                                                                                     |
+| `generateMarkdownFiles`      | `boolean`  | `false`           | Generate an individual `.md` file per page and link to those from `llms.txt` in place of the original docs.                                                     |
+| `preserveDirectoryStructure` | `boolean`  | `true`            | Preserve the source directory structure in generated markdown files (for example `docs/server/config.md`). Only applies when `generateMarkdownFiles` is `true`. |
+| `keepFrontMatter`            | `string[]` | none              | Front matter keys to preserve in generated markdown files. Only applies when `generateMarkdownFiles` is `true`.                                                 |
 
 ## Content sources
 
 These options select which files the plugin reads and in what order.
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `docsDir` | `string \| DocsSection[]` | `'docs'` | Documentation source. A string base directory, or an array of section objects for multi-instance setups. See [Documentation sections](#documentation-sections). |
-| `ignoreFiles` | `string[]` | `[]` | Glob patterns for files to skip. |
-| `includeBlog` | `boolean` | `false` | Whether to include blog content. |
-| `blogDir` | `string` | `'blog'` | Filesystem path to the blog content directory, relative to the site root. |
-| `blogRouteBasePath` | `string` | `'blog'` | Docusaurus `routeBasePath` for the blog plugin, relative to the site `baseUrl`. Set this to match `presets.blog.routeBasePath` if you've customized it (for example `'news'`). |
-| `includeOrder` | `string[]` | `[]` | Glob patterns controlling the order files are processed in. |
-| `includeUnmatchedLast` | `boolean` | `true` | Whether to append files that match no `includeOrder` pattern at the end. Set to `false` to make `includeOrder` a strict inclusion list. |
-| `processingBatchSize` | `number` | `100` | Number of documents per batch when assembling `llms-full.txt`. Sets how often verbose mode logs progress. See [batch processing](ordering-and-paths.md#batch-processing-for-large-sites). |
+| Option                 | Type                      | Default  | Description                                                                                                                                                                               |
+| ---------------------- | ------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docsDir`              | `string \| DocsSection[]` | `'docs'` | Documentation source. A string base directory, or an array of section objects for multi-instance setups. See [Documentation sections](#documentation-sections).                           |
+| `ignoreFiles`          | `string[]`                | `[]`     | Glob patterns for files to skip.                                                                                                                                                          |
+| `includeBlog`          | `boolean`                 | `false`  | Whether to include blog content.                                                                                                                                                          |
+| `blogDir`              | `string`                  | `'blog'` | Filesystem path to the blog content directory, relative to the site root.                                                                                                                 |
+| `blogRouteBasePath`    | `string`                  | `'blog'` | Docusaurus `routeBasePath` for the blog plugin, relative to the site `baseUrl`. Set this to match `presets.blog.routeBasePath` if you've customized it (for example `'news'`).            |
+| `includeOrder`         | `string[]`                | `[]`     | Glob patterns controlling the order files are processed in.                                                                                                                               |
+| `includeUnmatchedLast` | `boolean`                 | `true`   | Whether to append files that match no `includeOrder` pattern at the end. Set to `false` to make `includeOrder` a strict inclusion list.                                                   |
+| `processingBatchSize`  | `number`                  | `100`    | Number of documents per batch when assembling `llms-full.txt`. Sets how often verbose mode logs progress. See [batch processing](ordering-and-paths.md#batch-processing-for-large-sites). |
 
 ## Content and metadata
 
 These options set the title, description, and inline content of the generated files.
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `title` | `string` | Site title | Custom title used in generated files. |
-| `description` | `string` | Site tagline | Custom description used in generated files. |
-| `version` | `string` | `undefined` | Global version label stamped into all generated files. |
-| `rootContent` | `string` | Standard llmstxt.org blurb | Custom content inserted at the root of `llms.txt`, after the title and description and before the table of contents. |
+| Option            | Type     | Default                    | Description                                                                                                              |
+| ----------------- | -------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `title`           | `string` | Site title                 | Custom title used in generated files.                                                                                    |
+| `description`     | `string` | Site tagline               | Custom description used in generated files.                                                                              |
+| `version`         | `string` | `undefined`                | Global version label stamped into all generated files.                                                                   |
+| `rootContent`     | `string` | Standard llmstxt.org blurb | Custom content inserted at the root of `llms.txt`, after the title and description and before the table of contents.     |
 | `fullRootContent` | `string` | Standard llmstxt.org blurb | Custom content inserted at the root of `llms-full.txt`, after the title and description and before the content sections. |
 
 ## Content cleaning
 
 These options strip noise from the source markdown before it's written.
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `excludeImports` | `boolean` | `false` | Remove `import` statements from generated content. |
-| `removeDuplicateHeadings` | `boolean` | `false` | Remove a line that repeats the heading text directly below the heading. |
-| `preserveComponents` | `string[]` | `[]` | Component names whose JSX tags pass through untouched, exempt from stripping. See [preserving component tags](content-cleaning.md#preserving-component-tags-preservecomponents). |
+| Option                    | Type       | Default | Description                                                                                                                                                                      |
+| ------------------------- | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `excludeImports`          | `boolean`  | `false` | Remove `import` statements from generated content.                                                                                                                               |
+| `removeDuplicateHeadings` | `boolean`  | `false` | Remove a line that repeats the heading text directly below the heading.                                                                                                          |
+| `preserveComponents`      | `string[]` | `[]`    | Component names whose JSX tags pass through untouched, exempt from stripping. See [preserving component tags](content-cleaning.md#preserving-component-tags-preservecomponents). |
 
 ## URL construction
 
 These options control the links the plugin emits.
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `addMdExtension` | `boolean` | `true` | Append `.md` to link URLs in `llms.txt`, per the llmstxt.org spec. Only applies when `generateMarkdownFiles` is `true`. |
-| `useRelativeUrls` | `boolean` | `false` | Emit links relative to the site origin (for example `/docs/page.md`). Useful for subpath deployments where the site `url` can't be pinned. |
-| `rewriteImageUrls` | `boolean` | `false` | Rewrite relative image references to absolute hashed build-output URLs so LLMs can resolve them. |
-| `pathTransformation` | `object` | `undefined` | Fallback path rewriting for URL construction. See [Path transformation](#path-transformation). |
+| Option               | Type      | Default     | Description                                                                                                                                |
+| -------------------- | --------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `addMdExtension`     | `boolean` | `true`      | Append `.md` to link URLs in `llms.txt`, per the llmstxt.org spec. Only applies when `generateMarkdownFiles` is `true`.                    |
+| `useRelativeUrls`    | `boolean` | `false`     | Emit links relative to the site origin (for example `/docs/page.md`). Useful for subpath deployments where the site `url` can't be pinned. |
+| `rewriteImageUrls`   | `boolean` | `false`     | Rewrite relative image references to absolute hashed build-output URLs so LLMs can resolve them.                                           |
+| `pathTransformation` | `object`  | `undefined` | Fallback path rewriting for URL construction. See [Path transformation](#path-transformation).                                             |
 
 The `pathTransformation` object accepts these fields:
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `ignorePaths` | `string[]` | `[]` | Path segments to remove when constructing URLs. |
-| `addPaths` | `string[]` | `[]` | Path segments to prepend when constructing URLs, if not already present. |
+| Field         | Type       | Default | Description                                                              |
+| ------------- | ---------- | ------- | ------------------------------------------------------------------------ |
+| `ignorePaths` | `string[]` | `[]`    | Path segments to remove when constructing URLs.                          |
+| `addPaths`    | `string[]` | `[]`    | Path segments to prepend when constructing URLs, if not already present. |
 
 ## Advanced
 
 These options handle multi-file, multi-version, and diagnostic behavior.
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `customLLMFiles` | `CustomLLMFile[]` | `[]` | Additional LLM files for specific documentation sections. See [Custom LLM files](#custom-llm-files). |
-| `versions` | `VersionConfig[] \| 'auto'` | `undefined` | Generate a version-scoped set of files per documentation version. `'auto'` detects versions from Docusaurus docs versioning. See [Versions](#versions). |
-| `logLevel` | `'quiet' \| 'normal' \| 'verbose'` | `'normal'` | Amount of build output the plugin prints. See [Logging](#logging). |
-| `warnOnIgnoredFiles` | `boolean` | `false` | Whether to warn about files that are skipped because they have no extension or an unsupported one. |
+| Option               | Type                               | Default     | Description                                                                                                                                             |
+| -------------------- | ---------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customLLMFiles`     | `CustomLLMFile[]`                  | `[]`        | Additional LLM files for specific documentation sections. See [Custom LLM files](#custom-llm-files).                                                    |
+| `versions`           | `VersionConfig[] \| 'auto'`        | `undefined` | Generate a version-scoped set of files per documentation version. `'auto'` detects versions from Docusaurus docs versioning. See [Versions](#versions). |
+| `logLevel`           | `'quiet' \| 'normal' \| 'verbose'` | `'normal'`  | Amount of build output the plugin prints. See [Logging](#logging).                                                                                      |
+| `warnOnIgnoredFiles` | `boolean`                          | `false`     | Whether to warn about files that are skipped because they have no extension or an unsupported one.                                                      |
 
 ## Documentation sections
 
@@ -111,11 +111,11 @@ These options handle multi-file, multi-version, and diagnostic behavior.
 
 Each section object has this shape:
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `path` | `string` | yes | Filesystem path to the section, relative to the site directory (for example `'docs'`, `'api'`). |
-| `routeBasePath` | `string` | yes | The Docusaurus `routeBasePath` the section is served under (for example `'docs'`, `'api'`), relative to the site `baseUrl`. |
-| `label` | `string` | no | Heading for the section in links files such as `llms.txt`. Defaults to the section's `path`. |
+| Field           | Type     | Required | Description                                                                                                                 |
+| --------------- | -------- | -------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `path`          | `string` | yes      | Filesystem path to the section, relative to the site directory (for example `'docs'`, `'api'`).                             |
+| `routeBasePath` | `string` | yes      | The Docusaurus `routeBasePath` the section is served under (for example `'docs'`, `'api'`), relative to the site `baseUrl`. |
+| `label`         | `string` | no       | Heading for the section in links files such as `llms.txt`. Defaults to the section's `path`.                                |
 
 Section headings appear when `docsDir` lists two or more sections. `llms-full.txt` has no section headings.
 
@@ -125,18 +125,18 @@ When `docsDir` is a string, the plugin treats it as a single section and matches
 
 Each entry in `customLLMFiles` is a `CustomLLMFile` object with these fields:
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `filename` | `string` | yes | Name of the output file (for example `'llms-python.txt'`). |
-| `includePatterns` | `string[]` | yes | Glob patterns for files to include. |
-| `fullContent` | `boolean` | yes | `true` for full content like `llms-full.txt`, `false` for links only like `llms.txt`. |
-| `title` | `string` | no | Custom title for this file. Defaults to the site title. |
-| `description` | `string` | no | Custom description for this file. Defaults to the site description. |
-| `ignorePatterns` | `string[]` | no | Additional patterns to exclude, combined with the global `ignoreFiles`. |
-| `orderPatterns` | `string[]` | no | Order patterns for this file, like `includeOrder`. |
-| `includeUnmatchedLast` | `boolean` | no | Whether to append files that match no `orderPatterns` entry at the end. Defaults to `true`. |
-| `version` | `string` | no | Version label for this file, overriding the global `version`. |
-| `rootContent` | `string` | no | Custom content inserted at the root of this file, after the title and description. |
+| Field                  | Type       | Required | Description                                                                                 |
+| ---------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------- |
+| `filename`             | `string`   | yes      | Name of the output file (for example `'llms-python.txt'`).                                  |
+| `includePatterns`      | `string[]` | yes      | Glob patterns for files to include.                                                         |
+| `fullContent`          | `boolean`  | yes      | `true` for full content like `llms-full.txt`, `false` for links only like `llms.txt`.       |
+| `title`                | `string`   | no       | Custom title for this file. Defaults to the site title.                                     |
+| `description`          | `string`   | no       | Custom description for this file. Defaults to the site description.                         |
+| `ignorePatterns`       | `string[]` | no       | Additional patterns to exclude, combined with the global `ignoreFiles`.                     |
+| `orderPatterns`        | `string[]` | no       | Order patterns for this file, like `includeOrder`.                                          |
+| `includeUnmatchedLast` | `boolean`  | no       | Whether to append files that match no `orderPatterns` entry at the end. Defaults to `true`. |
+| `version`              | `string`   | no       | Version label for this file, overriding the global `version`.                               |
+| `rootContent`          | `string`   | no       | Custom content inserted at the root of this file, after the title and description.          |
 
 ## Versions
 
@@ -144,14 +144,14 @@ Set `versions` to publish a separate set of LLM files per documentation version,
 
 Each `VersionConfig` entry accepts:
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `name` | `string` | required | Version identifier (for example `'nightly'`, `'stable'`, `'0.0.1'`). |
-| `label` | `string` | `name` | Label written into the `Version:` line of generated files. With `versions: 'auto'`, see [automatic detection](multi-version.md#automatic-detection). |
-| `docsDir` | `string \| DocsSection[]` | top-level `docsDir` | Source docs directory or sections for this version. |
-| `path` | `string` | `name` | Output subdirectory and route prefix. Use `''` for the site root. |
-| `customLLMFiles` | `CustomLLMFile[]` | top-level value | Per-version custom LLM files. |
-| `includeOrder` | `string[]` | top-level value | Per-version include order. |
+| Field            | Type                      | Default             | Description                                                                                                                                          |
+| ---------------- | ------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`           | `string`                  | required            | Version identifier (for example `'nightly'`, `'stable'`, `'0.0.1'`).                                                                                 |
+| `label`          | `string`                  | `name`              | Label written into the `Version:` line of generated files. With `versions: 'auto'`, see [automatic detection](multi-version.md#automatic-detection). |
+| `docsDir`        | `string \| DocsSection[]` | top-level `docsDir` | Source docs directory or sections for this version.                                                                                                  |
+| `path`           | `string`                  | `name`              | Output subdirectory and route prefix. Use `''` for the site root.                                                                                    |
+| `customLLMFiles` | `CustomLLMFile[]`         | top-level value     | Per-version custom LLM files.                                                                                                                        |
+| `includeOrder`   | `string[]`                | top-level value     | Per-version include order.                                                                                                                           |
 
 ## Path transformation
 

@@ -9,7 +9,6 @@
  */
 
 const assert = require('assert');
-const path = require('path');
 
 console.log('Testing baseUrl handling in URL construction...\n');
 
@@ -34,78 +33,78 @@ const testCases = [
     url: 'https://example.com',
     baseUrl: '/',
     expected: 'https://example.com/',
-    description: 'Root baseUrl should be kept as-is'
+    description: 'Root baseUrl should be kept as-is',
   },
   {
     name: 'baseUrl with trailing slash',
     url: 'https://example.com',
     baseUrl: '/docs/',
     expected: 'https://example.com/docs',
-    description: 'Trailing slash should be removed except for root'
+    description: 'Trailing slash should be removed except for root',
   },
   {
     name: 'baseUrl without trailing slash',
     url: 'https://example.com',
     baseUrl: '/docs',
     expected: 'https://example.com/docs',
-    description: 'baseUrl without trailing slash should remain unchanged'
+    description: 'baseUrl without trailing slash should remain unchanged',
   },
   {
     name: 'Empty baseUrl',
     url: 'https://example.com',
     baseUrl: '',
     expected: 'https://example.com/',
-    description: 'Empty baseUrl should default to root'
+    description: 'Empty baseUrl should default to root',
   },
   {
     name: 'Undefined baseUrl',
     url: 'https://example.com',
     baseUrl: undefined,
     expected: 'https://example.com/',
-    description: 'Undefined baseUrl should default to root'
+    description: 'Undefined baseUrl should default to root',
   },
   {
     name: 'Deep path with trailing slash',
     url: 'https://example.com',
     baseUrl: '/docs/api/v1/',
     expected: 'https://example.com/docs/api/v1',
-    description: 'Deep path with trailing slash should have it removed'
+    description: 'Deep path with trailing slash should have it removed',
   },
   {
     name: 'Deep path without trailing slash',
     url: 'https://example.com',
     baseUrl: '/docs/api/v1',
     expected: 'https://example.com/docs/api/v1',
-    description: 'Deep path without trailing slash should remain unchanged'
+    description: 'Deep path without trailing slash should remain unchanged',
   },
   {
     name: 'URL with port and root baseUrl',
     url: 'https://example.com:8080',
     baseUrl: '/',
     expected: 'https://example.com:8080/',
-    description: 'URL with port should handle root baseUrl correctly'
+    description: 'URL with port should handle root baseUrl correctly',
   },
   {
     name: 'URL with port and path baseUrl',
     url: 'https://example.com:8080',
     baseUrl: '/docs/',
     expected: 'https://example.com:8080/docs',
-    description: 'URL with port should handle path baseUrl correctly'
+    description: 'URL with port should handle path baseUrl correctly',
   },
   {
     name: 'URL with trailing slash and root baseUrl',
     url: 'https://example.com/',
     baseUrl: '/',
     expected: 'https://example.com//',
-    description: 'URL with trailing slash concatenates directly'
+    description: 'URL with trailing slash concatenates directly',
   },
   {
     name: 'URL with trailing slash and path baseUrl',
     url: 'https://example.com/',
     baseUrl: '/docs/',
     expected: 'https://example.com//docs',
-    description: 'URL with trailing slash concatenates with normalized baseUrl'
-  }
+    description: 'URL with trailing slash concatenates with normalized baseUrl',
+  },
 ];
 
 // Run tests
@@ -119,7 +118,7 @@ testCases.forEach((testCase, index) => {
     assert.strictEqual(
       result,
       testCase.expected,
-      `Expected "${testCase.expected}" but got "${result}"`
+      `Expected "${testCase.expected}" but got "${result}"`,
     );
 
     console.log(`✓ Test ${index + 1} passed: ${testCase.name}`);
