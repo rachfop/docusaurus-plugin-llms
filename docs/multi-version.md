@@ -4,11 +4,11 @@ description: Publish a separate llms.txt and llms-full.txt for each documentatio
 
 # Multi-version output
 
-The `versions` option publishes a separate set of LLM files for each documentation version your site serves. The plugin runs its full generation pipeline once per version and writes each version's `llms.txt` (and any custom LLM files) under its own subdirectory, with links scoped to that version's routes. Without `versions`, the plugin writes one set of files at the site root.
+The `versions` option publishes a separate set of LLM files for each documentation version your site serves. The plugin runs once per version and writes each version's `llms.txt` (and any custom LLM files) under its own subdirectory, with links scoped to that version's routes. Without `versions`, the plugin writes one set of files at the site root.
 
 ## When to use it
 
-Use `versions` when one site serves several doc versions from different route prefixes. A common setup keeps a `nightly` build at the site root and a `stable` build under `/stable`. Each version gets its own `llms.txt` at `/llms.txt` and `/stable/llms.txt`, and the links inside each file resolve to that version's URLs. The root version's links never leak into a versioned subtree, and a versioned file's links never point back at the root.
+Use `versions` when one site serves several doc versions from different route prefixes. A common setup keeps a `nightly` build at the site root and a `stable` build under `/stable`. Each version gets its own `llms.txt` at `/llms.txt` and `/stable/llms.txt`, and the links inside each file resolve to that version's URLs. The root `llms.txt` links only to root pages, and `/stable/llms.txt` links only to `/stable/` pages.
 
 The top-level `version` option is a separate feature: it writes a `Version:` label into the generated files and produces one set of files. See [custom LLM files](./content-generation.md#generate-custom-llm-files) for the `version` label and per-file overrides.
 

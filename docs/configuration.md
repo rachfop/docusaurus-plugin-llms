@@ -68,13 +68,13 @@ These options set the title, description, and inline content of the generated fi
 
 ## Content cleaning
 
-These options strip noise from the source markdown before it's written.
+These options remove markup from the source Markdown before the plugin writes it.
 
-| Option                    | Type       | Default | Description                                                                                                                                                                      |
-| ------------------------- | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `excludeImports`          | `boolean`  | `false` | Remove `import` statements from generated content.                                                                                                                               |
-| `removeDuplicateHeadings` | `boolean`  | `false` | Remove a line that repeats the heading text directly below the heading.                                                                                                          |
-| `preserveComponents`      | `string[]` | `[]`    | Component names whose JSX tags pass through untouched, exempt from stripping. See [preserving component tags](content-cleaning.md#preserving-component-tags-preservecomponents). |
+| Option                    | Type       | Default | Description                                                                                                                                                          |
+| ------------------------- | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `excludeImports`          | `boolean`  | `false` | Remove `import` statements from generated content.                                                                                                                   |
+| `removeDuplicateHeadings` | `boolean`  | `false` | Remove a line that repeats the heading text directly below the heading.                                                                                              |
+| `preserveComponents`      | `string[]` | `[]`    | Component names whose tags and props the plugin keeps as written. See [preserving component tags](content-cleaning.md#preserving-component-tags-preservecomponents). |
 
 ## URL construction
 
@@ -96,7 +96,7 @@ The `pathTransformation` object accepts these fields:
 
 ## Advanced
 
-These options handle multi-file, multi-version, and diagnostic behavior.
+These options add extra files, split output by version, and control logging.
 
 | Option               | Type                               | Default     | Description                                                                                                                                             |
 | -------------------- | ---------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |

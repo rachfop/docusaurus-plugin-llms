@@ -4,8 +4,8 @@ description: Recommended option combinations for API reference, tutorials, and m
 
 # Best practices
 
-This page collects recommended option combinations for common kinds of
-documentation, plus notes on deployment and performance. For each option's
+This page lists option settings for API reference, tutorials, and
+multi-language docs, plus notes on deployment, build time, and memory. For each option's
 full reference, see [configuration options](./configuration.md) and
 [content cleaning](./content-cleaning.md).
 
@@ -19,8 +19,8 @@ can read the whole reference at once:
 ```js
 {
   excludeImports: true,           // Remove React component imports
-  removeDuplicateHeadings: true,  // Remove redundant API endpoint descriptions
-  generateLLMsFullTxt: true,      // Create one comprehensive file
+  removeDuplicateHeadings: true,  // Remove lines that repeat an endpoint heading
+  generateLLMsFullTxt: true,      // Write every page to one file
 }
 ```
 
@@ -31,13 +31,13 @@ Both `excludeImports` and `removeDuplicateHeadings` are `boolean` and default to
 
 For hand-written tutorials and guides, clean up MDX imports but leave the prose
 alone, since duplicate-heading removal can strip content you wrote on purpose.
-Use `includeOrder` to put the reading sequence in a sensible order:
+Use `includeOrder` to set the reading order:
 
 ```js
 {
   excludeImports: true,           // Remove any MDX imports
   removeDuplicateHeadings: false, // Keep all content as written
-  includeOrder: [                 // Organize content logically
+  includeOrder: [                 // Reading order
     'getting-started/*',
     'tutorials/*',
     'advanced/*',
@@ -53,7 +53,7 @@ strict allowlist.
 ## Multi-language documentation
 
 If your docs cover more than one programming language, generate a separate
-clean file per language with `customLLMFiles`. Each entry needs a `filename`, an
+file per language with `customLLMFiles`. Each entry needs a `filename`, an
 `includePatterns` array, and a `fullContent` flag:
 
 ```js
@@ -85,8 +85,8 @@ files](./content-generation.md) for the full field reference, including
 
 The plugin builds `llms.txt` from your site's build routes and can't see the
 deployed site. Host redirect rules, `trailingSlash` settings, and docs restructures can
-break the served `llms.txt` after a green build, leaving an empty file or dead
-links.
+break the served `llms.txt` after a successful build, leaving an empty file or
+dead links.
 
 [llms-txt-check](https://github.com/portdeveloper/llms-txt-check) checks the
 deployed file against what your site serves:
@@ -96,10 +96,10 @@ deployed file against what your site serves:
 ```
 
 It exits nonzero when the file or any listed URL stops serving, so the deploy
-that breaks a route goes red. Run it as a final step in your deploy pipeline,
+step fails when a route breaks. Run it as a final step in your deploy pipeline,
 after the site is live.
 
-## Performance considerations
+## Build time and memory
 
 The plugin does all its work in the `postBuild` hook, after Docusaurus has
 built the site, and the cleaning options add little time to that step.

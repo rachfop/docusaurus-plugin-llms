@@ -6,7 +6,7 @@ description: Write a Markdown copy of every page next to its HTML and point llms
 
 The [llmstxt.org specification](https://llmstxt.org/) recommends that `llms.txt` link to a Markdown version of each page. With `generateMarkdownFiles: true`, the plugin writes a `.md` file for every document and points the `llms.txt` links at those files.
 
-This page covers how the plugin names and lays out the files, what each file contains, and the options that shape the output. For the format of `llms.txt` itself, see [generated output](./overview.md#generated-output). For content cleaning options that also apply here, see [content cleaning](./content-cleaning.md).
+This page covers how the plugin names and lays out the files, what each file contains, and the options that set file names and locations. For the format of `llms.txt` itself, see [generated output](./overview.md#generated-output). For content cleaning options that also apply here, see [content cleaning](./content-cleaning.md).
 
 ## What `generateMarkdownFiles` does
 
@@ -22,7 +22,7 @@ When you turn it on, the plugin writes an individual Markdown file for each docu
 - [Getting Started](https://yoursite.com/docs/getting-started.md)
 ```
 
-The generated files hold clean, processed Markdown with no HTML parsing required, so an LLM can consume them directly. A minimal configuration looks like this:
+Each generated file holds the page's Markdown after content cleaning. A minimal configuration looks like this:
 
 ```js
 module.exports = {
@@ -33,7 +33,7 @@ module.exports = {
         generateMarkdownFiles: true, // write individual .md files
         generateLLMsTxt: true, // index file that links to them
         excludeImports: true, // strip MDX import statements
-        removeDuplicateHeadings: true, // drop redundant heading text
+        removeDuplicateHeadings: true, // drop lines that repeat a heading
         includeOrder: ['getting-started/*', 'guides/*', 'api/*'],
       },
     ],
@@ -116,7 +116,7 @@ The plugin derives each output path from the document's resolved information, in
 1. **Front matter `slug`**: if the document sets a `slug`, it becomes the output path. A slug containing `/` creates the matching directory structure; a slug without `/` replaces only the filename.
 2. **Front matter `id`**: if there's no `slug` but there is an `id`, it's used the same way.
 3. **Resolved page URL**: otherwise the path comes from the document's built URL (or its source file path if the URL isn't available). Numeric ordering prefixes like `01-` are stripped from each path segment. A directory index (`index.md`, `README.md`, or a `<folder>/<folder>.md` file, in any letter case) takes its directory's URL: `docs/guide/README.md` is served at `/docs/guide/`, so its file is `docs/guide.md`.
-4. **Sanitized title**: only as a last resort, when the path would otherwise be empty, the document title is sanitized into a filename (lowercased, unsafe characters and whitespace replaced with `-`).
+4. **Sanitized title**: when the path would otherwise be empty, the document title is turned into a filename (lowercased, unsafe characters and whitespace replaced with `-`).
 
 When two documents would get the same path, the plugin appends a counter (`config-2.md`, `config-3.md`, and so on). A page whose URL is the site root is written as `index.md`.
 
@@ -137,11 +137,11 @@ A document titled "API Authentication" with a description produces `api-authenti
 ```markdown
 # API Authentication
 
-> Learn how to authenticate with our API using various methods
+> Authenticate API requests with an API key or an OAuth token.
 
 ## Overview
 
-This guide covers all authentication methods supported by our API...
+Send the API key in the `Authorization` header of each request...
 
 ## API Key Authentication
 

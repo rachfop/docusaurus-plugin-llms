@@ -4,30 +4,34 @@ description: Set the order of documents with glob patterns, rewrite URLs for fil
 
 # Ordering and path transformation
 
-These options set the order documents appear in, rewrite the URLs of files that match no Docusaurus route, and tune batch processing for large sites. All of them are optional.
+These options set the order documents appear in, rewrite the URLs of files that match no Docusaurus route, and set the batch size for progress logging. All of them are optional.
 
 For the full option list, see [configuration options](./configuration.md). For per-file variants of the ordering options, see [custom LLM files](./content-generation.md#generate-custom-llm-files).
 
 ## Document ordering
 
-By default the plugin emits documents in the order it discovers them. To impose a specific sequence, set `includeOrder` (type `string[]`, default `[]`) to an array of glob patterns. The plugin walks the patterns in order, and for each pattern it appends every matching file that hasn't already been placed. A file is emitted once, under the first pattern it matches, so earlier patterns win.
+By default the plugin writes documents in the order it finds them. To set the order, set `includeOrder` (type `string[]`, default `[]`) to an array of glob patterns. The plugin walks the patterns in order, and for each pattern it appends every matching file that hasn't already been placed. A file is emitted once, under the first pattern it matches, so earlier patterns win.
 
 This example groups documents into sections that appear in the listed order:
 
 ```js
-includeOrder: ['getting-started/*', 'guides/*', 'api/*', 'advanced/*'];
+{
+  includeOrder: ['getting-started/*', 'guides/*', 'api/*', 'advanced/*'],
+}
 ```
 
 Because each file is claimed by the first pattern it matches, you can list specific files before a wildcard to pin them to the top of their group:
 
 ```js
-includeOrder: [
-  'getting-started/installation.md', // this specific file first
-  'getting-started/quick-start.md', // then this one
-  'getting-started/*.md', // then the rest of getting-started
-  'api/core/*.md',
-  'api/**/*.md', // all remaining API docs
-];
+{
+  includeOrder: [
+    'getting-started/installation.md', // this file first
+    'getting-started/quick-start.md', // then this one
+    'getting-started/*.md', // then the rest of getting-started
+    'api/core/*.md',
+    'api/**/*.md', // all remaining API docs
+  ],
+}
 ```
 
 ### Patterns match site-relative and docs-relative paths
@@ -41,25 +45,27 @@ A pattern matches if it matches either form, so both `docs/quickstart/*` and `qu
 
 ### Handling files that don't match
 
-`includeUnmatchedLast` (type `boolean`, default `true`) controls what happens to files that no `includeOrder` pattern matched. When it's `true`, those files are appended after the ordered ones, so nothing is dropped. When it's `false`, `includeOrder` becomes a strict allowlist and unmatched files are excluded entirely.
+`includeUnmatchedLast` (type `boolean`, default `true`) controls what happens to files that no `includeOrder` pattern matched. When it's `true`, those files are appended after the ordered ones, so nothing is dropped. When it's `false`, the plugin includes only files that match an `includeOrder` pattern.
 
 This configuration includes only the files under `public-docs/` and drops everything else:
 
 ```js
-includeOrder: [
-  'public-docs/**/*.md',
-],
-includeUnmatchedLast: false
+{
+  includeOrder: ['public-docs/**/*.md'],
+  includeUnmatchedLast: false,
+}
 ```
 
 Nesting depth follows the glob you write. `tutorials/beginner/**/*` matches beginner tutorials at any depth, while `tutorials/intermediate/*` matches only the immediate children of that directory:
 
 ```js
-includeOrder: [
-  'tutorials/beginner/**/*', // all beginner tutorials, any depth
-  'tutorials/intermediate/*', // intermediate tutorials, one level
-  'tutorials/**/*', // everything else under tutorials
-];
+{
+  includeOrder: [
+    'tutorials/beginner/**/*', // all beginner tutorials, any depth
+    'tutorials/intermediate/*', // intermediate tutorials, one level
+    'tutorials/**/*', // everything else under tutorials
+  ],
+}
 ```
 
 Custom LLM files have their own `orderPatterns` and `includeUnmatchedLast` fields. See [custom LLM files](./content-generation.md#generate-custom-llm-files) for details.

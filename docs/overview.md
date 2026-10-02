@@ -4,7 +4,7 @@ description: What docusaurus-plugin-llms generates from a Docusaurus site and wh
 
 # Overview
 
-`docusaurus-plugin-llms` generates LLM-friendly documentation from your Docusaurus site, following the [llmstxt standard](https://llmstxt.org/). During a production build it writes an `llms.txt` file with links to every documentation page and an `llms-full.txt` file that bundles all your content into a single document, so LLMs can read your docs without parsing HTML.
+`docusaurus-plugin-llms` writes text files that describe your Docusaurus docs for language models, in the format the [llmstxt standard](https://llmstxt.org/) defines. During a production build it writes an `llms.txt` file with links to every documentation page and an `llms-full.txt` file that bundles all your content into a single document, so LLMs can read your docs without parsing HTML.
 
 The plugin needs no configuration. It runs in the Docusaurus `postBuild` hook, so it generates files during `npm run build` and not during `docusaurus start`.
 

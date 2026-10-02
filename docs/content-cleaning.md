@@ -4,7 +4,7 @@ description: Strip HTML, MDX imports, and repeated heading text from generated f
 
 # Content cleaning
 
-Documentation written for humans carries markup that adds noise for a language model: MDX import statements, HTML wrappers, and auto-generated text that repeats its own heading. The plugin strips this markup before it writes `llms-full.txt` and any individual Markdown files.
+A language model reads MDX and HTML markup as text. Before it writes `llms-full.txt` and any individual Markdown files, the plugin removes MDX import statements, HTML tags, and auto-generated lines that repeat their heading.
 
 Some cleaning always runs. The plugin removes common HTML tags (`<div>`, `<span>`, `<img>`, and so on) and MDX/JSX component tags (PascalCase elements like `<Tabs>` or `<Admonition>`), and keeps their inner text. Docusaurus's `<TabItem>` is a special case: the plugin writes its `label` (or `value`, when no label is set) as a bold line before the tab body, so tabbed sections keep their structure. To keep other component tags, list them in [`preserveComponents`](#preserving-component-tags-preservecomponents).
 
@@ -14,7 +14,7 @@ Cleaning skips fenced code and inline code, so an `import` line or an HTML snipp
 
 ## Import statement removal (`excludeImports`)
 
-`excludeImports` is a `boolean` (default `false`). When `true`, it removes JavaScript and TypeScript `import` statements from your MDX content. These lines carry no content for an LLM, and API docs that pull in many theme components can open with a dozen of them.
+`excludeImports` is a `boolean` (default `false`). When `true`, it removes JavaScript and TypeScript `import` statements from your MDX content. An API reference page that uses many theme components can start with a dozen of these lines.
 
 The option strips the common `import` forms: named imports, default imports, namespace imports (`import * as ...`), and side-effect imports (`import "...";`). Given an MDX file that starts with a block of component imports:
 
@@ -67,7 +67,7 @@ Update user profile
 ---
 ```
 
-With `removeDuplicateHeadings: true`, the echoed lines are gone:
+With `removeDuplicateHeadings: true`, the plugin removes the repeated lines:
 
 ```markdown
 # Create deliverable
@@ -89,7 +89,7 @@ To enable it:
 
 ## Preserving component tags (`preserveComponents`)
 
-`preserveComponents` is a `string[]` (default `[]`). By default the plugin strips every MDX/JSX component tag (PascalCase elements) and keeps only the inner text. For components that render meaningful content on their own, such as a swizzled `<PackageManagerTabs>` or a custom `<ModelDownload>` that expands into real instructions, stripping loses information. List those component names and their tags (and the props on them) pass through untouched:
+`preserveComponents` is a `string[]` (default `[]`). By default the plugin strips every MDX/JSX component tag (PascalCase elements) and keeps only the inner text. Some components carry the page content in their props, such as a swizzled `<PackageManagerTabs>` that renders install commands or a custom `<ModelDownload>` that renders download steps. Stripping those tags removes that content. List the component names, and the plugin keeps their tags and props as written:
 
 ```js
 module.exports = {
@@ -110,11 +110,11 @@ Given MDX like:
 <PackageManagerTabs command="add my-package" />
 ```
 
-The generated output keeps the tag as-is, so an LLM reading it still sees the command the component would render. Matching is exact on the component name (opening and closing tags), so `<Keep>` is preserved without affecting `<KeepAll>`.
+The generated output keeps the tag, including the `command` prop the component renders. The plugin compares the full component name in opening and closing tags, so listing `Keep` preserves `<Keep>` and still strips `<KeepAll>`.
 
 Two special cases run regardless of this option:
 
-- `<TabItem>` is never preserved as a raw tag. Instead, its `label` (or `value` when no label is set) is emitted as a bold line before the tab body, so a tabbed section degrades into a readable plain-markdown outline. This needs no configuration.
+- `<TabItem>` is never preserved as a raw tag. Instead, its `label` (or `value` when no label is set) is emitted as a bold line before the tab body, so a tabbed section becomes a sequence of bold tab labels, each followed by that tab's content.
 - Tags inside fenced code blocks or inline code spans are never touched by any cleaning step, including this one.
 
 ## Choose cleaning options by content type
@@ -144,7 +144,7 @@ For more combinations, see [best practices](./best-practices.md).
 ![Deployment flow](../img/deploy.png)
 ```
 
-During a build, Docusaurus copies these images to `build/assets/images/` with a content hash appended to the filename (for example, `arch-1a2b3c4d5e6f7890.png`). The generated markdown and `llms-full.txt` still hold the original relative paths, which an LLM reading the served files can't resolve against an absolute URL.
+During a build, Docusaurus copies these images to `build/assets/images/` with a content hash appended to the filename (for example, `arch-1a2b3c4d5e6f7890.png`). The generated Markdown and `llms-full.txt` keep the original relative paths, such as `./img/arch.png`, which point at the source file location and not at the built image.
 
 When `rewriteImageUrls: true`, the plugin scans `build/assets/images/` after the build and rewrites each relative image reference to the absolute hashed URL. A reference like this:
 
