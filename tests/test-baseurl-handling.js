@@ -9,7 +9,6 @@
  */
 
 const assert = require('assert');
-const path = require('path');
 
 console.log('Testing baseUrl handling in URL construction...\n');
 

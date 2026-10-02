@@ -6,9 +6,6 @@ const fs = require('fs');
 const path = require('path');
 const { processMarkdownFile, processFilesWithPatterns } = require('../lib/processor');
 
-// Mock implementations
-const mockReadFile = (content) => Promise.resolve(content);
-
 // Test cases for draft filtering
 const testCases = [
   {

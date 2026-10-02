@@ -6,7 +6,6 @@
  * Run with: node tests/test-jsx-attr-stripping.js
  */
 
-const assert = require('assert');
 const { cleanMarkdownContent, resolvePartialImports } = require('../lib/utils');
 
 let passed = 0;

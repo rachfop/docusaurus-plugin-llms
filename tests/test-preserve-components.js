@@ -6,7 +6,6 @@
  * Run with: node tests/test-preserve-components.js
  */
 
-const assert = require('assert');
 const { cleanMarkdownContent } = require('../lib/utils');
 
 let passed = 0;

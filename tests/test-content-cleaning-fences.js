@@ -6,7 +6,6 @@
  * Run with: node tests/test-content-cleaning-fences.js
  */
 
-const assert = require('assert');
 const { cleanMarkdownContent, extractTitle, rewriteRelativeImageUrls } = require('../lib/utils');
 
 let passed = 0;

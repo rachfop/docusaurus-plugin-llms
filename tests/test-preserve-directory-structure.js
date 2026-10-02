@@ -427,7 +427,7 @@ async function testDefaultBehavior() {
     ];
 
     // Call without the preserveDirectoryStructure parameter (should default to true)
-    const result = await generateIndividualMarkdownFiles(
+    await generateIndividualMarkdownFiles(
       docs,
       testDir,
       'https://example.com',

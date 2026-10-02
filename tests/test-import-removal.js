@@ -36,7 +36,6 @@ function cleanMarkdownContent(content, excludeImports = false, removeDuplicateHe
       // Check if current line is a heading (accounting for leading whitespace)
       const headingMatch = currentLine.match(/^\s*(#+)\s+(.+)$/);
       if (headingMatch) {
-        const headingLevel = headingMatch[1];
         const headingText = headingMatch[2].trim();
         
         processedLines.push(currentLine);

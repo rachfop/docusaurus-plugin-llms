@@ -4,8 +4,6 @@
  * Run with: node test-path-bounds-checking.js
  */
 
-const fs = require('fs');
-const path = require('path');
 
 // Import the ensureUniqueIdentifier utility
 function ensureUniqueIdentifier(baseIdentifier, usedIdentifiers, suffixGenerator) {
@@ -43,7 +41,7 @@ function generateLLMFile(docs, outputPath, fileTitle, fileDescription, includeFu
       const uniqueHeader = ensureUniqueIdentifier(
         doc.title,
         usedHeaders,
-        (counter, base) => {
+        (counter) => {
           // Try to make it more descriptive by adding the file path info if available
           if (doc.path && counter === 2) {
             const pathParts = doc.path.split('/');

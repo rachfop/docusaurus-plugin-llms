@@ -4,8 +4,6 @@
  * Run with: node tests/test-description-extraction.js
  */
 
-const fs = require('fs').promises;
-const path = require('path');
 const matter = require('gray-matter');
 const { cleanMarkdownContent } = require('../lib/utils');
 
@@ -206,16 +204,16 @@ Content here.`,
     name: 'Very long description',
     input: `---
 title: Test Page
-description: ${new Array(20).fill('This is a very long description that should be truncated for TOC items. ').join('')}
+description: ${Array(20).fill('This is a very long description that should be truncated for TOC items. ').join('')}
 ---
 
 # Test Header
 
 Content here.`,
     // Adjust the length to match the actual implementation - note the exact string generation
-    expectedDescription: new Array(20).fill('This is a very long description that should be truncated for TOC items. ').join('').substring(0, 1439),
+    expectedDescription: Array(20).fill('This is a very long description that should be truncated for TOC items. ').join('').substring(0, 1439),
     // Actually tested the output length - it's 150 characters including the ellipsis
-    expectedToc: (new Array(5).fill('This is a very long description that should be truncated for TOC items. ').join('').substring(0, 147) + '...').substring(0, 150)
+    expectedToc: (Array(5).fill('This is a very long description that should be truncated for TOC items. ').join('').substring(0, 147) + '...').substring(0, 150)
   }
 ];
 

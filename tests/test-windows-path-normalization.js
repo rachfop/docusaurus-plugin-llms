@@ -3,8 +3,6 @@
  * Tests the centralized normalizePath() function that handles Windows backslashes
  */
 
-const fs = require('fs');
-const path = require('path');
 const { normalizePath } = require('../lib/utils');
 
 console.log('Running Windows path normalization tests...\n');

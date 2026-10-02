@@ -182,7 +182,7 @@ export async function readMarkdownFiles(
       try {
         const stats = await fs.stat(fullPath);
         isDir = stats.isDirectory();
-      } catch (error: unknown) {
+      } catch {
         // Broken symlink, warn and skip it
         logger.warn(`Skipping broken symlink: ${fullPath}`);
         continue;

@@ -14,7 +14,7 @@ async function setup() {
   // Clean up any existing test directory
   try {
     await fs.rm(TEST_DIR, { recursive: true, force: true });
-  } catch (err) {
+  } catch {
     // Directory doesn't exist, that's fine
   }
 

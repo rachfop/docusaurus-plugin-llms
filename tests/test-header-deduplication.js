@@ -4,8 +4,6 @@
  * Run with: node test-header-deduplication.js
  */
 
-const fs = require('fs');
-const path = require('path');
 
 // Mock the generateLLMFile function from generator.ts
 function generateLLMFile(docs, outputPath, fileTitle, fileDescription, includeFullContent, version) {
