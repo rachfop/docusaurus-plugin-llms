@@ -4,7 +4,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { DocInfo, DocsSection, PluginContext } from './types';
+import { DocInfo, DocsSection, MarkdownPathRegistry, PluginContext } from './types';
 import {
   writeFile,
   readMarkdownFiles,
@@ -23,6 +23,7 @@ import {
   getSiteBasePath,
   stripSiteBasePath,
   stripNumberPrefix,
+  isPathInside,
 } from './utils';
 import { processFilesWithPatterns } from './processor';
 import {
@@ -278,6 +279,8 @@ function findSectionForDoc(doc: DocInfo, docsSections?: DocsSection[]): DocsSect
  * @param keepFrontMatter - Array of frontmatter keys to preserve in generated files
  * @param preserveDirectoryStructure - Whether to preserve the full directory structure (default: true)
  * @param docsSections - Configured docsDir sections, used to resolve each doc's own filesystem path and routeBasePath
+ * @param versionPath - The version's path prefix ('stable'); outputDir is that version's subdirectory, so the prefix is stripped from URLs before mapping them to files and added back to the links
+ * @param registry - Paths already assigned in outputDir by an earlier call; a doc found here reuses its file
  * @returns Updated docs with new URLs pointing to generated markdown files
  */
 export async function generateIndividualMarkdownFiles(
@@ -288,9 +291,14 @@ export async function generateIndividualMarkdownFiles(
   keepFrontMatter: string[] = [],
   preserveDirectoryStructure: boolean = true,
   docsSections?: DocsSection[],
+  versionPath: string = '',
+  registry: MarkdownPathRegistry = { usedPaths: new Set(), docPaths: new Map() },
 ): Promise<DocInfo[]> {
   const updatedDocs: DocInfo[] = [];
-  const usedPaths = new Set<string>();
+  const { usedPaths } = registry;
+  // Only earlier calls' assignments are reused: docs passed to this call that
+  // share a path still get their own, suffixed files.
+  const earlierDocPaths = new Map(registry.docPaths);
 
   // The site's baseUrl must be stripped from each doc's URL pathname before
   // deriving the physical file location, since Docusaurus writes its own build
@@ -301,6 +309,14 @@ export async function generateIndividualMarkdownFiles(
   const siteBasePath = getSiteBasePath(siteUrl);
 
   for (const doc of docs) {
+    // A doc an earlier pass already wrote keeps that file, so the standard and
+    // custom outputs link to the same page and neither overwrites the other.
+    const assignedPath = earlierDocPaths.get(doc.path);
+    if (assignedPath !== undefined) {
+      updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, versionPath, assignedPath));
+      continue;
+    }
+
     // Resolve this doc's own section rather than just using the first section's docsDir.
     const matchedSection = findSectionForDoc(doc, docsSections);
     const sectionFsPath = matchedSection?.path ?? docsDir;
@@ -316,7 +332,17 @@ export async function generateIndividualMarkdownFiles(
         // Extract clean pathname relative to the baseUrl:
         // "https://site.com/sub/guides/start" → "guides/start.md"
         const route = new URL(doc.url).pathname.replace(/\/+$/, '') || '/';
-        const urlPathname = stripSiteBasePath(route, siteBasePath).replace(/^\/+/, '');
+        let urlPathname = stripSiteBasePath(route, siteBasePath).replace(/^\/+/, '');
+
+        // A version's routes carry its path ('stable/get-started'), but
+        // outputDir is already that version's subdirectory.
+        if (versionPath) {
+          if (urlPathname === versionPath) {
+            urlPathname = '';
+          } else if (urlPathname.startsWith(`${versionPath}/`)) {
+            urlPathname = urlPathname.slice(versionPath.length + 1);
+          }
+        }
 
         if (urlPathname === '') {
           // Root page (slug: /) → serve as index.md
@@ -380,12 +406,23 @@ export async function generateIndividualMarkdownFiles(
       }
     }
 
-    // Trim any leading/trailing whitespace from the path
-    relativePath = relativePath.trim();
+    // Trim any leading/trailing whitespace from the path, and drop '.', '..'
+    // and empty segments so a slug like '../../x' can't climb out of outputDir.
+    relativePath = relativePath
+      .trim()
+      .split(/[\\/]/)
+      .filter((segment) => segment !== '' && segment !== '.' && segment !== '..')
+      .join('/');
 
-    // If path is empty or invalid, create a fallback path
+    // If path is empty, invalid, or still resolves outside outputDir, create a
+    // fallback path
+    const sanitizedTitle = sanitizeForFilename(doc.title, 'untitled');
     if (!isNonEmptyString(relativePath) || relativePath === '.md') {
-      const sanitizedTitle = sanitizeForFilename(doc.title, 'untitled');
+      relativePath = `${sanitizedTitle}.md`;
+    } else if (!isPathInside(outputDir, relativePath)) {
+      logger.warn(
+        `Markdown path ${relativePath} for ${doc.path} is outside ${outputDir}; using ${sanitizedTitle}.md`,
+      );
       relativePath = `${sanitizedTitle}.md`;
     }
 
@@ -421,6 +458,7 @@ export async function generateIndividualMarkdownFiles(
     if (fullPath !== path.join(outputDir, uniquePath)) {
       uniquePath = path.relative(outputDir, fullPath);
     }
+    registry.docPaths.set(doc.path, uniquePath);
 
     const directory = path.dirname(fullPath);
 
@@ -468,20 +506,52 @@ export async function generateIndividualMarkdownFiles(
       throw new Error(`Failed to write file ${fullPath}: ${getErrorMessage(error)}`);
     }
 
-    // Create updated DocInfo with new URL pointing to the generated markdown file
-    // Convert file path to URL path (use forward slashes)
-    const urlPath = normalizePath(uniquePath);
-
-    updatedDocs.push({
-      ...doc,
-      url: joinSiteUrl(siteUrl, urlPath),
-      path: `/${urlPath}`, // Update path to the new markdown file
-    });
+    updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, versionPath, uniquePath));
 
     logger.verbose(`Generated markdown file: ${uniquePath}`);
   }
 
   return updatedDocs;
+}
+
+/**
+ * Create updated DocInfo with a new URL pointing to its generated markdown file
+ * @param doc - The source document
+ * @param siteUrl - Base site URL
+ * @param versionPath - The version's path prefix, prepended to the link
+ * @param filePath - The markdown file's path relative to the version's output directory
+ */
+function toMarkdownDocInfo(
+  doc: DocInfo,
+  siteUrl: string,
+  versionPath: string,
+  filePath: string,
+): DocInfo {
+  // Convert file path to URL path (use forward slashes)
+  const urlPath = normalizePath(filePath);
+  return {
+    ...doc,
+    url: joinSiteUrl(siteUrl, versionPath ? `${versionPath}/${urlPath}` : urlPath),
+    path: `/${urlPath}`, // Update path to the new markdown file
+  };
+}
+
+/**
+ * Resolve an output file under a version's directory, or return undefined
+ * (with a warning) when it would land outside the build directory.
+ * @param outDir - The build output directory every file must stay inside
+ * @param versionedOutDir - The version's output directory
+ * @param filename - The configured output filename
+ */
+function resolveOutputFile(
+  outDir: string,
+  versionedOutDir: string,
+  filename: string,
+): string | undefined {
+  const filePath = path.join(versionedOutDir, filename);
+  if (isPathInside(outDir, filePath)) return filePath;
+  logger.warn(`Skipping ${filename}: ${filePath} is outside the build directory ${outDir}`);
+  return undefined;
 }
 
 /**
@@ -518,6 +588,11 @@ export async function generateStandardLLMFiles(
     return;
   }
 
+  if (context.outputSubdir && !isPathInside(outDir, versionedOutDir)) {
+    logger.warn(`Version output directory ${versionedOutDir} is outside ${outDir}. Skipping.`);
+    return;
+  }
+
   // Process files for the standard outputs
   let processedDocs = await processFilesWithPatterns(
     context,
@@ -547,6 +622,8 @@ export async function generateStandardLLMFiles(
       context.options.keepFrontMatter || [],
       context.options.preserveDirectoryStructure !== false, // Default to true
       context.docsSections,
+      context.outputSubdir || '',
+      context.markdownPaths,
     );
   }
 
@@ -556,8 +633,10 @@ export async function generateStandardLLMFiles(
   const emitMdLinks = addMdExtension && generateMarkdownFiles;
 
   // Generate llms.txt
-  if (generateLLMsTxt) {
-    const llmsTxtPath = path.join(versionedOutDir, llmsTxtFilename);
+  const llmsTxtPath = generateLLMsTxt
+    ? resolveOutputFile(outDir, versionedOutDir, llmsTxtFilename)
+    : undefined;
+  if (llmsTxtPath) {
     await generateLLMFile(
       processedDocs,
       llmsTxtPath,
@@ -573,8 +652,10 @@ export async function generateStandardLLMFiles(
   }
 
   // Generate llms-full.txt
-  if (generateLLMsFullTxt) {
-    const llmsFullTxtPath = path.join(versionedOutDir, llmsFullTxtFilename);
+  const llmsFullTxtPath = generateLLMsFullTxt
+    ? resolveOutputFile(outDir, versionedOutDir, llmsFullTxtFilename)
+    : undefined;
+  if (llmsFullTxtPath) {
     await generateLLMFile(
       processedDocs,
       llmsFullTxtPath,
@@ -615,12 +696,20 @@ export async function generateCustomLLMFiles(
     return;
   }
 
+  if (context.outputSubdir && !isPathInside(outDir, versionedOutDir)) {
+    logger.warn(`Version output directory ${versionedOutDir} is outside ${outDir}. Skipping.`);
+    return;
+  }
+
   logger.info(`Generating ${customLLMFiles.length} custom LLM files...`);
 
   for (const customFile of customLLMFiles) {
     logger.verbose(
       `Processing custom file: ${customFile.filename}, version: ${customFile.version || 'undefined'}`,
     );
+
+    const customFilePath = resolveOutputFile(outDir, versionedOutDir, customFile.filename);
+    if (!customFilePath) continue;
 
     // Combine global ignores with custom ignores
     const combinedIgnores = [...ignoreFiles];
@@ -652,6 +741,8 @@ export async function generateCustomLLMFiles(
           context.options.keepFrontMatter || [],
           context.options.preserveDirectoryStructure !== false, // Default to true
           context.docsSections,
+          context.outputSubdir || '',
+          context.markdownPaths,
         );
       }
 
@@ -666,7 +757,6 @@ export async function generateCustomLLMFiles(
       // Per-file `version` wins; otherwise a custom file inherits the current
       // version's label so version-scoped outputs (stable/llms-python.txt) are
       // labeled like their llms.txt.
-      const customFilePath = path.join(versionedOutDir, customFile.filename);
       await generateLLMFile(
         customDocs,
         customFilePath,
