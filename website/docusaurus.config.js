@@ -51,6 +51,8 @@ const config = {
         // the plugin at them instead of the default siteDir/docs.
         docsDir: '../docs',
         generateMarkdownFiles: true,
+        // Match the sidebar's reading order (sidebars.js).
+        includeOrder: require('./sidebars.js').docs.map((id) => `${id}.md`),
       },
     ],
   ],
