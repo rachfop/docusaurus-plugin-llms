@@ -6,7 +6,6 @@
  * Run with: node tests/test-regression-fixes.js
  */
 
-const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');

@@ -20,7 +20,7 @@ async function createTempDir() {
 async function cleanupTempDir(tmpDir) {
   try {
     await fs.rm(tmpDir, { recursive: true, force: true });
-  } catch (error) {
+  } catch {
     // Ignore cleanup errors
   }
 }
@@ -31,7 +31,7 @@ async function makeReadOnly(dirPath) {
     // On Unix-like systems, chmod 444 makes it read-only
     await fs.chmod(dirPath, 0o444);
     return true;
-  } catch (error) {
+  } catch {
     console.warn('Warning: Could not make directory read-only. Skipping permission tests.');
     return false;
   }
@@ -41,7 +41,7 @@ async function makeReadOnly(dirPath) {
 async function restoreWritePermissions(dirPath) {
   try {
     await fs.chmod(dirPath, 0o755);
-  } catch (error) {
+  } catch {
     // Ignore restore errors
   }
 }

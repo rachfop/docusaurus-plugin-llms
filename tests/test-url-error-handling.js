@@ -8,10 +8,6 @@
  * - Edge cases that could crash the build
  */
 
-const assert = require('assert');
-const path = require('path');
-const fs = require('fs').promises;
-const os = require('os');
 
 console.log('Testing URL constructor error handling...\n');
 
@@ -21,7 +17,7 @@ console.log('Testing URL constructor error handling...\n');
 function constructUrlWithResolvedUrl(resolvedUrl, siteUrl) {
   try {
     return new URL(resolvedUrl, siteUrl).toString();
-  } catch (error) {
+  } catch {
     console.warn(`Invalid URL construction: ${resolvedUrl} with base ${siteUrl}. Using fallback.`);
     // Fallback to string concatenation with proper path joining
     const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
@@ -37,7 +33,7 @@ function constructUrlWithFallback(siteUrl, pathPart) {
   try {
     const baseUrl = new URL(siteUrl);
     return `${baseUrl.origin}/${pathPart}`;
-  } catch (error) {
+  } catch {
     console.warn(`Invalid siteUrl: ${siteUrl}. Using fallback.`);
     // Fallback to string concatenation with proper path joining
     const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;

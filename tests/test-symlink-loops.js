@@ -20,7 +20,7 @@ async function createTempDir() {
 async function cleanupTempDir(tmpDir) {
   try {
     await fs.rm(tmpDir, { recursive: true, force: true });
-  } catch (error) {
+  } catch {
     // Ignore cleanup errors
   }
 }
@@ -81,7 +81,7 @@ const testCases = [
         const symlinkPath = path.join(subdir, 'link-to-docs');
         try {
           await fs.symlink(docsDir, symlinkPath, 'dir');
-        } catch (error) {
+        } catch {
           // Symlinks might not be supported on this platform
           console.log('⚠️  SKIP: Cannot create symlinks on this platform');
           return { passed: true, skipped: true };
@@ -144,7 +144,7 @@ const testCases = [
         const symlinkPath = path.join(docsDir, 'link-to-external');
         try {
           await fs.symlink(externalDir, symlinkPath, 'dir');
-        } catch (error) {
+        } catch {
           console.log('⚠️  SKIP: Cannot create symlinks on this platform');
           return { passed: true, skipped: true };
         }
@@ -185,7 +185,7 @@ const testCases = [
         const symlinkPath = path.join(docsDir, 'broken-link');
         try {
           await fs.symlink(path.join(tmpDir, 'nonexistent'), symlinkPath, 'dir');
-        } catch (error) {
+        } catch {
           console.log('⚠️  SKIP: Cannot create symlinks on this platform');
           return { passed: true, skipped: true };
         }
@@ -247,7 +247,7 @@ const testCases = [
         try {
           await fs.symlink(targetDir, symlink1, 'dir');
           await fs.symlink(targetDir, symlink2, 'dir');
-        } catch (error) {
+        } catch {
           console.log('⚠️  SKIP: Cannot create symlinks on this platform');
           return { passed: true, skipped: true };
         }
@@ -312,7 +312,7 @@ const testCases = [
           await fs.mkdir(level1, { recursive: true });
           await fs.symlink(level1, link1, 'dir');
           await fs.symlink(level2, link2, 'dir');
-        } catch (error) {
+        } catch {
           console.log('⚠️  SKIP: Cannot create symlinks on this platform');
           return { passed: true, skipped: true };
         }
@@ -359,7 +359,7 @@ const testCases = [
         try {
           await fs.symlink(shared, linkA, 'dir');
           await fs.symlink(shared, linkB, 'dir');
-        } catch (error) {
+        } catch {
           console.log('⚠️  SKIP: Cannot create symlinks on this platform');
           return { passed: true, skipped: true };
         }

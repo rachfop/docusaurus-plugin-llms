@@ -181,8 +181,6 @@ const testCases = [
           };
         }
       }
-
-      return { passed: false, error: 'Did not catch expected error' };
     }
   },
   {
@@ -203,8 +201,6 @@ const testCases = [
           };
         }
       }
-
-      return { passed: false, error: 'Did not catch expected error' };
     }
   },
   {

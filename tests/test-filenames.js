@@ -11,7 +11,6 @@ const { generateIndividualMarkdownFiles } = require('../lib/generator');
 // Helper to create a test document
 function createTestDoc(filename, frontMatter = {}) {
   const baseName = path.basename(filename, '.md');
-  const dir = path.dirname(filename) === '.' ? '' : path.dirname(filename);
   
   return {
     title: `${baseName} Title`,

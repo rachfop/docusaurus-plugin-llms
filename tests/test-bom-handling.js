@@ -131,7 +131,7 @@ async function runTests() {
     // Clean up temp directory
     try {
       await fs.promises.rmdir(tempDir);
-    } catch (error) {
+    } catch {
       // Directory might not be empty or might not exist
     }
   }

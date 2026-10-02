@@ -8,7 +8,7 @@ async function setupTestDir() {
   // Clean up if exists
   try {
     await fs.rm(testDir, { recursive: true });
-  } catch (err) {
+  } catch {
     // Ignore if doesn't exist
   }
   
@@ -195,7 +195,7 @@ All content below is organized by topic.`;
     // Clean up test directory
     try {
       await fs.rm(testDir, { recursive: true });
-    } catch (err) {
+    } catch {
       // Ignore cleanup errors
     }
   }

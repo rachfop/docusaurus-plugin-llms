@@ -5,8 +5,6 @@
  */
 
 const { validatePathLength, shortenPathIfNeeded } = require('../lib/utils');
-const path = require('path');
-const os = require('os');
 
 const testCases = [
   // Windows path length tests

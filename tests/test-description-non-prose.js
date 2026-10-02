@@ -16,7 +16,7 @@ async function setupTestDir() {
   const testDir = path.join(__dirname, 'test-description-non-prose-temp');
   try {
     await fs.rm(testDir, { recursive: true });
-  } catch (err) {
+  } catch {
     // Ignore if doesn't exist
   }
   await fs.mkdir(testDir, { recursive: true });
@@ -229,7 +229,7 @@ async function runTests() {
   } finally {
     try {
       await fs.rm(testDir, { recursive: true });
-    } catch (err) {
+    } catch {
       // Ignore cleanup errors
     }
   }

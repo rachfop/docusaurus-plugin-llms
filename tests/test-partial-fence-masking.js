@@ -91,7 +91,7 @@ async function run() {
   return failed === 0;
 }
 
-const ok = run().then((r) => {
+run().then((r) => {
   console.log(r ? '🎉 All partial-fence masking tests passed!' : '❌ Some tests failed.');
   process.exit(r ? 0 : 1);
 });

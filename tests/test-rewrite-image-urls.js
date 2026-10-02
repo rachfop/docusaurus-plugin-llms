@@ -8,7 +8,6 @@
  * - Graceful no-op for unknown images or non-existent asset directory
  */
 
-const assert = require('assert');
 const path = require('path');
 const fs = require('fs').promises;
 const os = require('os');

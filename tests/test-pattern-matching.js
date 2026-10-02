@@ -307,13 +307,6 @@ function verifyResults() {
   return failedTests === 0;
 }
 
-// Clean up test files
-function cleanup() {
-  console.log('Cleaning up test files...');
-  // Uncomment to remove test files after running
-  // fs.rmSync(TEST_DIR, { recursive: true, force: true });
-  // fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
-}
 
 // Run the tests
 async function main() {
@@ -321,7 +314,6 @@ async function main() {
     await setupTestDocs();
     await runTests();
     const success = verifyResults();
-    // cleanup();
 
     if (success) {
       console.log('✅ All pattern matching tests passed successfully!');

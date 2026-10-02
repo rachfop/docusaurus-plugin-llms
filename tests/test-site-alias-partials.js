@@ -23,7 +23,7 @@ async function setupTestFiles() {
   // Clean up if exists
   try {
     await fs.rm(siteDir, { recursive: true });
-  } catch (err) {
+  } catch {
     // Ignore if doesn't exist
   }
 
@@ -150,7 +150,7 @@ async function runTest() {
     // Clean up test files
     try {
       await fs.rm(siteDir, { recursive: true });
-    } catch (err) {
+    } catch {
       // Ignore cleanup errors
     }
   }
