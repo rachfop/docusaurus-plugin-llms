@@ -297,7 +297,7 @@ async function main() {
     check(
       'blog posts get a ## Blog heading',
       txt.includes(
-        '## guide\n\n- [Guide M](https://ex.com/guide/m): m\n\n## Blog\n\n- [Post](https://ex.com/blog/2024-01-01-post): blog body',
+        '## guide\n\n- [Guide M](https://ex.com/guide/m): m\n\n## Blog\n\n- [Post](https://ex.com/blog/2024/01/01/post): blog body',
       ),
       txt,
     );
@@ -313,7 +313,7 @@ async function main() {
     check(
       'single docs section keeps one Table of Contents list',
       singleTxt.includes(
-        '## Table of Contents\n\n- [A](https://ex.com/docs/a): a\n- [Post](https://ex.com/blog/2024-01-01-post): blog body',
+        '## Table of Contents\n\n- [A](https://ex.com/docs/a): a\n- [Post](https://ex.com/blog/2024/01/01/post): blog body',
       ) && !singleTxt.includes('## Blog'),
       singleTxt,
     );
