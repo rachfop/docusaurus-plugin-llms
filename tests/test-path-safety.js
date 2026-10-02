@@ -309,7 +309,9 @@ async function main() {
       ['/docs/', '/docs/a/b', '/docs/sub/plain', '/docs/42', '/docs/same'],
     );
     check('slug / writes docs.md', r.exists('docs.md') && r.read('docs.md').includes('root body'));
-    check('slug /a/b writes a/b.md', r.exists('a/b.md'));
+    // An absolute slug is relative to the docs routeBasePath: the page is
+    // served at /docs/a/b, so its markdown file is docs/a/b.md.
+    check('slug /a/b writes docs/a/b.md', r.exists('docs/a/b.md'));
     check('slug plain writes docs/sub/plain.md', r.exists('docs/sub/plain.md'));
     check('numeric slug 42 writes docs/42.md', r.exists('docs/42.md'));
     check(

@@ -58,6 +58,9 @@ export function maskCodeSegments(content: string): {
   return { masked, restore };
 }
 
+/** A trailing Docusaurus custom heading id (`## Title {#custom-id}`). */
+const HEADING_ID_PATTERN = /\s*\{#[^}\s]*\}\s*$/;
+
 /**
  * Extract title from content or use the filename
  * @param data - Frontmatter data
@@ -77,7 +80,7 @@ export function extractTitle(data: any, content: string, filePath: string): stri
   const { masked, restore } = maskCodeSegments(content);
   const headingMatch = masked.match(/^#\s+(.*)/m);
   if (isNonEmptyString(headingMatch?.[1])) {
-    return restore(headingMatch![1]).trim();
+    return restore(headingMatch![1]).replace(HEADING_ID_PATTERN, '').trim();
   }
 
   // Finally use filename
@@ -623,7 +626,8 @@ export function stripDuplicateTitleHeading(content: string, title: string): stri
   // Build the regex from the title with regex metacharacters escaped, since
   // titles routinely contain `.`, `(`, `)`, `*`, and other markup characters.
   const escapedTitle = title.replace(/[.*+?^${}()|[\]\\#]/g, '\\$&');
-  const re = new RegExp(`^#{1,6}\\s+${escapedTitle}[ \\t]*$`, 'm');
+  // A trailing custom heading id (`# Title {#id}`) is not part of the text.
+  const re = new RegExp(`^#{1,6}\\s+${escapedTitle}(?:[ \\t]+\\{#[^}\\s]*\\})?[ \\t]*$`, 'm');
   const stripped = masked.replace(re, '');
   return restore(stripped).replace(/^\n+/, '').trimStart();
 }
