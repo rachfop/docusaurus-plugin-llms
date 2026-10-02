@@ -262,7 +262,7 @@ export async function processMarkdownFile(
       // standalone image. None reads as a page summary, and several (an
       // unbalanced ``` fence, a `|` row) also break the markdown of the TOC
       // line they would land in.
-      const isNonProse = /^(```|~~~|<[A-Za-z!/]|:::|\||!\[)/.test(trimmedPara);
+      const isNonProse = /^(```|~~~|<[A-Za-z!/]|\{\/\*|:::|\||!\[)/.test(trimmedPara);
       if (trimmedPara && !trimmedPara.startsWith('#') && !isImportOrExport && !isNonProse) {
         description = trimmedPara;
         break;
@@ -270,10 +270,11 @@ export async function processMarkdownFile(
     }
 
     // Third priority: If still no description, use the first heading's content
+    // (from the masked body, so a `# comment` in a code sample never counts)
     if (!description) {
-      const firstHeadingMatch = resolvedContent.match(/^#\s+(.*?)$/m);
+      const firstHeadingMatch = maskedBody.match(/^#\s+(.*?)$/m);
       if (firstHeadingMatch && firstHeadingMatch[1]) {
-        description = firstHeadingMatch[1].trim();
+        description = restoreBody(firstHeadingMatch[1]).trim();
       }
     }
   }
