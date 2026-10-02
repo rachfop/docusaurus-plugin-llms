@@ -62,8 +62,13 @@ export async function buildImageAssetMap(outDir: string): Promise<Map<string, st
  * pointing to the hashed build output in `assets/images/`.
  *
  * Handles:
- *   - Markdown images:  `![alt](./img/foo.png)`
+ *   - Markdown images:  `![alt](./img/foo.png)`, `![alt](img/foo.png)`,
+ *                       `![alt](<./my img.png>)`, `![alt](./my%20img.png)`
  *   - HTML img tags:    `<img src="./img/foo.png" />`  (both quote styles)
+ *
+ * As in Docusaurus, a markdown image path that is not absolute, root-relative,
+ * or an alias (`@site/...`) resolves against the source file's directory, and
+ * is percent-decoded before the lookup.
  *
  * Resolution strategy:
  *   1. Extract the basename from the relative path (e.g., `foo.png`).
@@ -98,20 +103,32 @@ export async function rewriteRelativeImageUrls(
   const imgExtRe = new RegExp(`\\.(?:${IMAGE_EXTENSIONS})$`, 'i');
 
   // Matches relative image references regardless of how many `../` levels deep.
-  //   Group 1+2: Markdown  `![alt](./rel/path.ext)`     prefix + path
-  //   Group 3+4: HTML      `src="./rel/path.ext"`       prefix + path
+  //   Group 1+2: Markdown  `![alt](<rel/path.ext>)`    prefix + path in <...>
+  //   Group 1+3: Markdown  `![alt](rel/path.ext)`      prefix + path
+  //   Group 4+5: HTML      `src="./rel/path.ext"`      prefix + path
   //
-  // The path group starts with `.` (captures `./`, `../`, `../../`, etc.).
-  // Image-extension filtering is done separately with imgExtRe so we don't
-  // accidentally miss legitimate multi-level paths.
-  const imageRefRe = /(!\[[^\]]*\]\()(\.[^)"'\s]+)|(src=["'])(\.[^"'\s]+)/gi;
+  // The HTML path group starts with `.` (captures `./`, `../`, `../../`,
+  // etc.). Markdown paths are filtered with isRelative, and image-extension
+  // filtering is done separately with imgExtRe so we don't accidentally miss
+  // legitimate multi-level paths.
+  const imageRefRe = /(!\[[^\]]*\]\()(?:<([^<>\n]+)>|([^)"'\s<>]+))|(src=["'])(\.[^"'\s]+)/gi;
+  const isRelative = (p: string): boolean => !/^(?:[a-z][a-z0-9+.-]*:|[/#@~])/i.test(p);
+  // The file-system path a reference names: no query/fragment, percent-decoded.
+  const toFsPath = (ref: string): string => {
+    const bare = ref.split('?')[0].split('#')[0];
+    try {
+      return decodeURIComponent(bare);
+    } catch {
+      return bare;
+    }
+  };
 
   // Collect unique relative paths that point to image files
   const uniquePaths = new Set<string>();
   let m: RegExpExecArray | null;
   while ((m = imageRefRe.exec(masked)) !== null) {
-    const relPath = m[2] ?? m[4]; // markdown group or HTML group
-    if (imgExtRe.test(relPath.split('?')[0].split('#')[0])) {
+    const relPath = m[2] ?? m[3] ?? m[5]; // markdown groups or HTML group
+    if (isRelative(relPath) && imgExtRe.test(toFsPath(relPath))) {
       uniquePaths.add(relPath);
     }
   }
@@ -122,7 +139,7 @@ export async function rewriteRelativeImageUrls(
   const resolved = new Map<string, string>(); // relPath → absolute URL or original
 
   for (const relPath of uniquePaths) {
-    const basename = path.basename(relPath.split('?')[0].split('#')[0]);
+    const basename = path.basename(toFsPath(relPath));
     const candidates = imageAssetMap.get(basename) ?? [];
 
     let assetPath: string | null = null;
@@ -131,7 +148,7 @@ export async function rewriteRelativeImageUrls(
       assetPath = candidates[0];
     } else if (candidates.length > 1) {
       // Multiple files with same basename — byte-compare to find the right one
-      const absSource = path.resolve(sourceDir, relPath.split('?')[0].split('#')[0]);
+      const absSource = path.resolve(sourceDir, toFsPath(relPath));
       try {
         const srcBytes = await fs.readFile(absSource);
         for (const candidate of candidates) {
@@ -154,15 +171,22 @@ export async function rewriteRelativeImageUrls(
     // don't change semantics for downstream tooling that relies on them.
     const suffixMatch = relPath.match(/[?#].*$/);
     const suffix = suffixMatch ? suffixMatch[0] : '';
-    resolved.set(relPath, assetPath ? `${baseUrl}${assetPath}${suffix}` : relPath);
+    // Percent-encode characters that would end a markdown link destination
+    // (an asset keeps the source file's name, spaces included).
+    const assetUrl = assetPath?.replace(
+      /[\s()<>]/g,
+      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`,
+    );
+    resolved.set(relPath, assetUrl ? `${baseUrl}${assetUrl}${suffix}` : relPath);
   }
 
   // Apply all substitutions in a single pass, then restore masked code.
   return restore(
-    masked.replace(imageRefRe, (match, mdPrefix, mdPath, htmlPrefix, htmlPath) => {
-      const relPath = mdPath ?? htmlPath;
+    masked.replace(imageRefRe, (match, mdPrefix, mdAnglePath, mdPath, htmlPrefix, htmlPath) => {
+      const relPath = mdAnglePath ?? mdPath ?? htmlPath;
       const target = resolved.get(relPath);
       if (!target || target === relPath) return match; // no change
+      if (mdAnglePath) return `${mdPrefix}<${target}>`;
       if (mdPrefix) return `${mdPrefix}${target}`;
       return `${htmlPrefix}${target}`;
     }),

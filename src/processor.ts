@@ -694,6 +694,11 @@ export async function processFilesWithPatterns(
         if (isBlogFile) {
           pathPrefix = blogRouteBasePath;
           sectionFsPath = blogDir;
+          // With several docs sections, llms.txt groups links under section
+          // headings, so blog posts get a heading of their own.
+          if (context.docsSections && context.docsSections.length > 1) {
+            sectionLabel = 'Blog';
+          }
         } else if (context.docsSections && context.docsSections.length > 0) {
           const matchedSection = context.docsSections.find((s) => {
             const sectionDir = path.join(siteDir, s.path);
