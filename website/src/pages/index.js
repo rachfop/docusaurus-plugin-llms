@@ -70,6 +70,23 @@ const GUIDES = [
   { to: '/docs/multi-version', label: 'Multi-version', detail: 'A separate llms.txt for each docs version.' },
 ];
 
+function CopyIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
 function CopyCommand() {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -85,8 +102,14 @@ function CopyCommand() {
     <div className={styles.command}>
       <span className={styles.prompt} aria-hidden="true">$</span>
       <code className={styles.commandText}>{INSTALL_COMMAND}</code>
-      <button type="button" className={styles.copy} onClick={copy}>
-        {copied ? 'Copied' : 'Copy'}
+      <button
+        type="button"
+        className={styles.copy}
+        onClick={copy}
+        aria-label={copied ? 'Copied' : 'Copy install command'}
+        title={copied ? 'Copied' : 'Copy'}
+      >
+        {copied ? <CheckIcon /> : <CopyIcon />}
       </button>
       <span className={styles.srOnly} aria-live="polite">
         {copied ? 'Install command copied' : ''}
@@ -156,27 +179,30 @@ export default function Home() {
     >
       <main className={styles.page}>
         <section className={styles.hero}>
-          <div className={styles.heroText}>
-            <p className={styles.eyebrow}>A Docusaurus plugin · llmstxt.org</p>
-            <h1 className={styles.title}>
-              Your docs, as <em>plain text</em> for language models.
-            </h1>
-            <p className={styles.lede}>
-              During <code>npm run build</code>, the plugin writes an{' '}
-              <code>llms.txt</code> index, an <code>llms-full.txt</code> bundle,
-              and a Markdown copy of every page, so a model reads your docs
-              without parsing HTML.
-            </p>
+          <p className={styles.eyebrow}>A Docusaurus plugin for the llmstxt.org standard</p>
+          <h1 className={styles.title}>
+            Your Docusaurus docs,
+            <br />
+            <span className={styles.titleMuted}>readable by language models</span>
+          </h1>
+          <p className={styles.lede}>
+            During <code>npm run build</code>, the plugin writes an{' '}
+            <code>llms.txt</code> index, an <code>llms-full.txt</code> bundle,
+            and a Markdown copy of every page, so a model reads your docs
+            without parsing HTML.
+          </p>
+          <div className={styles.actions}>
             <CopyCommand />
-            <div className={styles.actions}>
-              <Link className={styles.primary} to="/docs/installation">
-                Get started
-              </Link>
-              <a className={styles.secondary} href={llmsTxtUrl}>
-                See this site's llms.txt
-              </a>
-            </div>
+            <Link className={styles.textLink} to="/docs/installation">
+              Get started <span aria-hidden="true">›</span>
+            </Link>
+            <a className={styles.textLink} href={llmsTxtUrl}>
+              See this site's llms.txt <span aria-hidden="true">›</span>
+            </a>
           </div>
+        </section>
+
+        <section className={styles.preview} aria-label="Generated files">
           <FileWindow siteUrl={siteUrl} />
         </section>
 

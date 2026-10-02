@@ -1,11 +1,252 @@
 /**
- * Site-wide overrides on top of the classic preset. Homepage styles live in
- * src/pages/index.module.css.
+ * Site-wide theme on top of the classic preset, modeled on Blume
+ * (useblume.dev): white surfaces, Inter with tight display tracking, gray
+ * secondary text, hairline borders, and one blue accent. Light is the
+ * default color mode; the dark tokens below back the navbar toggle.
+ * Homepage styles live in src/pages/index.module.css.
  */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  --site-fg: #0a0a0a;
+  --site-muted-fg: #6b6b6b;
+  --site-muted: #f5f5f5;
+  --site-border: rgba(213, 216, 219, 0.72);
+  --site-accent: #4869bf;
+  --site-accent-soft: rgba(72, 105, 191, 0.08);
+  --site-radius: 0.5rem;
+  --site-radius-lg: 0.75rem;
+
+  --ifm-font-family-base: 'Inter', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --ifm-font-family-monospace: 'IBM Plex Mono', ui-monospace, 'SF Mono',
+    Menlo, Consolas, monospace;
+  --ifm-heading-font-weight: 600;
+  --ifm-font-color-base: #3f3f3f;
+  --ifm-heading-color: var(--site-fg);
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #ffffff;
+
+  --ifm-color-primary: #4869bf;
+  --ifm-color-primary-dark: #3f5eb0;
+  --ifm-color-primary-darker: #3b59a6;
+  --ifm-color-primary-darkest: #314989;
+  --ifm-color-primary-light: #5c7ac6;
+  --ifm-color-primary-lighter: #6682ca;
+  --ifm-color-primary-lightest: #849ad4;
+
+  --ifm-link-color: var(--site-accent);
+  --ifm-link-hover-decoration: none;
+  --ifm-code-font-size: 88%;
+  --ifm-code-background: var(--site-muted);
+  --ifm-code-border-radius: 0.3rem;
+  --ifm-toc-border-color: var(--site-border);
+  --ifm-hr-background-color: var(--site-border);
+  --ifm-table-border-color: var(--site-border);
+  --ifm-color-emphasis-300: var(--site-border);
+
+  --ifm-navbar-height: 4rem;
+  --ifm-navbar-shadow: none;
+  --ifm-navbar-link-color: var(--site-muted-fg);
+  --ifm-navbar-link-hover-color: var(--site-fg);
+
+  --ifm-menu-color: var(--site-muted-fg);
+  --ifm-menu-color-active: var(--site-fg);
+  --ifm-menu-color-background-active: var(--site-muted);
+  --ifm-menu-color-background-hover: var(--site-muted);
+  --ifm-menu-link-padding-vertical: 0.4rem;
+
+  --ifm-footer-background-color: #ffffff;
+  --ifm-footer-link-color: var(--site-muted-fg);
+  --ifm-footer-link-hover-color: var(--site-fg);
+  --ifm-footer-title-color: var(--site-fg);
+
+  --docusaurus-highlighted-code-line-bg: var(--site-accent-soft);
+}
+
+[data-theme='dark'] {
+  --site-fg: #f2f2f2;
+  --site-muted-fg: #a3a3a3;
+  --site-muted: #1c1c1c;
+  --site-border: rgba(61, 61, 61, 0.8);
+  --site-accent: #7f9be0;
+  --site-accent-soft: rgba(127, 155, 224, 0.12);
+
+  --ifm-font-color-base: #d4d4d4;
+  --ifm-background-color: #0a0a0a;
+  --ifm-background-surface-color: #0a0a0a;
+  --ifm-color-primary: #7f9be0;
+  --ifm-color-primary-dark: #6788d9;
+  --ifm-color-primary-darker: #5b7ed6;
+  --ifm-color-primary-darkest: #3a63cb;
+  --ifm-color-primary-light: #97aee7;
+  --ifm-color-primary-lighter: #a3b8ea;
+  --ifm-color-primary-lightest: #c7d3f2;
+  --ifm-footer-background-color: #0a0a0a;
+}
+
+body {
+  background: var(--ifm-background-color);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Navbar: flat, with a hairline instead of a shadow. */
+
+.navbar {
+  border-bottom: 1px solid var(--site-border);
+  backdrop-filter: saturate(180%) blur(8px);
+  background-color: color-mix(in srgb, var(--ifm-background-color) 88%, transparent);
+}
+
+.navbar__title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--site-fg);
+}
+
+.navbar__logo {
+  height: 1.6rem;
+}
+
+.navbar__link {
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.navbar__link--active {
+  color: var(--site-fg);
+}
+
+/* Headings: Inter at tight tracking, as Blume sets its display type. */
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  letter-spacing: -0.025em;
+}
+
+.markdown h1:first-child {
+  --ifm-h1-font-size: 2.6rem;
+  letter-spacing: -0.04em;
+  margin-bottom: 1rem;
+}
+
+.markdown h2 {
+  --ifm-h2-font-size: 1.65rem;
+  margin-top: 2.75rem;
+}
+
+.markdown {
+  --ifm-line-height-base: 1.7;
+  font-size: 0.97rem;
+}
+
+.markdown > p:first-of-type {
+  font-size: 1.1rem;
+  color: var(--site-muted-fg);
+}
+
+/* Sidebar: gray pill for the active page, gray text elsewhere. */
+
+.theme-doc-sidebar-container {
+  border-right: 0 !important;
+}
+
+.menu {
+  padding: 1.25rem 0.75rem !important;
+}
+
+.menu__link {
+  font-size: 0.92rem;
+  border-radius: var(--site-radius);
+}
+
+.menu__link--active:not(.menu__link--sublist) {
+  font-weight: 500;
+}
+
+/* Table of contents. */
+
+.table-of-contents {
+  font-size: 0.85rem;
+}
+
+.table-of-contents__link {
+  color: var(--site-muted-fg);
+}
+
+.table-of-contents__link--active,
+.table-of-contents__link:hover {
+  color: var(--site-fg);
+}
+
+/* Code blocks, inline code, tables, and admonitions on hairline borders. */
+
+.theme-code-block {
+  border: 1px solid var(--site-border);
+  border-radius: var(--site-radius-lg) !important;
+  box-shadow: none !important;
+}
+
+.markdown code:not(pre code) {
+  border: 0;
+  padding: 0.1em 0.35em;
+}
+
+.markdown table {
+  display: table;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.markdown table thead tr {
+  border-bottom: 1px solid var(--site-border);
+}
+
+.markdown table tr:nth-child(2n) {
+  background: transparent;
+}
+
+.markdown th,
+.markdown td {
+  border-width: 0 0 1px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown th {
+  background: var(--site-muted);
+  font-weight: 600;
+}
+
+.theme-admonition {
+  border: 1px solid var(--site-border);
+  border-left-width: 1px;
+  border-radius: var(--site-radius-lg);
+  box-shadow: none;
+}
+
+.pagination-nav__link {
+  border: 1px solid var(--site-border);
+  border-radius: var(--site-radius-lg);
+}
+
+.pagination-nav__link:hover {
+  border-color: var(--site-accent);
+}
+
+/* Footer: light, separated by a hairline. */
+
+.footer {
+  border-top: 1px solid var(--site-border);
+  font-size: 0.9rem;
+}
+
+.footer__title {
+  font-weight: 600;
+}
+
+.footer__copyright {
+  color: var(--site-muted-fg);
+  font-size: 0.85rem;
 }
