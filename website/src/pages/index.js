@@ -19,7 +19,7 @@ const FILES = [
     lines: (site) => [
       ['h1', '# docusaurus-plugin-llms'],
       ['blank', ''],
-      ['quote', '> LLM-friendly docs for your Docusaurus site'],
+      ['quote', '> llms.txt and Markdown copies of your Docusaurus docs'],
       ['blank', ''],
       ['h2', '## Table of Contents'],
       ['blank', ''],
@@ -47,7 +47,7 @@ const FILES = [
     lines: () => [
       ['h1', '# docusaurus-plugin-llms'],
       ['blank', ''],
-      ['quote', '> LLM-friendly docs for your Docusaurus site'],
+      ['quote', '> llms.txt and Markdown copies of your Docusaurus docs'],
       ['blank', ''],
       ['h2', '## Overview'],
       ['blank', ''],
@@ -279,7 +279,7 @@ export default function Home() {
 
         <section className={styles.guides} aria-labelledby="guides-heading">
           <h2 id="guides-heading" className={styles.sectionTitle}>
-            When the defaults aren't enough
+            Configure the output
           </h2>
           <ol className={styles.guideList}>
             {GUIDES.map((g) => (

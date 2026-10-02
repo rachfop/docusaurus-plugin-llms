@@ -1,6 +1,6 @@
 # 📜 docusaurus-plugin-llms
 
-A Docusaurus plugin for generating LLM-friendly documentation following the [llmstxt standard](https://llmstxt.org/).
+A Docusaurus plugin that writes `llms.txt`, `llms-full.txt`, and Markdown copies of your docs, following the [llmstxt standard](https://llmstxt.org/).
 
 [![npm version](https://img.shields.io/npm/v/docusaurus-plugin-llms.svg)](https://www.npmjs.com/package/docusaurus-plugin-llms)
 [![npm downloads](https://img.shields.io/npm/dm/docusaurus-plugin-llms.svg)](https://www.npmjs.com/package/docusaurus-plugin-llms)
@@ -54,7 +54,7 @@ The docs are published at [rachfop.github.io/docusaurus-plugin-llms](https://rac
 - [Content cleaning](https://rachfop.github.io/docusaurus-plugin-llms/docs/content-cleaning): strip HTML, remove imports, drop duplicate headings, and rewrite image URLs.
 - [Ordering and path transformation](https://rachfop.github.io/docusaurus-plugin-llms/docs/ordering-and-paths): control document order, transform URLs, and tune batch processing.
 - [Multi-version output](https://rachfop.github.io/docusaurus-plugin-llms/docs/multi-version): publish a separate set of LLM files per documentation version.
-- [Best practices](https://rachfop.github.io/docusaurus-plugin-llms/docs/best-practices): recommended option combinations for common documentation shapes.
+- [Best practices](https://rachfop.github.io/docusaurus-plugin-llms/docs/best-practices): option settings for API reference, tutorials, and multi-language docs.
 
 ## License
 

@@ -4,7 +4,7 @@ description: Combine several docs sections in one llms.txt, add custom root cont
 
 # Generating content
 
-These options shape what goes into the generated files: multiple documentation sections, custom root content, extra custom LLM files, and Docusaurus partials. To install the plugin first, see [installation](./installation.md).
+These options control what the generated files contain: multiple documentation sections, custom root content, extra custom LLM files, and Docusaurus partials. To install the plugin first, see [installation](./installation.md).
 
 ## Configure multiple documentation sections
 
@@ -62,7 +62,7 @@ Because these values are plain JavaScript strings, you can compute them at build
 
 ```js
 {
-  fullRootContent: `Complete offline documentation bundle for MyProject v2.0.
+  fullRootContent: `MyProject v2.0 documentation, all pages in one file.
 
 **Format**: Markdown with code examples
 **Last Generated**: ${new Date().toISOString()}
@@ -87,22 +87,22 @@ To split documentation by programming language, define one file per language:
       includePatterns: ['api/python/**/*.md', 'guides/python/*.md'],
       fullContent: true,
       title: 'Python API Documentation',
-      description: 'Complete reference for Python API',
+      description: 'Python API reference and Python guides',
     },
     {
       filename: 'llms-tutorials.txt',
       includePatterns: ['tutorials/**/*.md'],
       fullContent: false,
       title: 'Tutorial Documentation',
-      description: 'All tutorials in a single file',
+      description: 'Links to every tutorial',
     },
   ],
 }
 ```
 
-The `includePatterns`, `orderPatterns`, and `ignorePatterns` globs match against both the site-relative path (for example `docs/quickstart/file.md`) and the docs-relative path (for example `quickstart/file.md`), so docs-relative patterns are usually the more portable choice.
+The `includePatterns`, `orderPatterns`, and `ignorePatterns` globs match against both the site-relative path (for example `docs/quickstart/file.md`) and the docs-relative path (for example `quickstart/file.md`). Docs-relative patterns keep working if `docsDir` changes.
 
-To build a curated file with explicit ordering and exclusions, combine `ignorePatterns` and `orderPatterns`:
+To set the page order of a custom file and exclude some pages, combine `ignorePatterns` and `orderPatterns`:
 
 ```js
 {
@@ -118,7 +118,7 @@ To build a curated file with explicit ordering and exclusions, combine `ignorePa
       ],
       fullContent: true,
       title: 'Getting Started Guide',
-      description: 'Beginner-friendly documentation with essential concepts',
+      description: 'Introduction, setup, and basic tutorials',
     },
   ],
 }
@@ -134,7 +134,7 @@ You can also give a custom file its own introductory text with `rootContent`:
       includePatterns: ['api/**/*.md'],
       fullContent: true,
       title: 'API Documentation',
-      rootContent: `Complete API reference for all REST endpoints.
+      rootContent: `Reference for the REST API endpoints.
 
 Authentication required for all endpoints except /health.
 Base URL: https://api.example.com/v2`,
@@ -148,7 +148,7 @@ Set a per-file `version` to override the global `version` label. When present, t
 ```
 # API Reference Documentation
 
-> Complete API reference for developers
+> Endpoints, parameters, and response formats
 
 Version: 1.0.0
 
