@@ -75,20 +75,134 @@ function validateCustomFileCollisions(
 }
 
 /**
+ * Validate an `includeOrder` value (top-level or per-version).
+ * @param includeOrder - The value to check
+ * @param label - Option name used in error messages
+ */
+function validateIncludeOrder(includeOrder: unknown, label: string): void {
+  if (includeOrder === undefined) return;
+  if (!Array.isArray(includeOrder)) {
+    throw new Error(`${label} must be an array`);
+  }
+  if (!includeOrder.every((item) => typeof item === 'string')) {
+    throw new Error(`${label} must contain only strings`);
+  }
+}
+
+/**
+ * Validate a `docsDir` value (top-level or per-version): a string or an
+ * array of section objects.
+ * @param docsDir - The value to check
+ * @param label - Option name used in error messages
+ */
+function validateDocsDir(docsDir: unknown, label: string): void {
+  if (docsDir === undefined) return;
+  if (typeof docsDir !== 'string' && !Array.isArray(docsDir)) {
+    throw new Error(`${label} must be a string or an array of section objects`);
+  }
+  if (Array.isArray(docsDir)) {
+    (docsDir as DocsSection[]).forEach((section, index) => {
+      if (typeof section !== 'object' || section === null) {
+        throw new Error(`${label}[${index}] must be an object`);
+      }
+      if (typeof section.path !== 'string' || section.path.trim() === '') {
+        throw new Error(`${label}[${index}].path must be a non-empty string`);
+      }
+      if (typeof section.routeBasePath !== 'string' || section.routeBasePath.trim() === '') {
+        throw new Error(`${label}[${index}].routeBasePath must be a non-empty string`);
+      }
+      if (
+        section.label !== undefined &&
+        (typeof section.label !== 'string' || section.label.trim() === '')
+      ) {
+        throw new Error(`${label}[${index}].label must be a non-empty string`);
+      }
+    });
+  }
+}
+
+/**
+ * Validate a `customLLMFiles` value (top-level or per-version).
+ * @param customLLMFiles - The value to check
+ * @param label - Option name used in error messages
+ */
+function validateCustomLLMFiles(customLLMFiles: unknown, label: string): void {
+  if (customLLMFiles === undefined) return;
+  if (!Array.isArray(customLLMFiles)) {
+    throw new Error(`${label} must be an array`);
+  }
+
+  (customLLMFiles as CustomLLMFile[]).forEach((file, index) => {
+    const at = `${label}[${index}]`;
+    if (!isDefined(file) || typeof file !== 'object') {
+      throw new Error(`${at} must be an object`);
+    }
+
+    // Required fields
+    if (!isNonEmptyString(file.filename)) {
+      throw new Error(`${at}.filename must be a non-empty string`);
+    }
+    validateOutputPath(file.filename, `${at}.filename`);
+
+    if (!isNonEmptyArray(file.includePatterns)) {
+      throw new Error(`${at}.includePatterns must be a non-empty array`);
+    }
+    if (!file.includePatterns.every((item) => typeof item === 'string')) {
+      throw new Error(`${at}.includePatterns must contain only strings`);
+    }
+
+    if (typeof file.fullContent !== 'boolean') {
+      throw new Error(`${at}.fullContent must be a boolean`);
+    }
+
+    // Optional fields
+    if (isDefined(file.title) && !isNonEmptyString(file.title)) {
+      throw new Error(`${at}.title must be a non-empty string`);
+    }
+
+    if (isDefined(file.description) && !isNonEmptyString(file.description)) {
+      throw new Error(`${at}.description must be a non-empty string`);
+    }
+
+    if (file.ignorePatterns !== undefined) {
+      if (!Array.isArray(file.ignorePatterns)) {
+        throw new Error(`${at}.ignorePatterns must be an array`);
+      }
+      if (!file.ignorePatterns.every((item) => typeof item === 'string')) {
+        throw new Error(`${at}.ignorePatterns must contain only strings`);
+      }
+    }
+
+    if (file.orderPatterns !== undefined) {
+      if (!Array.isArray(file.orderPatterns)) {
+        throw new Error(`${at}.orderPatterns must be an array`);
+      }
+      if (!file.orderPatterns.every((item) => typeof item === 'string')) {
+        throw new Error(`${at}.orderPatterns must contain only strings`);
+      }
+    }
+
+    if (file.includeUnmatchedLast !== undefined && typeof file.includeUnmatchedLast !== 'boolean') {
+      throw new Error(`${at}.includeUnmatchedLast must be a boolean`);
+    }
+
+    if (isDefined(file.version) && !isNonEmptyString(file.version)) {
+      throw new Error(`${at}.version must be a non-empty string`);
+    }
+
+    if (isDefined(file.rootContent) && !isNonEmptyString(file.rootContent)) {
+      throw new Error(`${at}.rootContent must be a non-empty string`);
+    }
+  });
+}
+
+/**
  * Validates plugin options to ensure they conform to expected types and constraints
  * @param options - Plugin options to validate
  * @throws Error if any option is invalid
  */
 function validatePluginOptions(options: PluginOptions): void {
-  // Validate includeOrder
-  if (options.includeOrder !== undefined) {
-    if (!Array.isArray(options.includeOrder)) {
-      throw new Error('includeOrder must be an array');
-    }
-    if (!options.includeOrder.every((item) => typeof item === 'string')) {
-      throw new Error('includeOrder must contain only strings');
-    }
-  }
+  validateIncludeOrder(options.includeOrder, 'includeOrder');
 
   // Validate ignoreFiles
   if (options.ignoreFiles !== undefined) {
@@ -149,31 +263,7 @@ function validatePluginOptions(options: PluginOptions): void {
     }
   }
 
-  // Validate docsDir (string or array of section objects)
-  if (options.docsDir !== undefined) {
-    if (typeof options.docsDir !== 'string' && !Array.isArray(options.docsDir)) {
-      throw new Error('docsDir must be a string or an array of section objects');
-    }
-    if (Array.isArray(options.docsDir)) {
-      (options.docsDir as DocsSection[]).forEach((section, index) => {
-        if (typeof section !== 'object' || section === null) {
-          throw new Error(`docsDir[${index}] must be an object`);
-        }
-        if (typeof section.path !== 'string' || section.path.trim() === '') {
-          throw new Error(`docsDir[${index}].path must be a non-empty string`);
-        }
-        if (typeof section.routeBasePath !== 'string' || section.routeBasePath.trim() === '') {
-          throw new Error(`docsDir[${index}].routeBasePath must be a non-empty string`);
-        }
-        if (
-          section.label !== undefined &&
-          (typeof section.label !== 'string' || section.label.trim() === '')
-        ) {
-          throw new Error(`docsDir[${index}].label must be a non-empty string`);
-        }
-      });
-    }
-  }
+  validateDocsDir(options.docsDir, 'docsDir');
 
   // Validate string options
   const stringOptions = [
@@ -237,77 +327,7 @@ function validatePluginOptions(options: PluginOptions): void {
     }
   }
 
-  // Validate customLLMFiles
-  if (options.customLLMFiles !== undefined) {
-    if (!Array.isArray(options.customLLMFiles)) {
-      throw new Error('customLLMFiles must be an array');
-    }
-
-    options.customLLMFiles.forEach((file, index) => {
-      if (!isDefined(file) || typeof file !== 'object') {
-        throw new Error(`customLLMFiles[${index}] must be an object`);
-      }
-
-      // Required fields
-      if (!isNonEmptyString(file.filename)) {
-        throw new Error(`customLLMFiles[${index}].filename must be a non-empty string`);
-      }
-      validateOutputPath(file.filename, `customLLMFiles[${index}].filename`);
-
-      if (!isNonEmptyArray(file.includePatterns)) {
-        throw new Error(`customLLMFiles[${index}].includePatterns must be a non-empty array`);
-      }
-      if (!file.includePatterns.every((item) => typeof item === 'string')) {
-        throw new Error(`customLLMFiles[${index}].includePatterns must contain only strings`);
-      }
-
-      if (typeof file.fullContent !== 'boolean') {
-        throw new Error(`customLLMFiles[${index}].fullContent must be a boolean`);
-      }
-
-      // Optional fields
-      if (isDefined(file.title) && !isNonEmptyString(file.title)) {
-        throw new Error(`customLLMFiles[${index}].title must be a non-empty string`);
-      }
-
-      if (isDefined(file.description) && !isNonEmptyString(file.description)) {
-        throw new Error(`customLLMFiles[${index}].description must be a non-empty string`);
-      }
-
-      if (file.ignorePatterns !== undefined) {
-        if (!Array.isArray(file.ignorePatterns)) {
-          throw new Error(`customLLMFiles[${index}].ignorePatterns must be an array`);
-        }
-        if (!file.ignorePatterns.every((item) => typeof item === 'string')) {
-          throw new Error(`customLLMFiles[${index}].ignorePatterns must contain only strings`);
-        }
-      }
-
-      if (file.orderPatterns !== undefined) {
-        if (!Array.isArray(file.orderPatterns)) {
-          throw new Error(`customLLMFiles[${index}].orderPatterns must be an array`);
-        }
-        if (!file.orderPatterns.every((item) => typeof item === 'string')) {
-          throw new Error(`customLLMFiles[${index}].orderPatterns must contain only strings`);
-        }
-      }
-
-      if (
-        file.includeUnmatchedLast !== undefined &&
-        typeof file.includeUnmatchedLast !== 'boolean'
-      ) {
-        throw new Error(`customLLMFiles[${index}].includeUnmatchedLast must be a boolean`);
-      }
-
-      if (isDefined(file.version) && !isNonEmptyString(file.version)) {
-        throw new Error(`customLLMFiles[${index}].version must be a non-empty string`);
-      }
-
-      if (isDefined(file.rootContent) && !isNonEmptyString(file.rootContent)) {
-        throw new Error(`customLLMFiles[${index}].rootContent must be a non-empty string`);
-      }
-    });
-  }
+  validateCustomLLMFiles(options.customLLMFiles, 'customLLMFiles');
 
   // Validate versions
   if (options.versions !== undefined) {
@@ -353,29 +373,22 @@ function validatePluginOptions(options: PluginOptions): void {
           isDefined(version.path) ? `versions[${index}].path` : `versions[${index}].name`,
         );
 
-        if (
-          isDefined(version.docsDir) &&
-          typeof version.docsDir !== 'string' &&
-          !Array.isArray(version.docsDir)
-        ) {
-          throw new Error(
-            `versions[${index}].docsDir must be a string or an array of section objects`,
-          );
+        if (isDefined(version.routePrefix) && typeof version.routePrefix !== 'string') {
+          throw new Error(`versions[${index}].routePrefix must be a string`);
         }
-        if (isDefined(version.customLLMFiles) && !Array.isArray(version.customLLMFiles)) {
-          throw new Error(`versions[${index}].customLLMFiles must be an array`);
-        }
-        (version.customLLMFiles ?? []).forEach((file, fileIndex) => {
-          if (isNonEmptyString(file?.filename)) {
-            validateOutputPath(
-              file.filename,
-              `versions[${index}].customLLMFiles[${fileIndex}].filename`,
-            );
-          }
-        });
-        if (isDefined(version.includeOrder) && !Array.isArray(version.includeOrder)) {
-          throw new Error(`versions[${index}].includeOrder must be an array`);
-        }
+        // The same checks as the top-level options these fields override.
+        validateDocsDir(
+          isDefined(version.docsDir) ? version.docsDir : undefined,
+          `versions[${index}].docsDir`,
+        );
+        validateCustomLLMFiles(
+          isDefined(version.customLLMFiles) ? version.customLLMFiles : undefined,
+          `versions[${index}].customLLMFiles`,
+        );
+        validateIncludeOrder(
+          isDefined(version.includeOrder) ? version.includeOrder : undefined,
+          `versions[${index}].includeOrder`,
+        );
       });
     }
   }
@@ -420,13 +433,22 @@ function normalizeVersionPath(rawPath: string): string {
   return rawPath.replace(/^\/+|\/+$/g, '');
 }
 
+/** Normalize a site-relative directory ('./docs/', 'docs\\x') for comparison. */
+function normalizeSiteDir(dir: string): string {
+  return path.posix.normalize(dir.replace(/\\/g, '/')).replace(/^(\.\/)+|\/+$/g, '');
+}
+
 /** A version whose defaults have been resolved against the top-level options. */
 interface ResolvedVersion {
   name: string;
   label?: string;
   docsSections: DocsSection[];
-  /** Bare output subdirectory / route prefix ('' for the site root). */
+  /** Bare output subdirectory ('' for the site root). */
   pathPrefix: string;
+  /** Bare route prefix the version's links fall under ('' for none). */
+  routePrefix: string;
+  /** Whether the sections' routeBasePaths come from the Docusaurus docs config. */
+  strictRouteScope: boolean;
   customLLMFiles?: CustomLLMFile[];
   includeOrder?: string[];
 }
@@ -465,6 +487,8 @@ function resolveVersions(
         label: isNonEmptyString(options.version) ? options.version : undefined,
         docsSections: defaultDocsSections,
         pathPrefix: '',
+        routePrefix: '',
+        strictRouteScope: false,
         customLLMFiles: options.customLLMFiles,
         includeOrder: options.includeOrder,
       },
@@ -474,96 +498,224 @@ function resolveVersions(
   const configs: VersionConfig[] =
     versions === 'auto' ? detectVersions(siteDir, siteConfig, defaultDocsDir) : versions;
 
-  return configs.map((version) => ({
-    name: version.name,
-    label: isNonEmptyString(version.label) ? version.label : version.name,
-    docsSections: toDocsSections(version.docsDir, defaultDocsSections),
-    pathPrefix: normalizeVersionPath(
+  return configs.map((version) => {
+    const pathPrefix = normalizeVersionPath(
       isDefined(version.path) ? (version.path as string) : version.name,
-    ),
-    customLLMFiles: version.customLLMFiles ?? options.customLLMFiles,
-    includeOrder: version.includeOrder ?? options.includeOrder,
-  }));
+    );
+    return {
+      name: version.name,
+      label: isNonEmptyString(version.label) ? version.label : version.name,
+      docsSections: toDocsSections(version.docsDir, defaultDocsSections),
+      pathPrefix,
+      routePrefix: isDefined(version.routePrefix)
+        ? normalizeVersionPath(version.routePrefix as string)
+        : pathPrefix,
+      strictRouteScope: versions === 'auto',
+      customLLMFiles: version.customLLMFiles ?? options.customLLMFiles,
+      includeOrder: version.includeOrder ?? options.includeOrder,
+    };
+  });
 }
 
 /**
- * Read per-version label/path metadata from the Docusaurus docs config. The docs
- * plugin may be configured via a preset or listed directly in `plugins`; both are
- * scanned. Returns an empty map when nothing is found (best effort).
+ * Route roots a version owns, relative to the baseUrl: its route prefix, or
+ * with no prefix, its sections' routeBasePaths.
  */
-function readDocsVersionMeta(
-  siteConfig: unknown,
-): Record<string, { label?: string; path?: string }> {
-  const meta: Record<string, { label?: string; path?: string }> = {};
-  const collect = (versions: unknown): void => {
-    if (!versions || typeof versions !== 'object') return;
-    for (const [id, cfg] of Object.entries(versions as Record<string, unknown>)) {
-      const c = (cfg ?? {}) as { label?: unknown; path?: unknown };
-      meta[id] = {
-        label: typeof c.label === 'string' ? c.label : undefined,
-        path: typeof c.path === 'string' ? c.path : undefined,
-      };
-    }
-  };
+function getVersionRouteRoots(version: ResolvedVersion): string[] {
+  if (version.routePrefix) return [`/${version.routePrefix}`];
+  return version.docsSections
+    .map((section) => `/${normalizeVersionPath(section.routeBasePath)}`)
+    .filter((root) => root !== '/');
+}
 
-  const cfg = siteConfig as { presets?: unknown[]; plugins?: unknown[] };
-  const scanEntry = (entry: unknown): void => {
-    if (!Array.isArray(entry)) return;
-    const opts = entry[1] as { docs?: { versions?: unknown }; versions?: unknown } | undefined;
-    // Presets nest docs options under `docs`; a standalone content-docs plugin
-    // holds `versions` at the top level of its options object.
-    collect(opts?.docs?.versions);
-    collect(opts?.versions);
-  };
-  (cfg?.presets ?? []).forEach(scanEntry);
-  (cfg?.plugins ?? []).forEach(scanEntry);
-  return meta;
+/** The options of one `@docusaurus/plugin-content-docs` instance used here. */
+interface DocsPluginConfig {
+  id: string;
+  path: string;
+  routeBasePath: string;
+  versions: Record<string, { label?: string; path?: string }>;
+  lastVersion?: string;
+  includeCurrentVersion: boolean;
+  onlyIncludeVersions?: string[];
+  disableVersioning: boolean;
 }
 
 /**
- * Detect versions from Docusaurus docs versioning: the current (unversioned)
- * docs plus every entry in `versions.json` (sourced from
- * `versioned_docs/version-<id>`). Labels and route paths come from the docs
- * config when available, otherwise sensible defaults.
+ * Read the docs plugin instances from the site config, with Docusaurus's
+ * defaults for unset options. The docs plugin may be configured through a
+ * preset (`docs` options; the classic preset enables it unless `docs: false`)
+ * or listed directly in `plugins`. With none found, returns the default
+ * instance (`docs/` served at `/docs/`).
+ */
+function readDocsPluginConfigs(siteConfig: unknown): DocsPluginConfig[] {
+  const configs: DocsPluginConfig[] = [];
+  const add = (raw: unknown): void => {
+    const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+    const versions: DocsPluginConfig['versions'] = {};
+    if (o.versions && typeof o.versions === 'object') {
+      for (const [id, cfg] of Object.entries(o.versions as Record<string, unknown>)) {
+        const c = (cfg ?? {}) as { label?: unknown; path?: unknown };
+        versions[id] = {
+          label: typeof c.label === 'string' ? c.label : undefined,
+          path: typeof c.path === 'string' ? c.path : undefined,
+        };
+      }
+    }
+    configs.push({
+      id: isNonEmptyString(o.id) ? o.id : 'default',
+      path: isNonEmptyString(o.path) ? o.path : 'docs',
+      routeBasePath: typeof o.routeBasePath === 'string' ? o.routeBasePath : 'docs',
+      versions,
+      lastVersion: isNonEmptyString(o.lastVersion) ? o.lastVersion : undefined,
+      includeCurrentVersion: o.includeCurrentVersion !== false,
+      onlyIncludeVersions: Array.isArray(o.onlyIncludeVersions)
+        ? o.onlyIncludeVersions.filter((id): id is string => typeof id === 'string')
+        : undefined,
+      disableVersioning: o.disableVersioning === true,
+    });
+  };
+
+  // A preset or plugin entry is a name, or a [name, options] tuple.
+  const split = (entry: unknown): [unknown, unknown] =>
+    Array.isArray(entry) ? [entry[0], entry[1]] : [entry, undefined];
+  const cfg = siteConfig as { presets?: unknown[]; plugins?: unknown[] } | undefined;
+  for (const entry of cfg?.presets ?? []) {
+    const [name, opts] = split(entry);
+    const docs = (opts as { docs?: unknown } | undefined)?.docs;
+    if (docs && typeof docs === 'object') add(docs);
+    else if (docs === undefined && typeof name === 'string' && name.includes('classic')) add({});
+  }
+  for (const entry of cfg?.plugins ?? []) {
+    const [name, opts] = split(entry);
+    if (typeof name === 'string' && name.includes('plugin-content-docs')) add(opts);
+  }
+  if (configs.length === 0) add({});
+  return configs;
+}
+
+/**
+ * Detect versions from Docusaurus docs versioning the way the default docs
+ * plugin instance builds them (plugin-content-docs `readVersionsMetadata`):
+ * - the version list is `versions.json` with `current` first unless
+ *   `includeCurrentVersion: false`, filtered by `onlyIncludeVersions`
+ * - the last version is `lastVersion`, else the newest entry of
+ *   `versions.json`, else `current`
+ * - a version is served at `/<routeBasePath>/<versionPath>/`, where the
+ *   version path is its configured `path`, else '' for the last version,
+ *   'next' for `current`, and the version name otherwise
+ * Each version writes its files under `<outDir>/<versionPath>/`, so the version
+ * served at the unprefixed route owns the root files.
  */
 function detectVersions(
   siteDir: string,
   siteConfig: unknown,
   defaultDocsDir: string | DocsSection[] | undefined,
 ): VersionConfig[] {
+  const docsConfig =
+    readDocsPluginConfigs(siteConfig).find((c) => c.id === 'default') ??
+    readDocsPluginConfigs(undefined)[0];
+
   let versionedIds: string[] = [];
-  try {
-    const raw = fs.readFileSync(path.join(siteDir, 'versions.json'), 'utf8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      versionedIds = parsed.filter((id): id is string => typeof id === 'string');
+  if (!docsConfig.disableVersioning) {
+    try {
+      const raw = fs.readFileSync(path.join(siteDir, 'versions.json'), 'utf8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        versionedIds = parsed.filter((id): id is string => typeof id === 'string');
+      }
+    } catch {
+      // No versions.json — only the current (unversioned) docs exist.
     }
-  } catch {
-    // No versions.json — only the current (unversioned) docs exist.
   }
 
-  const versionMeta = readDocsVersionMeta(siteConfig);
-  const configs: VersionConfig[] = [];
+  let names = [...versionedIds];
+  if (docsConfig.includeCurrentVersion && !names.includes('current')) {
+    names.unshift('current');
+  }
+  const { onlyIncludeVersions } = docsConfig;
+  if (onlyIncludeVersions) {
+    names = names.filter((name) => onlyIncludeVersions.includes(name));
+  }
+  const lastVersionName =
+    docsConfig.lastVersion ?? names.find((name) => name !== 'current') ?? 'current';
+  const routeBase = normalizeVersionPath(docsConfig.routeBasePath);
 
-  const currentMeta = versionMeta['current'] ?? {};
-  configs.push({
-    name: 'current',
-    label: currentMeta.label,
-    docsDir: defaultDocsDir ?? 'docs',
-    path: normalizeVersionPath(currentMeta.path ?? ''),
+  return names.map((name) => {
+    const meta = docsConfig.versions[name] ?? {};
+    const defaultPath = name === lastVersionName ? '' : name === 'current' ? 'next' : name;
+    const versionPath = normalizeVersionPath(meta.path ?? defaultPath);
+    const withVersion = (base: string): string =>
+      [normalizeVersionPath(base), versionPath].filter(Boolean).join('/') || '/';
+
+    let docsDir: DocsSection[];
+    if (name !== 'current') {
+      docsDir = [{ path: `versioned_docs/version-${name}`, routeBasePath: withVersion(routeBase) }];
+    } else if (Array.isArray(defaultDocsDir) && defaultDocsDir.length > 0) {
+      // Only the section holding the docs plugin's own directory is versioned.
+      docsDir = defaultDocsDir.map((section) =>
+        normalizeSiteDir(section.path) === normalizeSiteDir(docsConfig.path)
+          ? { ...section, routeBasePath: withVersion(section.routeBasePath) }
+          : section,
+      );
+    } else {
+      docsDir = [
+        {
+          path: typeof defaultDocsDir === 'string' ? defaultDocsDir : docsConfig.path,
+          routeBasePath: withVersion(routeBase),
+        },
+      ];
+    }
+
+    return { name, label: meta.label, docsDir, path: versionPath, routePrefix: '' };
   });
+}
 
-  for (const id of versionedIds) {
-    const idMeta = versionMeta[id] ?? {};
-    configs.push({
-      name: id,
-      label: idMeta.label,
-      docsDir: `versioned_docs/version-${id}`,
-      path: normalizeVersionPath(idMeta.path ?? id),
+/**
+ * Localized content directories for a non-default locale, following
+ * Docusaurus's i18n layout: docs from
+ * `<localizationDir>/docusaurus-plugin-content-docs[-<pluginId>]/<current|version-<name>>/`
+ * (plugin-content-docs `getDocsDirPathLocalized`) and blog posts from
+ * `<localizationDir>/docusaurus-plugin-content-blog/`. A section maps to a docs
+ * plugin instance by its directory: `[<pluginId>_]versioned_docs/version-<name>`
+ * or an instance's `path`.
+ */
+function getLocalizedDirs(
+  siteDir: string,
+  localizationDir: string,
+  docsConfigs: DocsPluginConfig[],
+  sections: DocsSection[],
+  blogDir: string | undefined,
+): Array<{ sourceDir: string; localizedDir: string }> {
+  const dirs: Array<{ sourceDir: string; localizedDir: string }> = [];
+  const docsPluginDir = (id: string): string =>
+    `docusaurus-plugin-content-docs${id === 'default' ? '' : `-${id}`}`;
+
+  for (const section of sections) {
+    const sectionDir = normalizeSiteDir(section.path);
+    const versioned = /^(?:(.+)_)?versioned_docs\/version-(.+)$/.exec(sectionDir);
+    let localizedDir: string | undefined;
+    if (versioned) {
+      localizedDir = path.join(
+        localizationDir,
+        docsPluginDir(versioned[1] ?? 'default'),
+        `version-${versioned[2]}`,
+      );
+    } else {
+      const docsConfig = docsConfigs.find((c) => normalizeSiteDir(c.path) === sectionDir);
+      if (docsConfig) {
+        localizedDir = path.join(localizationDir, docsPluginDir(docsConfig.id), 'current');
+      }
+    }
+    if (localizedDir) dirs.push({ sourceDir: path.join(siteDir, section.path), localizedDir });
+  }
+
+  if (blogDir !== undefined) {
+    dirs.push({
+      sourceDir: path.join(siteDir, blogDir),
+      localizedDir: path.join(localizationDir, 'docusaurus-plugin-content-blog'),
     });
   }
-
-  return configs;
+  return dirs;
 }
 
 /**
@@ -639,6 +791,22 @@ export default function docusaurusPluginLLMs(
   setLogLevel(instanceLogLevel);
 
   const { siteDir, siteConfig, outDir } = context;
+
+  // The locale being built reads translated docs and blog posts from its
+  // localization directory, as Docusaurus does for every locale (the default
+  // one included) unless the locale sets `translate: false`. Files without a
+  // translation fall back to the source file.
+  const { i18n, localizationDir } = context as Partial<
+    Pick<LoadContext, 'i18n' | 'localizationDir'>
+  >;
+  const currentLocale = i18n?.currentLocale;
+  const localeConfig = (
+    i18n?.localeConfigs as Record<string, { translate?: boolean }> | undefined
+  )?.[currentLocale ?? ''];
+  const translatedLocaleDir =
+    isNonEmptyString(currentLocale) && localeConfig?.translate !== false
+      ? (localizationDir ?? path.join(siteDir, 'i18n', currentLocale))
+      : undefined;
 
   // Normalize baseUrl: remove trailing slash unless it's root '/'
   let normalizedBaseUrl = siteConfig.baseUrl || '/';
@@ -734,15 +902,25 @@ export default function docusaurusPluginLLMs(
             docsSections,
             docsDir,
           );
-          // Non-root versions each own a route-path prefix; the root version
-          // excludes these so its links don't leak into a versioned subtree.
-          const otherPrefixes = resolvedVersions
-            .map((v) => v.pathPrefix)
-            .filter((prefix) => prefix !== '');
           const isMultiVersion = options.versions !== undefined;
+          // In versions mode the blog belongs to the version written at the
+          // build root (or the first version when none is).
+          const blogVersion =
+            resolvedVersions.find((v) => v.pathPrefix === '') ?? resolvedVersions[0];
+          const docsConfigs = translatedLocaleDir ? readDocsPluginConfigs(siteConfig) : [];
 
           for (const version of resolvedVersions) {
-            const routePrefix = version.pathPrefix ? `/${version.pathPrefix}` : '';
+            // Each version owns route roots; other versions skip routes under
+            // them so links don't leak into another version's subtree. A root
+            // that contains this version's own routes isn't excluded.
+            const ownRoots = getVersionRouteRoots(version);
+            const siblingPrefixes = resolvedVersions
+              .filter((other) => other !== version)
+              .flatMap(getVersionRouteRoots)
+              .filter(
+                (root) => !ownRoots.some((own) => own === root || own.startsWith(`${root}/`)),
+              );
+            const versionIncludeBlog = includeBlog && (!isMultiVersion || version === blogVersion);
             const versionContext: PluginContext = {
               ...pluginContext,
               routesPaths,
@@ -753,14 +931,25 @@ export default function docusaurusPluginLLMs(
               markdownPaths: { usedPaths: new Set(), docPaths: new Map() },
               // Only scope routes in multi-version mode; the single default
               // version keeps the original whole-site matching behavior.
-              routePrefix: isMultiVersion ? routePrefix : undefined,
-              siblingPrefixes: isMultiVersion
-                ? otherPrefixes
-                    .filter((prefix) => prefix !== version.pathPrefix)
-                    .map((prefix) => `/${prefix}`)
+              routePrefix: isMultiVersion
+                ? version.routePrefix
+                  ? `/${version.routePrefix}`
+                  : ''
+                : undefined,
+              siblingPrefixes: isMultiVersion ? siblingPrefixes : undefined,
+              strictRouteScope: version.strictRouteScope || undefined,
+              localizedDirs: translatedLocaleDir
+                ? getLocalizedDirs(
+                    siteDir,
+                    translatedLocaleDir,
+                    docsConfigs,
+                    version.docsSections,
+                    versionIncludeBlog ? blogDir : undefined,
+                  )
                 : undefined,
               options: {
                 ...pluginContext.options,
+                includeBlog: versionIncludeBlog,
                 version: version.label,
                 customLLMFiles: version.customLLMFiles,
                 includeOrder: version.includeOrder,
@@ -773,19 +962,28 @@ export default function docusaurusPluginLLMs(
               );
             }
 
-            const allDocFiles = await collectDocFiles(versionContext);
-            if (!isNonEmptyArray(allDocFiles)) {
-              logger.warn(`No documents found for version '${version.name}'. Skipping.`);
-              continue;
+            // A failing version is logged and skipped so the others still
+            // generate.
+            try {
+              const allDocFiles = await collectDocFiles(versionContext);
+              if (!isNonEmptyArray(allDocFiles)) {
+                logger.warn(`No documents found for version '${version.name}'. Skipping.`);
+                continue;
+              }
+
+              await generateStandardLLMFiles(versionContext, allDocFiles);
+              await generateCustomLLMFiles(versionContext, allDocFiles);
+
+              logger.info(
+                `Stats: ${allDocFiles.length} documents processed` +
+                  (isMultiVersion ? ` for version '${version.name}'` : ''),
+              );
+            } catch (err: unknown) {
+              if (!isMultiVersion) throw err;
+              logger.error(
+                `Error generating LLM documentation for version '${version.name}': ${getErrorMessage(err)}`,
+              );
             }
-
-            await generateStandardLLMFiles(versionContext, allDocFiles);
-            await generateCustomLLMFiles(versionContext, allDocFiles);
-
-            logger.info(
-              `Stats: ${allDocFiles.length} documents processed` +
-                (isMultiVersion ? ` for version '${version.name}'` : ''),
-            );
           }
         } catch (err: unknown) {
           logger.error(`Error generating LLM documentation: ${getErrorMessage(err)}`);

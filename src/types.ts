@@ -105,6 +105,13 @@ export interface VersionConfig {
    * resolve to routes under `/<path>/`. Defaults to `name`.
    */
   path?: string;
+  /**
+   * Route prefix this version's links must fall under, relative to the site's
+   * baseUrl. Defaults to `path`. Set it to '' when the version's route segment
+   * sits inside its sections' `routeBasePath` (Docusaurus serves a version at
+   * `/<routeBasePath>/<versionPath>/`, e.g. `routeBasePath: 'docs/1.0'`).
+   */
+  routePrefix?: string;
   /** Per-version custom LLM files (defaults to the top-level `customLLMFiles`). */
   customLLMFiles?: CustomLLMFile[];
   /** Per-version include order (defaults to the top-level `includeOrder`). */
@@ -264,6 +271,17 @@ export interface PluginContext {
    * URLs, routes under these prefixes are excluded so links stay at the root.
    */
   siblingPrefixes?: string[];
+  /**
+   * Match each doc only against routes under its own section's routeBasePath
+   * (set when the routeBasePath comes from the Docusaurus docs config).
+   */
+  strictRouteScope?: boolean;
+  /**
+   * Localized content directories for the current locale: a source file under
+   * `sourceDir` is read from the same relative path under `localizedDir` when
+   * that file exists (Docusaurus i18n). Absolute paths.
+   */
+  localizedDirs?: Array<{ sourceDir: string; localizedDir: string }>;
   /** Markdown paths already assigned in this version's output directory. */
   markdownPaths?: MarkdownPathRegistry;
 }
