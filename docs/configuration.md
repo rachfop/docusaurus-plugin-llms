@@ -1,6 +1,10 @@
+---
+description: Reference for every docusaurus-plugin-llms option, with types, defaults, and the fields of each nested object.
+---
+
 # Configuration options
 
-This page is the full reference for every option `docusaurus-plugin-llms` accepts. If you're setting the plugin up for the first time, start with [installation](./installation.md); the plugin works with zero config, so you only need the options below when you want to change its defaults.
+This page lists every option `docusaurus-plugin-llms` accepts, with its type and default. The plugin runs with no options; set these to change its defaults. To set the plugin up for the first time, see [installation](./installation.md).
 
 You pass options as the second element of the plugin tuple in `docusaurus.config.js`:
 
@@ -45,10 +49,10 @@ These options select which files the plugin reads and in what order.
 | `ignoreFiles` | `string[]` | `[]` | Glob patterns for files to skip. |
 | `includeBlog` | `boolean` | `false` | Whether to include blog content. |
 | `blogDir` | `string` | `'blog'` | Filesystem path to the blog content directory, relative to the site root. |
-| `blogRouteBasePath` | `string` | `'blog'` | Docusaurus `routeBasePath` for the blog plugin. Set this to match `presets.blog.routeBasePath` if you've customized it (for example `'news'`). |
+| `blogRouteBasePath` | `string` | `'blog'` | Docusaurus `routeBasePath` for the blog plugin, relative to the site `baseUrl`. Set this to match `presets.blog.routeBasePath` if you've customized it (for example `'news'`). |
 | `includeOrder` | `string[]` | `[]` | Glob patterns controlling the order files are processed in. |
 | `includeUnmatchedLast` | `boolean` | `true` | Whether to append files that match no `includeOrder` pattern at the end. Set to `false` to make `includeOrder` a strict inclusion list. |
-| `processingBatchSize` | `number` | `100` | Batch size for processing large document sets, to bound memory use on big sites. |
+| `processingBatchSize` | `number` | `100` | Number of documents per batch when assembling `llms-full.txt`. Sets how often verbose mode logs progress. See [batch processing](ordering-and-paths.md#batch-processing-for-large-sites). |
 
 ## Content and metadata
 
@@ -69,7 +73,7 @@ These options strip noise from the source markdown before it's written.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `excludeImports` | `boolean` | `false` | Remove `import` statements from generated content. |
-| `removeDuplicateHeadings` | `boolean` | `false` | Remove content that just repeats the heading text immediately below it. |
+| `removeDuplicateHeadings` | `boolean` | `false` | Remove a line that repeats the heading text directly below the heading. |
 | `preserveComponents` | `string[]` | `[]` | Component names whose JSX tags pass through untouched, exempt from stripping. See [preserving component tags](content-cleaning.md#preserving-component-tags-preservecomponents). |
 
 ## URL construction
@@ -78,7 +82,7 @@ These options control the links the plugin emits.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `addMdExtension` | `boolean` | `true` | Append `.md` to link URLs in `llms.txt`, per the llmstxt.org spec. |
+| `addMdExtension` | `boolean` | `true` | Append `.md` to link URLs in `llms.txt`, per the llmstxt.org spec. Only applies when `generateMarkdownFiles` is `true`. |
 | `useRelativeUrls` | `boolean` | `false` | Emit links relative to the site origin (for example `/docs/page.md`). Useful for subpath deployments where the site `url` can't be pinned. |
 | `rewriteImageUrls` | `boolean` | `false` | Rewrite relative image references to absolute hashed build-output URLs so LLMs can resolve them. |
 | `pathTransformation` | `object` | `undefined` | Fallback path rewriting for URL construction. See [Path transformation](#path-transformation). |
@@ -110,10 +114,12 @@ Each section object has this shape:
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `path` | `string` | yes | Filesystem path to the section, relative to the site directory (for example `'docs'`, `'api'`). |
-| `routeBasePath` | `string` | yes | The Docusaurus `routeBasePath` the section is served under (for example `'docs'`, `'api'`). |
-| `label` | `string` | no | Optional heading shown for the section in `llms.txt`. |
+| `routeBasePath` | `string` | yes | The Docusaurus `routeBasePath` the section is served under (for example `'docs'`, `'api'`), relative to the site `baseUrl`. |
+| `label` | `string` | no | Heading for the section in links files such as `llms.txt`. Defaults to the section's `path`. |
 
-When `docsDir` is a string, it's treated as a single section whose `routeBasePath` matches the directory name.
+Section headings appear when `docsDir` lists two or more sections. `llms-full.txt` has no section headings.
+
+When `docsDir` is a string, the plugin treats it as a single section and matches its files against all of the site's routes.
 
 ## Custom LLM files
 
@@ -128,7 +134,7 @@ Each entry in `customLLMFiles` is a `CustomLLMFile` object with these fields:
 | `description` | `string` | no | Custom description for this file. Defaults to the site description. |
 | `ignorePatterns` | `string[]` | no | Additional patterns to exclude, combined with the global `ignoreFiles`. |
 | `orderPatterns` | `string[]` | no | Order patterns for this file, like `includeOrder`. |
-| `includeUnmatchedLast` | `boolean` | no | Whether to append unmatched files last. Defaults to `false`. |
+| `includeUnmatchedLast` | `boolean` | no | Whether to append files that match no `orderPatterns` entry at the end. Defaults to `true`. |
 | `version` | `string` | no | Version label for this file, overriding the global `version`. |
 | `rootContent` | `string` | no | Custom content inserted at the root of this file, after the title and description. |
 
@@ -141,7 +147,7 @@ Each `VersionConfig` entry accepts:
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `name` | `string` | required | Version identifier (for example `'nightly'`, `'stable'`, `'0.0.1'`). |
-| `label` | `string` | `name` | Label written into the `Version:` line of generated files. |
+| `label` | `string` | `name` | Label written into the `Version:` line of generated files. With `versions: 'auto'`, see [automatic detection](multi-version.md#automatic-detection). |
 | `docsDir` | `string \| DocsSection[]` | top-level `docsDir` | Source docs directory or sections for this version. |
 | `path` | `string` | `name` | Output subdirectory and route prefix. Use `''` for the site root. |
 | `customLLMFiles` | `CustomLLMFile[]` | top-level value | Per-version custom LLM files. |
@@ -149,7 +155,7 @@ Each `VersionConfig` entry accepts:
 
 ## Path transformation
 
-The plugin resolves URLs by matching file paths against Docusaurus's actual routes, so `pathTransformation` is only applied as a fallback when a file can't be matched to a known route. In most setups you don't need it. When you do, `ignorePaths` strips segments from the constructed URL and `addPaths` prepends them:
+The plugin resolves URLs by matching file paths against the routes Docusaurus built. `pathTransformation` applies only to files that match no known route, so most sites don't need it. `ignorePaths` removes segments from the constructed URL and `addPaths` adds them:
 
 ```js
 pathTransformation: {
@@ -158,13 +164,13 @@ pathTransformation: {
 }
 ```
 
-With that config, the file `/content/docs/manual/decorators.md` resolves to `https://example.com/api/manual/decorators`.
+With `docsDir: 'docs'` and that config, the file `docs/manual/decorators.md` resolves to `https://example.com/api/manual/decorators`. For each field on its own, see [path transformation](ordering-and-paths.md#path-transformation).
 
 ## Logging
 
-The `logLevel` option controls how much the plugin prints during the build. It takes one of three values:
+The `logLevel` option controls how much the plugin prints during the build. It takes these values:
 
-- `'quiet'`: suppresses all output except errors. Use it for clean CI/CD builds.
+- `'quiet'`: prints errors only. Use it to keep CI logs short.
 - `'normal'` (default): shows standard progress messages and warnings.
 - `'verbose'`: shows file-by-file processing detail. Use it for debugging.
 
@@ -180,9 +186,10 @@ In `'normal'` mode, output looks like this:
 
 ```
 [docusaurus-plugin-llms] Generating LLM-friendly documentation...
-[docusaurus-plugin-llms] Generated: /path/to/llms.txt
-[docusaurus-plugin-llms] Generated: /path/to/llms-full.txt
-[docusaurus-plugin-llms] Stats: 42 total available documents processed
+[docusaurus-plugin-llms] Generated: /path/to/build/llms.txt
+[docusaurus-plugin-llms] Generated: /path/to/build/llms-full.txt
+[docusaurus-plugin-llms] No custom LLM files configured. Skipping.
+[docusaurus-plugin-llms] Stats: 42 documents processed
 ```
 
 In `'quiet'` mode, only errors appear:

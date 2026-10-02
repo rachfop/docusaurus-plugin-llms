@@ -1,8 +1,12 @@
+---
+description: Write a Markdown copy of every page next to its HTML and point llms.txt links at those files.
+---
+
 # Generating individual Markdown files
 
-By default, the plugin generates `llms.txt` with links that point at your original documentation pages. The [llmstxt.org specification](https://llmstxt.org/) prefers links that point at Markdown versions of each page. Setting `generateMarkdownFiles: true` makes the plugin write a clean `.md` file for every document and rewrite the `llms.txt` links to point at those files instead.
+The [llmstxt.org specification](https://llmstxt.org/) recommends that `llms.txt` link to a Markdown version of each page. With `generateMarkdownFiles: true`, the plugin writes a `.md` file for every document and points the `llms.txt` links at those files.
 
-This page explains what `generateMarkdownFiles` produces, how it names and lays out the files, what each file contains, and the options that shape the output. For the links file itself, see [llms.txt output](./overview.md). For content cleaning options that also apply here, see [content cleaning](./content-cleaning.md).
+This page covers how the plugin names and lays out the files, what each file contains, and the options that shape the output. For the format of `llms.txt` itself, see [generated output](./overview.md#generated-output). For content cleaning options that also apply here, see [content cleaning](./content-cleaning.md).
 
 ## What `generateMarkdownFiles` does
 
@@ -41,7 +45,7 @@ module.exports = {
 
 ## Linking with `addMdExtension`
 
-`addMdExtension` is a `boolean` that defaults to `true`. It appends `.md` to the link URLs in `llms.txt` so they resolve to the generated Markdown files, per the llmstxt.org spec. It only has an effect when `generateMarkdownFiles` is enabled, since the `.md` files have to exist for the links to resolve.
+`addMdExtension` is a `boolean` that defaults to `true`. It appends `.md` to the link URLs in `llms.txt` so they resolve to the generated Markdown files. It applies only when `generateMarkdownFiles` is `true`, because the `.md` files must exist for the links to resolve.
 
 A Docusaurus page served at `https://example.com/docs/getting-started/` becomes this link:
 
@@ -49,7 +53,7 @@ A Docusaurus page served at `https://example.com/docs/getting-started/` becomes 
 - [Getting Started](https://example.com/docs/getting-started.md)
 ```
 
-Trailing slashes are stripped before the extension is applied, and a URL that already ends in `.md` isn't doubled. To keep the original Docusaurus URLs, set the option to `false`:
+The plugin strips trailing slashes before it adds the extension, and leaves a URL that already ends in `.md` as it is. To keep the Docusaurus page URLs in `llms.txt` while still generating the files, set the option to `false`:
 
 ```js
 {
@@ -73,7 +77,7 @@ With `preserveDirectoryStructure: false`, the leading docs directory segment is 
 docs/server/config.md → build/server/config.md
 ```
 
-So if your HTML is at `https://yoursite.com/docs/server/config.html`, the default puts the Markdown at `https://yoursite.com/docs/server/config.md`.
+With the default, a page served at `https://yoursite.com/docs/server/config` gets its Markdown at `https://yoursite.com/docs/server/config.md`.
 
 ## Generated file structure
 
@@ -109,20 +113,20 @@ build/
 
 The plugin derives each output path from the document's resolved information, in this order:
 
-1. **Front matter `slug`**: if the document sets a `slug`, it becomes the output path. A slug containing `/` creates the matching directory structure; a simple slug replaces just the filename.
+1. **Front matter `slug`**: if the document sets a `slug`, it becomes the output path. A slug containing `/` creates the matching directory structure; a slug without `/` replaces only the filename.
 2. **Front matter `id`**: if there's no `slug` but there is an `id`, it's used the same way.
-3. **Resolved page URL**: otherwise the path comes from the document's built URL (or its source file path if the URL isn't available). Numeric ordering prefixes like `01-` are stripped from each path segment.
+3. **Resolved page URL**: otherwise the path comes from the document's built URL (or its source file path if the URL isn't available). Numeric ordering prefixes like `01-` are stripped from each path segment. A directory index (`index.md`, `README.md`, or a `<folder>/<folder>.md` file, in any letter case) takes its directory's URL: `docs/guide/README.md` is served at `/docs/guide/`, so its file is `docs/guide.md`.
 4. **Sanitized title**: only as a last resort, when the path would otherwise be empty, the document title is sanitized into a filename (lowercased, unsafe characters and whitespace replaced with `-`).
 
-Paths are made unique by appending a counter (`config-2.md`, `config-3.md`, and so on) when two documents would otherwise collide. A root page with slug `/` is written as `index.md`.
+When two documents would get the same path, the plugin appends a counter (`config-2.md`, `config-3.md`, and so on). A page whose URL is the site root is written as `index.md`.
 
 ## What each file contains
 
 Every generated file is built from the document's title, description, and processed content:
 
 - The **title** becomes an H1 heading.
-- The **description**, when present, follows as a blockquote, matching the llmstxt.org format.
-- The **processed content** comes next, with any content cleaning already applied.
+- The **description**, when present, follows as a blockquote, matching the llmstxt.org format. For where the description comes from, see [page titles and descriptions](./overview.md#page-titles-and-descriptions).
+- The **processed content** comes next, with content cleaning applied. A body paragraph that repeats the description is dropped.
 
 If you list keys in `keepFrontMatter`, the plugin writes a YAML front matter block at the top of each file containing only those keys. `keepFrontMatter` is a `string[]` that defaults to `[]`, and it only takes effect when `generateMarkdownFiles` is enabled. Keys you don't list are dropped.
 
@@ -146,9 +150,9 @@ Use your API key to authenticate requests:
     const client = new Client({ apiKey: 'your-key' });
 ```
 
-## Common configurations
+## Generate only `llms.txt` and the Markdown files
 
-To follow the llmstxt.org spec closely and skip the combined file, generate the index and the individual files only:
+To skip the combined `llms-full.txt`, turn it off and keep the index and the individual files:
 
 ```js
 {
@@ -157,15 +161,3 @@ To follow the llmstxt.org spec closely and skip the combined file, generate the 
   generateLLMsFullTxt: false,
 }
 ```
-
-To keep both the original HTML links and the Markdown files, point the standard links file at a separate filename with `llmsTxtFilename`:
-
-```js
-{
-  generateLLMsTxt: true,       // links to original pages
-  generateMarkdownFiles: true, // also generate individual markdown files
-  llmsTxtFilename: 'llms-original.txt',
-}
-```
-
-`generateMarkdownFiles` defaults to `false`, so existing configurations are unaffected until you opt in.

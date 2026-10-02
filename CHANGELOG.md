@@ -31,6 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never advanced. The option must now be a positive integer, and other values
   fail option validation.
 
+### Documentation
+
+- Corrected option behavior in the docs: `addMdExtension` applies only with
+  `generateMarkdownFiles`, `customLLMFiles[].includeUnmatchedLast` defaults to
+  `true`, any `.md`/`.mdx` import is inlined, and `processingBatchSize` sets
+  how often verbose mode logs progress.
+- Documented how page titles and descriptions are chosen, directory index
+  handling, and the `llms-full.txt` page structure.
+
 ## [0.6.0] - 2026-08-31
 
 ### Fixed

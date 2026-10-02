@@ -1,8 +1,12 @@
+---
+description: Set the order of documents with glob patterns, rewrite URLs for files that match no route, and set the batch size for progress logging.
+---
+
 # Ordering and path transformation
 
-This page covers ways to shape the generated output: controlling the order in which documents appear, transforming the URLs the plugin builds from file paths, and tuning batch processing for large sites. Each is optional. The defaults work out of the box, so reach for these options only when you need a specific order, a URL that doesn't match the default route resolution, or memory control on a very large build.
+These options set the order documents appear in, rewrite the URLs of files that match no Docusaurus route, and tune batch processing for large sites. All of them are optional.
 
-For the full option list, see [available options](./configuration.md). For per-file variants of the ordering options, see [custom LLM files](./content-generation.md).
+For the full option list, see [configuration options](./configuration.md). For per-file variants of the ordering options, see [custom LLM files](./content-generation.md#generate-custom-llm-files).
 
 ## Document ordering
 
@@ -38,7 +42,7 @@ Patterns in `includeOrder`, `ignoreFiles`, and a custom file's `includePatterns`
 - The site-relative path, relative to your site root, such as `docs/quickstart/file.md`.
 - The docs-relative path, relative to your `docsDir`, such as `quickstart/file.md`.
 
-A pattern matches if it matches either form, so both `docs/quickstart/*` and `quickstart/*` select the same files. The docs-relative form is usually more intuitive and more portable across configurations, so prefer it unless you have a reason to key off the `docs/` prefix.
+A pattern matches if it matches either form, so both `docs/quickstart/*` and `quickstart/*` select the same files. The docs-relative form keeps working if you rename or move `docsDir`, so prefer it.
 
 ### Handling files that don't match
 
@@ -63,16 +67,18 @@ includeOrder: [
 ]
 ```
 
-Custom LLM files accept the same behavior through their own `orderPatterns` and `includeUnmatchedLast` fields. See [custom LLM files](./content-generation.md) for details.
+Custom LLM files have their own `orderPatterns` and `includeUnmatchedLast` fields. See [custom LLM files](./content-generation.md#generate-custom-llm-files) for details.
 
 ## Path transformation
 
-The plugin resolves each document's URL by suffix-matching the file path against Docusaurus's actual routes, which it receives through the `postBuild` hook. That route matching is correct for the large majority of sites, so in most configurations you don't need `pathTransformation` at all. Path transformation is applied only as a fallback, when a file can't be matched to a known route.
+The plugin resolves each document's URL by matching the file path against the routes Docusaurus built, which it receives through the `postBuild` hook. `pathTransformation` applies only to files that match no known route, so most sites don't need it.
 
-When you do need it, `pathTransformation` (type `object`, default `undefined`) takes two arrays, each defaulting to `[]`:
+`pathTransformation` (type `object`, default `undefined`) takes two arrays, each defaulting to `[]`:
 
-- `pathTransformation.ignorePaths` (type `string[]`): path segments to remove from the URL when they're present.
-- `pathTransformation.addPaths` (type `string[]`): path segments to prepend to the URL when they aren't already there.
+- `pathTransformation.ignorePaths` (type `string[]`): path segments to remove from the URL when they're present, including the section's route base path.
+- `pathTransformation.addPaths` (type `string[]`): path segments to add after the route base path when they aren't already there.
+
+The examples below use `docsDir: 'docs'`.
 
 To strip a leading `docs` segment so it doesn't appear in the URL, use `ignorePaths`:
 
@@ -82,9 +88,9 @@ pathTransformation: {
 }
 ```
 
-With that setting, the file `/content/docs/manual/decorators.md` resolves to `https://example.com/manual/decorators`.
+With that setting, the file `docs/manual/decorators.md` resolves to `https://example.com/manual/decorators`.
 
-To prepend a segment such as `api`, use `addPaths`:
+To add a segment such as `api`, use `addPaths`:
 
 ```js
 pathTransformation: {
@@ -92,9 +98,9 @@ pathTransformation: {
 }
 ```
 
-That turns `/content/manual/decorators.md` into `https://example.com/api/manual/decorators`.
+That turns `docs/manual/decorators.md` into `https://example.com/docs/api/manual/decorators`. The route base path `docs` stays in front.
 
-You can combine both. The plugin removes the ignored segments first, then prepends the added ones:
+To replace the route base path, combine both. The plugin removes the ignored segments first, then adds the new ones:
 
 ```js
 pathTransformation: {
@@ -103,20 +109,15 @@ pathTransformation: {
 }
 ```
 
-That maps `/content/docs/manual/decorators.md` to `https://example.com/api/manual/decorators`. Both arrays accept multiple segments.
+That maps `docs/manual/decorators.md` to `https://example.com/api/manual/decorators`. Both arrays accept multiple segments.
 
 ## Batch processing for large sites
 
-The plugin processes documents in batches so that very large sites don't exhaust memory. `processingBatchSize` (type `number`, default `100`) sets how many documents are handled per batch. Batches run one after another, and document order is preserved across batch boundaries, so tuning this value changes memory use and progress reporting but never the output order.
+`processingBatchSize` (type `number`, default `100`) sets how many documents the plugin assembles into `llms-full.txt` per batch. Batches run one after another, and document order is preserved across batch boundaries.
 
-Adjust the batch size to fit your site and build environment:
+The plugin reads and processes every document before batching starts, so the batch size doesn't change peak memory use or the output. It changes how often verbose mode logs progress: with more than one batch, the plugin logs a line per batch. Set it to a positive integer.
 
-- Large sites, 1000 or more documents: lower the value, for example `50`, to reduce peak memory.
-- Small sites, fewer than 100 documents: the default is fine.
-- Memory-constrained environments such as CI runners: lower the value to avoid out-of-memory errors.
-- High-memory systems: raise the value, for example `200`, for faster processing.
-
-This configuration processes 50 documents at a time:
+This configuration logs progress every 50 documents:
 
 ```js
 module.exports = {
@@ -124,12 +125,12 @@ module.exports = {
     [
       'docusaurus-plugin-llms',
       {
+        logLevel: 'verbose',
         processingBatchSize: 50,
-        // ... other options
       },
     ],
   ],
 };
 ```
 
-When more than one batch is needed, per-batch progress is logged in verbose mode. See [logging](./configuration.md) to set `logLevel: 'verbose'`.
+For more on verbose mode, see [logging](./configuration.md#logging).
