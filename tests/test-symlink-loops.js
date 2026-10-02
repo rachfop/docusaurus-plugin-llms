@@ -43,26 +43,20 @@ const testCases = [
         await createTestFile(path.join(tmpDir, 'docs', 'subdir', 'file2.md'));
         await createTestFile(path.join(tmpDir, 'docs', 'subdir', 'nested', 'file3.md'));
 
-        const files = await readMarkdownFiles(
-          path.join(tmpDir, 'docs'),
-          tmpDir,
-          [],
-          'docs',
-          false
-        );
+        const files = await readMarkdownFiles(path.join(tmpDir, 'docs'), tmpDir, [], 'docs', false);
 
         if (files.length === 3) {
           return { passed: true };
         } else {
           return {
             passed: false,
-            error: `Expected 3 files, got ${files.length}`
+            error: `Expected 3 files, got ${files.length}`,
           };
         }
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'Detects and prevents circular symlink loops',
@@ -93,13 +87,7 @@ const testCases = [
         console.warn = (msg) => warnings.push(msg);
 
         try {
-          const files = await readMarkdownFiles(
-            docsDir,
-            tmpDir,
-            [],
-            'docs',
-            false
-          );
+          const files = await readMarkdownFiles(docsDir, tmpDir, [], 'docs', false);
 
           // Restore console.warn
           console.warn = originalWarn;
@@ -107,8 +95,8 @@ const testCases = [
           // Should find 2 unique files (file1.md and file2.md)
           // Should not enter infinite loop
           // Should have warning about symlink loop
-          const hasLoopWarning = warnings.some(w =>
-            w.includes('already visited path') || w.includes('symlink loop')
+          const hasLoopWarning = warnings.some(
+            (w) => w.includes('already visited path') || w.includes('symlink loop'),
           );
 
           if (files.length === 2 && hasLoopWarning) {
@@ -116,7 +104,7 @@ const testCases = [
           } else {
             return {
               passed: false,
-              error: `Expected 2 files with loop warning. Got ${files.length} files. Warnings: ${warnings.join(', ')}`
+              error: `Expected 2 files with loop warning. Got ${files.length} files. Warnings: ${warnings.join(', ')}`,
             };
           }
         } finally {
@@ -125,7 +113,7 @@ const testCases = [
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'Handles symlink to external directory',
@@ -149,13 +137,7 @@ const testCases = [
           return { passed: true, skipped: true };
         }
 
-        const files = await readMarkdownFiles(
-          docsDir,
-          tmpDir,
-          [],
-          'docs',
-          false
-        );
+        const files = await readMarkdownFiles(docsDir, tmpDir, [], 'docs', false);
 
         // Should find both files (one direct, one through symlink)
         if (files.length === 2) {
@@ -163,13 +145,13 @@ const testCases = [
         } else {
           return {
             passed: false,
-            error: `Expected 2 files (including symlinked), got ${files.length}`
+            error: `Expected 2 files (including symlinked), got ${files.length}`,
           };
         }
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'Handles broken symlinks gracefully',
@@ -196,28 +178,20 @@ const testCases = [
         console.warn = (msg) => warnings.push(msg);
 
         try {
-          const files = await readMarkdownFiles(
-            docsDir,
-            tmpDir,
-            [],
-            'docs',
-            false
-          );
+          const files = await readMarkdownFiles(docsDir, tmpDir, [], 'docs', false);
 
           // Restore console.warn
           console.warn = originalWarn;
 
           // Should find 1 file and warn about broken symlink
-          const hasBrokenLinkWarning = warnings.some(w =>
-            w.includes('Skipping broken symlink')
-          );
+          const hasBrokenLinkWarning = warnings.some((w) => w.includes('Skipping broken symlink'));
 
           if (files.length === 1 && hasBrokenLinkWarning) {
             return { passed: true };
           } else {
             return {
               passed: false,
-              error: `Expected 1 file with broken link warning. Got ${files.length} files. Warnings: ${warnings.join(', ')}`
+              error: `Expected 1 file with broken link warning. Got ${files.length} files. Warnings: ${warnings.join(', ')}`,
             };
           }
         } finally {
@@ -226,7 +200,7 @@ const testCases = [
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'Handles multiple symlinks to same directory',
@@ -258,29 +232,21 @@ const testCases = [
         console.warn = (msg) => warnings.push(msg);
 
         try {
-          const files = await readMarkdownFiles(
-            docsDir,
-            tmpDir,
-            [],
-            'docs',
-            false
-          );
+          const files = await readMarkdownFiles(docsDir, tmpDir, [], 'docs', false);
 
           // Restore console.warn
           console.warn = originalWarn;
 
           // Should find 2 unique files (file1.md and file2.md once)
           // Second symlink should be detected as already visited
-          const hasVisitedWarning = warnings.some(w =>
-            w.includes('already visited path')
-          );
+          const hasVisitedWarning = warnings.some((w) => w.includes('already visited path'));
 
           if (files.length === 2 && hasVisitedWarning) {
             return { passed: true };
           } else {
             return {
               passed: false,
-              error: `Expected 2 files (no duplicates). Got ${files.length} files. Warnings: ${warnings.join(', ')}`
+              error: `Expected 2 files (no duplicates). Got ${files.length} files. Warnings: ${warnings.join(', ')}`,
             };
           }
         } finally {
@@ -289,7 +255,7 @@ const testCases = [
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'Handles deeply nested symlink chains',
@@ -317,13 +283,7 @@ const testCases = [
           return { passed: true, skipped: true };
         }
 
-        const files = await readMarkdownFiles(
-          docsDir,
-          tmpDir,
-          [],
-          'docs',
-          false
-        );
+        const files = await readMarkdownFiles(docsDir, tmpDir, [], 'docs', false);
 
         // Should find both files through the symlink chain
         if (files.length === 2) {
@@ -331,13 +291,13 @@ const testCases = [
         } else {
           return {
             passed: false,
-            error: `Expected 2 files through symlink chain, got ${files.length}`
+            error: `Expected 2 files through symlink chain, got ${files.length}`,
           };
         }
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'visitedPaths set persists across recursive calls',
@@ -364,13 +324,7 @@ const testCases = [
           return { passed: true, skipped: true };
         }
 
-        const files = await readMarkdownFiles(
-          docsDir,
-          tmpDir,
-          [],
-          'docs',
-          false
-        );
+        const files = await readMarkdownFiles(docsDir, tmpDir, [], 'docs', false);
 
         // Should find 3 unique files (file1.md, file2.md, shared.md once)
         if (files.length === 3) {
@@ -378,14 +332,14 @@ const testCases = [
         } else {
           return {
             passed: false,
-            error: `Expected 3 unique files, got ${files.length}. Files: ${files.join(', ')}`
+            error: `Expected 3 unique files, got ${files.length}. Files: ${files.join(', ')}`,
           };
         }
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
-  }
+    },
+  },
 ];
 
 async function runTests() {
@@ -422,7 +376,9 @@ async function runTests() {
 
   console.log(`\n========================================`);
   console.log(`Symlink Loop Detection Tests Summary:`);
-  console.log(`Passed: ${passed}, Failed: ${failed}, Skipped: ${skipped}, Total: ${testCases.length}`);
+  console.log(
+    `Passed: ${passed}, Failed: ${failed}, Skipped: ${skipped}, Total: ${testCases.length}`,
+  );
   console.log(`========================================\n`);
 
   return failed === 0;
@@ -430,7 +386,7 @@ async function runTests() {
 
 // Run the tests
 runTests()
-  .then(success => {
+  .then((success) => {
     if (success) {
       console.log('🎉 All symlink loop detection tests passed!');
       process.exit(0);
@@ -439,7 +395,7 @@ runTests()
       process.exit(1);
     }
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('Fatal error running tests:', error);
     process.exit(1);
   });

@@ -24,7 +24,7 @@ function createTempSite() {
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(
     path.join(tmpDir, 'docs', 'getting-started.md'),
-    '---\ntitle: Getting Started\ndescription: Start here.\n---\n\n# Getting Started\n\nStart here.'
+    '---\ntitle: Getting Started\ndescription: Start here.\n---\n\n# Getting Started\n\nStart here.',
   );
   return { tmpDir, outDir };
 }
@@ -48,13 +48,26 @@ async function run() {
         llmsTxtFilename: 'llms.txt',
       }).postBuild();
       const content = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
-      assert.ok(content.includes('(https://example.com/docs/getting-started)'), `expected plain route link, got:\n${content}`);
-      assert.ok(!content.includes('getting-started.md'), `link should not have .md, got:\n${content}`);
-      assert.ok(!fs.existsSync(path.join(outDir, 'docs', 'getting-started.md')), 'no .md file should be generated');
-      console.log(`  ✅ PASS: ${name}`); passed++;
+      assert.ok(
+        content.includes('(https://example.com/docs/getting-started)'),
+        `expected plain route link, got:\n${content}`,
+      );
+      assert.ok(
+        !content.includes('getting-started.md'),
+        `link should not have .md, got:\n${content}`,
+      );
+      assert.ok(
+        !fs.existsSync(path.join(outDir, 'docs', 'getting-started.md')),
+        'no .md file should be generated',
+      );
+      console.log(`  ✅ PASS: ${name}`);
+      passed++;
     } catch (err) {
-      console.log(`  ❌ FAIL: ${name}\n     ${err.message}`); failed++;
-    } finally { fs.rmSync(tmpDir, { recursive: true, force: true }); }
+      console.log(`  ❌ FAIL: ${name}\n     ${err.message}`);
+      failed++;
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   }
 
   // Case 2: generateMarkdownFiles true → .md links AND the files exist
@@ -68,12 +81,22 @@ async function run() {
         llmsTxtFilename: 'llms.txt',
       }).postBuild();
       const content = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
-      assert.ok(content.includes('(https://example.com/docs/getting-started.md)'), `expected .md link, got:\n${content}`);
-      assert.ok(fs.existsSync(path.join(outDir, 'docs', 'getting-started.md')), 'the .md file should be generated');
-      console.log(`  ✅ PASS: ${name}`); passed++;
+      assert.ok(
+        content.includes('(https://example.com/docs/getting-started.md)'),
+        `expected .md link, got:\n${content}`,
+      );
+      assert.ok(
+        fs.existsSync(path.join(outDir, 'docs', 'getting-started.md')),
+        'the .md file should be generated',
+      );
+      console.log(`  ✅ PASS: ${name}`);
+      passed++;
     } catch (err) {
-      console.log(`  ❌ FAIL: ${name}\n     ${err.message}`); failed++;
-    } finally { fs.rmSync(tmpDir, { recursive: true, force: true }); }
+      console.log(`  ❌ FAIL: ${name}\n     ${err.message}`);
+      failed++;
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   }
 
   // Case 3: explicit addMdExtension:false with generation off → still no .md (unchanged)
@@ -87,11 +110,18 @@ async function run() {
         llmsTxtFilename: 'llms.txt',
       }).postBuild();
       const content = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
-      assert.ok(!content.includes('getting-started.md'), `link should not have .md, got:\n${content}`);
-      console.log(`  ✅ PASS: ${name}`); passed++;
+      assert.ok(
+        !content.includes('getting-started.md'),
+        `link should not have .md, got:\n${content}`,
+      );
+      console.log(`  ✅ PASS: ${name}`);
+      passed++;
     } catch (err) {
-      console.log(`  ❌ FAIL: ${name}\n     ${err.message}`); failed++;
-    } finally { fs.rmSync(tmpDir, { recursive: true, force: true }); }
+      console.log(`  ❌ FAIL: ${name}\n     ${err.message}`);
+      failed++;
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   }
 
   console.log(`\n========================================`);
@@ -102,11 +132,11 @@ async function run() {
 }
 
 run()
-  .then(ok => {
+  .then((ok) => {
     console.log(ok ? '🎉 All .md extension coupling tests passed!' : '❌ Some tests failed.');
     process.exit(ok ? 0 : 1);
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('Test execution error:', err);
     process.exit(1);
   });

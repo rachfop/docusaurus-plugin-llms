@@ -18,7 +18,7 @@ draft: true
 # This is a draft page
 
 This content should not appear in llms.txt.`,
-    expectedResult: null
+    expectedResult: null,
   },
   {
     name: 'Should include pages with draft: false',
@@ -34,7 +34,7 @@ This content should appear in llms.txt.`,
       title: 'Published Page',
       description: 'This is a published page',
       // Other fields will be validated in the test
-    }
+    },
   },
   {
     name: 'Should include pages without draft field',
@@ -49,7 +49,7 @@ This content should appear in llms.txt.`,
       title: 'Regular Page',
       description: 'This is a regular page',
       // Other fields will be validated in the test
-    }
+    },
   },
   {
     name: 'Should exclude pages with draft: "true" (string)',
@@ -65,21 +65,21 @@ This should still be included as draft is a string, not boolean.`,
       title: 'String Draft Page',
       description: 'This is a draft page with string value',
       // Other fields will be validated in the test
-    }
-  }
+    },
+  },
 ];
 
 // Test function
 async function runDraftFilteringTests() {
   console.log('Running draft filtering tests...\n');
-  
+
   let passed = 0;
   let failed = 0;
 
   // Create a temporary test directory
   const testDir = path.join(__dirname, 'test-draft-docs');
   const docsDir = path.join(testDir, 'docs');
-  
+
   // Clean up and create test directories
   if (fs.existsSync(testDir)) {
     fs.rmSync(testDir, { recursive: true });
@@ -89,22 +89,17 @@ async function runDraftFilteringTests() {
 
   // Test individual processMarkdownFile function
   console.log('Testing processMarkdownFile with draft pages:');
-  
+
   for (const testCase of testCases) {
     try {
       // Create test file
       const fileName = testCase.name.toLowerCase().replace(/\s+/g, '-') + '.md';
       const filePath = path.join(docsDir, fileName);
       fs.writeFileSync(filePath, testCase.content);
-      
+
       // Process the file
-      const result = await processMarkdownFile(
-        filePath,
-        docsDir,
-        'https://example.com',
-        'docs'
-      );
-      
+      const result = await processMarkdownFile(filePath, docsDir, 'https://example.com', 'docs');
+
       // Validate result
       if (testCase.expectedResult === null) {
         if (result === null) {
@@ -133,47 +128,57 @@ async function runDraftFilteringTests() {
 
   // Test processFilesWithPatterns integration
   console.log('\nTesting processFilesWithPatterns with draft filtering:');
-  
+
   try {
     // Create additional test files
-    fs.writeFileSync(path.join(docsDir, 'published1.md'), `---
+    fs.writeFileSync(
+      path.join(docsDir, 'published1.md'),
+      `---
 title: Published Article 1
 ---
 
 # Published Article 1
 
-This is a published article.`);
+This is a published article.`,
+    );
 
-    fs.writeFileSync(path.join(docsDir, 'draft1.md'), `---
+    fs.writeFileSync(
+      path.join(docsDir, 'draft1.md'),
+      `---
 title: Draft Article 1
 draft: true
 ---
 
 # Draft Article 1
 
-This is a draft article.`);
+This is a draft article.`,
+    );
 
-    fs.writeFileSync(path.join(docsDir, 'published2.md'), `---
+    fs.writeFileSync(
+      path.join(docsDir, 'published2.md'),
+      `---
 title: Published Article 2
 draft: false
 ---
 
 # Published Article 2
 
-This is another published article.`);
+This is another published article.`,
+    );
 
     // Mock context
     const mockContext = {
       siteDir: testDir,
       siteUrl: 'https://example.com',
       docsDir: 'docs',
-      options: {}
+      options: {},
     };
 
     // Get all files
-    const allFiles = fs.readdirSync(docsDir)
-      .map(file => path.join(docsDir, file))
-      .filter(file => file.endsWith('.md'));
+    const allFiles = fs
+      .readdirSync(docsDir)
+      .map((file) => path.join(docsDir, file))
+      .filter((file) => file.endsWith('.md'));
 
     // Process files
     const processedDocs = await processFilesWithPatterns(
@@ -182,30 +187,32 @@ This is another published article.`);
       [], // includePatterns
       [], // ignorePatterns
       [], // orderPatterns
-      true // includeUnmatched
+      true, // includeUnmatched
     );
 
     // Count non-draft files
-    const expectedNonDraftCount = allFiles.filter(file => {
+    const expectedNonDraftCount = allFiles.filter((file) => {
       const content = fs.readFileSync(file, 'utf-8');
       return !content.includes('draft: true');
     }).length;
 
     if (processedDocs.length === expectedNonDraftCount) {
       console.log(`✅ processFilesWithPatterns correctly filtered draft pages`);
-      console.log(`  Found ${processedDocs.length} non-draft pages out of ${allFiles.length} total`);
+      console.log(
+        `  Found ${processedDocs.length} non-draft pages out of ${allFiles.length} total`,
+      );
       passed++;
     } else {
       console.log(`❌ processFilesWithPatterns did not filter correctly`);
-      console.log(`  Expected ${expectedNonDraftCount} non-draft pages but got ${processedDocs.length}`);
+      console.log(
+        `  Expected ${expectedNonDraftCount} non-draft pages but got ${processedDocs.length}`,
+      );
       failed++;
     }
 
     // Verify draft pages are not in the results
-    const draftTitles = processedDocs.filter(doc => 
-      doc.title.includes('Draft Article')
-    );
-    
+    const draftTitles = processedDocs.filter((doc) => doc.title.includes('Draft Article'));
+
     if (draftTitles.length === 0) {
       console.log(`✅ No draft pages found in processed documents`);
       passed++;
@@ -213,7 +220,6 @@ This is another published article.`);
       console.log(`❌ Found ${draftTitles.length} draft pages in processed documents`);
       failed++;
     }
-
   } catch (error) {
     console.log(`❌ Integration test failed: ${error.message}`);
     failed++;
@@ -237,12 +243,12 @@ This is another published article.`);
 
 // Run tests
 runDraftFilteringTests()
-  .then(success => {
+  .then((success) => {
     if (!success) {
       process.exit(1);
     }
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('Test runner error:', error);
     process.exit(1);
   });

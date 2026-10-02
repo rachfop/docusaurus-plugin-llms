@@ -64,9 +64,13 @@ async function runTests() {
       '```',
       '',
       'There are two ways to add plugins: the plugin manager and the plugin folder.',
-      ''
+      '',
     ]);
-    check('Fence skipped, prose used', desc1, 'There are two ways to add plugins: the plugin manager and the plugin folder.');
+    check(
+      'Fence skipped, prose used',
+      desc1,
+      'There are two ways to add plugins: the plugin manager and the plugin folder.',
+    );
     console.log('');
 
     // Test 2: blank line inside a fence must not split it into paragraphs
@@ -84,9 +88,13 @@ async function runTests() {
       '```',
       '',
       'Describes a single plugin component.',
-      ''
+      '',
     ]);
-    check('Fence interior never becomes the description', desc2, 'Describes a single plugin component.');
+    check(
+      'Fence interior never becomes the description',
+      desc2,
+      'Describes a single plugin component.',
+    );
     console.log('');
 
     // Test 3: bare JSX element before the content
@@ -101,7 +109,7 @@ async function runTests() {
       '<YoutubeVideo videoId="abc123"/>',
       '',
       'This page explains how to install the plugin.',
-      ''
+      '',
     ]);
     check('JSX element skipped', desc3, 'This page explains how to install the plugin.');
     console.log('');
@@ -121,9 +129,13 @@ async function runTests() {
       ':::',
       '',
       'Custom functions extend the spreadsheet formula set.',
-      ''
+      '',
     ]);
-    check('Admonition marker skipped, its body used', desc4, 'Starting from version 8.1, you can add custom functions using the Macros plugin.');
+    check(
+      'Admonition marker skipped, its body used',
+      desc4,
+      'Starting from version 8.1, you can add custom functions using the Macros plugin.',
+    );
     console.log('');
 
     // Test 5: table first (common in generated API reference pages)
@@ -138,7 +150,7 @@ async function runTests() {
       '| onClick | Fires on click |',
       '',
       'The editor exposes the following events.',
-      ''
+      '',
     ]);
     check('Table skipped', desc5, 'The editor exposes the following events.');
     console.log('');
@@ -153,7 +165,7 @@ async function runTests() {
       '![Plugin manager](/assets/images/manager.png)',
       '',
       'The plugin manager installs plugins from the marketplace.',
-      ''
+      '',
     ]);
     check('Image skipped', desc6, 'The plugin manager installs plugins from the marketplace.');
     console.log('');
@@ -166,9 +178,13 @@ async function runTests() {
       '---',
       '',
       '`config.json` holds every plugin setting.',
-      ''
+      '',
     ]);
-    check('Inline code span not mistaken for a fence', desc7, '`config.json` holds every plugin setting.');
+    check(
+      'Inline code span not mistaken for a fence',
+      desc7,
+      '`config.json` holds every plugin setting.',
+    );
     console.log('');
 
     // Test 8: a page made only of structure has no description at all
@@ -183,7 +199,7 @@ async function runTests() {
       '<span className="badge">Version: 3.6.0</span>',
       '',
       '<ApiLogo/>',
-      ''
+      '',
     ]);
     check('No description invented from structure', desc8, '');
     console.log('');
@@ -200,7 +216,7 @@ async function runTests() {
       'This is a normal page with no structural blocks.',
       '',
       'A second paragraph that should be ignored.',
-      ''
+      '',
     ]);
     check('First paragraph still wins', desc9, 'This is a normal page with no structural blocks.');
     console.log('');
@@ -218,11 +234,10 @@ async function runTests() {
       '```',
       '',
       'Body content.',
-      ''
+      '',
     ]);
     check('Frontmatter description used', desc10, 'Description from frontmatter');
     console.log('');
-
   } catch (error) {
     console.error('Test error:', error);
     allTestsPassed = false;
@@ -243,7 +258,7 @@ async function runTests() {
   }
 }
 
-runTests().catch(err => {
+runTests().catch((err) => {
   console.error('Fatal error:', err);
   process.exit(1);
 });

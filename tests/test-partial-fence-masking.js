@@ -23,8 +23,13 @@ const { maskCodeSegments, resolvePartialImports } = require('../lib/utils');
 let passed = 0;
 let failed = 0;
 function expect(name, cond, detail) {
-  if (cond) { console.log(`  ✅ PASS: ${name}`); passed++; }
-  else { console.log(`  ❌ FAIL: ${name}\n     ${detail}`); failed++; }
+  if (cond) {
+    console.log(`  ✅ PASS: ${name}`);
+    passed++;
+  } else {
+    console.log(`  ❌ FAIL: ${name}\n     ${detail}`);
+    failed++;
+  }
 }
 
 async function resolve(content, filePath, siteDir) {
@@ -72,7 +77,8 @@ async function run() {
 
   // 5. Mixed: real import in prose plus fenced import of the same partial.
   {
-    const src = '# Page\n\nimport Demo from "./_demo.mdx";\n\n<Demo />\n\n```mdx\nimport Demo from "./_demo.mdx";\n```\n';
+    const src =
+      '# Page\n\nimport Demo from "./_demo.mdx";\n\n<Demo />\n\n```mdx\nimport Demo from "./_demo.mdx";\n```\n';
     const out = await resolve(src, path.join(dir, 'mixed.mdx'), dir);
     expect('prose import resolved', /Injected content/.test(out), out);
     expect('fenced copy still verbatim', /```mdx\nimport Demo/.test(out), out);

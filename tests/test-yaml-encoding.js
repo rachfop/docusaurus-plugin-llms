@@ -34,8 +34,10 @@ function validateYAMLEncoding(frontmatter, expectedValues) {
     let actualValue = match[1].trim();
 
     // Remove surrounding quotes (single or double)
-    if ((actualValue.startsWith('"') && actualValue.endsWith('"')) ||
-        (actualValue.startsWith("'") && actualValue.endsWith("'"))) {
+    if (
+      (actualValue.startsWith('"') && actualValue.endsWith('"')) ||
+      (actualValue.startsWith("'") && actualValue.endsWith("'"))
+    ) {
       actualValue = actualValue.slice(1, -1);
       // Unescape any escaped quotes inside the string
       actualValue = actualValue.replace(/\\"/g, '"').replace(/\\'/g, "'");
@@ -61,7 +63,11 @@ function checkNoLineWrapping(frontmatter) {
     // If a line starts with a key (contains ':'), ensure the value is complete on the same line
     if (line.includes(':') && !line.trim().endsWith('"') && !line.trim().endsWith("'")) {
       // Check if next line is indented continuation (but not an array item starting with '-')
-      if (i + 1 < lines.length && lines[i + 1].startsWith('  ') && !lines[i + 1].trim().startsWith('-')) {
+      if (
+        i + 1 < lines.length &&
+        lines[i + 1].startsWith('  ') &&
+        !lines[i + 1].trim().startsWith('-')
+      ) {
         throw new Error(`Line wrapping detected: "${line}" continues on next line`);
       }
     }
@@ -72,95 +78,99 @@ const testCases = [
   {
     name: 'Handles emojis in title and description',
     frontMatter: {
-      title: "Test 🚀",
-      description: "Über cool 🎉"
+      title: 'Test 🚀',
+      description: 'Über cool 🎉',
     },
     expectedValues: {
-      title: "Test 🚀",
-      description: "Über cool 🎉"
-    }
+      title: 'Test 🚀',
+      description: 'Über cool 🎉',
+    },
   },
   {
     name: 'Handles special characters (colons, quotes)',
     frontMatter: {
-      title: "Test: Part 1",
-      description: 'Quote: "Hello World"'
+      title: 'Test: Part 1',
+      description: 'Quote: "Hello World"',
     },
     expectedValues: {
-      title: "Test: Part 1",
-      description: 'Quote: "Hello World"'  // Our parser handles escaping
-    }
+      title: 'Test: Part 1',
+      description: 'Quote: "Hello World"', // Our parser handles escaping
+    },
   },
   {
     name: 'Handles long strings without line wrapping',
     frontMatter: {
-      title: "This is a very long title that exceeds 80 characters and should not be wrapped across multiple lines in the YAML output",
-      description: "Similarly, this description is quite lengthy and contains a lot of text that might tempt the YAML stringifier to wrap it"
+      title:
+        'This is a very long title that exceeds 80 characters and should not be wrapped across multiple lines in the YAML output',
+      description:
+        'Similarly, this description is quite lengthy and contains a lot of text that might tempt the YAML stringifier to wrap it',
     },
     expectedValues: {
-      title: "This is a very long title that exceeds 80 characters and should not be wrapped across multiple lines in the YAML output",
-      description: "Similarly, this description is quite lengthy and contains a lot of text that might tempt the YAML stringifier to wrap it"
-    }
+      title:
+        'This is a very long title that exceeds 80 characters and should not be wrapped across multiple lines in the YAML output',
+      description:
+        'Similarly, this description is quite lengthy and contains a lot of text that might tempt the YAML stringifier to wrap it',
+    },
   },
   {
     name: 'Handles mixed special characters and emojis',
     frontMatter: {
-      title: "API: v2.0 🔥",
-      description: "New features & improvements",
-      slug: "api-v2-release",
-      tags: ["api", "release 🚀", "version: 2.0"]
+      title: 'API: v2.0 🔥',
+      description: 'New features & improvements',
+      slug: 'api-v2-release',
+      tags: ['api', 'release 🚀', 'version: 2.0'],
     },
     expectedValues: {
-      title: "API: v2.0 🔥",
-      description: "New features & improvements",
-      slug: "api-v2-release"
-    }
+      title: 'API: v2.0 🔥',
+      description: 'New features & improvements',
+      slug: 'api-v2-release',
+    },
   },
   {
     name: 'Handles unicode characters',
     frontMatter: {
-      title: "Über Ñiño 日本語",
-      description: "Testing Unicode: Ä Ö Ü ß 中文"
+      title: 'Über Ñiño 日本語',
+      description: 'Testing Unicode: Ä Ö Ü ß 中文',
     },
     expectedValues: {
-      title: "Über Ñiño 日本語",
-      description: "Testing Unicode: Ä Ö Ü ß 中文"
-    }
+      title: 'Über Ñiño 日本語',
+      description: 'Testing Unicode: Ä Ö Ü ß 中文',
+    },
   },
   {
     name: 'Handles newlines and multiline content',
     frontMatter: {
-      title: "Simple Title",
-      description: "Line 1\nLine 2\nLine 3"
+      title: 'Simple Title',
+      description: 'Line 1\nLine 2\nLine 3',
     },
     expectedValues: {
-      title: "Simple Title"
+      title: 'Simple Title',
       // Note: newlines in descriptions might be escaped, we'll handle this separately
-    }
+    },
   },
   {
     name: 'Handles empty and null values',
     frontMatter: {
-      title: "Test",
-      description: "",
-      slug: "test-slug"
+      title: 'Test',
+      description: '',
+      slug: 'test-slug',
     },
     expectedValues: {
-      title: "Test",
-      slug: "test-slug"
-    }
+      title: 'Test',
+      slug: 'test-slug',
+    },
   },
   {
     name: 'Handles special YAML characters',
     frontMatter: {
-      title: "Test: [brackets] {braces} | pipes",
-      description: "Characters: * & % @ # ! ?"
+      title: 'Test: [brackets] {braces} | pipes',
+      description: 'Characters: * & % @ # ! ?',
     },
     expectedValues: {
-      title: "Test: [brackets] {braces} | pipes",
-      description: "Characters: * & % @ # ! ?"
-    }
-  }
+      title: 'Test: [brackets] {braces} | pipes',
+      description: 'Characters: * & % @ # ! ?',
+    },
+  },
 ];
 
 function runYAMLEncodingTests() {
@@ -179,7 +189,7 @@ function runYAMLEncodingTests() {
         'Test Description',
         'Test content',
         true,
-        testCase.frontMatter
+        testCase.frontMatter,
       );
 
       // Extract frontmatter from the generated content
@@ -206,7 +216,6 @@ function runYAMLEncodingTests() {
 
       console.log(`✅ PASS`);
       passed++;
-
     } catch (error) {
       console.log(`❌ FAIL: ${error.message}`);
       failed++;

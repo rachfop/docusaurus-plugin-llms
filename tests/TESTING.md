@@ -69,11 +69,13 @@ To test the plugin in a real Docusaurus project:
 2. **Link your plugin for local development**:
 
    From your plugin directory:
+
    ```bash
    npm link
    ```
 
    From your Docusaurus project:
+
    ```bash
    npm link docusaurus-plugin-llms
    ```
@@ -129,4 +131,4 @@ If you encounter issues with path transformations:
 
 1. Check the regex in the `applyPathTransformations` function
 2. Verify that the path segments are properly formatted (no leading/trailing slashes)
-3. Run the unit tests to isolate potential issues 
+3. Run the unit tests to isolate potential issues

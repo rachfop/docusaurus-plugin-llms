@@ -23,10 +23,22 @@ const FILES = [
       ['blank', ''],
       ['h2', '## Table of Contents'],
       ['blank', ''],
-      ['item', `- [Overview](${site}/docs/overview.md): What the plugin generates and when it runs.`],
-      ['item', `- [Installation](${site}/docs/installation.md): Install, register, and check the output.`],
-      ['item', `- [Configuration options](${site}/docs/configuration.md): Every option, type, and default.`],
-      ['item', `- [Content cleaning](${site}/docs/content-cleaning.md): Strip HTML, imports, and echoes.`],
+      [
+        'item',
+        `- [Overview](${site}/docs/overview.md): What the plugin generates and when it runs.`,
+      ],
+      [
+        'item',
+        `- [Installation](${site}/docs/installation.md): Install, register, and check the output.`,
+      ],
+      [
+        'item',
+        `- [Configuration options](${site}/docs/configuration.md): Every option, type, and default.`,
+      ],
+      [
+        'item',
+        `- [Content cleaning](${site}/docs/content-cleaning.md): Strip HTML, imports, and echoes.`,
+      ],
     ],
   },
   {
@@ -64,15 +76,41 @@ const FILES = [
 ];
 
 const GUIDES = [
-  { to: '/docs/content-generation', label: 'Custom LLM files', detail: 'One file per language, product, or audience.' },
-  { to: '/docs/content-cleaning', label: 'Content cleaning', detail: 'Drop MDX imports, HTML, and repeated headings.' },
-  { to: '/docs/ordering-and-paths', label: 'Ordering', detail: 'Put pages in reading order with glob patterns.' },
-  { to: '/docs/multi-version', label: 'Multi-version', detail: 'A separate llms.txt for each docs version.' },
+  {
+    to: '/docs/content-generation',
+    label: 'Custom LLM files',
+    detail: 'One file per language, product, or audience.',
+  },
+  {
+    to: '/docs/content-cleaning',
+    label: 'Content cleaning',
+    detail: 'Drop MDX imports, HTML, and repeated headings.',
+  },
+  {
+    to: '/docs/ordering-and-paths',
+    label: 'Ordering',
+    detail: 'Put pages in reading order with glob patterns.',
+  },
+  {
+    to: '/docs/multi-version',
+    label: 'Multi-version',
+    detail: 'A separate llms.txt for each docs version.',
+  },
 ];
 
 function CopyIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <rect x="9" y="9" width="12" height="12" rx="2" />
       <path d="M5 15V5a2 2 0 0 1 2-2h10" />
     </svg>
@@ -81,7 +119,17 @@ function CopyIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M5 12.5l4.5 4.5L19 7.5" />
     </svg>
   );
@@ -100,7 +148,9 @@ function CopyCommand() {
   };
   return (
     <div className={styles.command}>
-      <span className={styles.prompt} aria-hidden="true">$</span>
+      <span className={styles.prompt} aria-hidden="true">
+        $
+      </span>
       <code className={styles.commandText}>{INSTALL_COMMAND}</code>
       <button
         type="button"
@@ -186,10 +236,9 @@ export default function Home() {
             <span className={styles.titleMuted}>readable by language models</span>
           </h1>
           <p className={styles.lede}>
-            During <code>npm run build</code>, the plugin writes an{' '}
-            <code>llms.txt</code> index, an <code>llms-full.txt</code> bundle,
-            and a Markdown copy of every page, so a model reads your docs
-            without parsing HTML.
+            During <code>npm run build</code>, the plugin writes an <code>llms.txt</code> index, an{' '}
+            <code>llms-full.txt</code> bundle, and a Markdown copy of every page, so a model reads
+            your docs without parsing HTML.
           </p>
           <div className={styles.actions}>
             <CopyCommand />
@@ -212,9 +261,8 @@ export default function Home() {
               One line of config
             </h2>
             <p>
-              Add the plugin and build. With no options, it reads{' '}
-              <code>docs/</code> and writes both files to the build output.
-              Titles and summaries come from each page's front matter.
+              Add the plugin and build. With no options, it reads <code>docs/</code> and writes both
+              files to the build output. Titles and summaries come from each page's front matter.
             </p>
             <Link className={styles.textLink} to="/docs/configuration">
               All configuration options →
@@ -223,8 +271,9 @@ export default function Home() {
           <pre className={styles.config}>
             <span className={styles.cComment}>// docusaurus.config.js</span>
             {'\n'}module.exports = {'{'}
-            {'\n'}  plugins: [<span className={styles.cString}>'docusaurus-plugin-llms'</span>],
-            {'\n'}{'}'};
+            {'\n'} plugins: [<span className={styles.cString}>'docusaurus-plugin-llms'</span>],
+            {'\n'}
+            {'}'};
           </pre>
         </section>
 

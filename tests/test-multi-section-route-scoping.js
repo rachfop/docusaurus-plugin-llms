@@ -111,10 +111,22 @@ async function testTwoSectionSite(baseUrl, prefix) {
     const { llms } = result;
     const site = `https://example.com${prefix}`;
 
-    assert.ok(llms.includes(`[Other](${site}/other/)`), `expected Other at ${site}/other/; got:\n${llms}`);
-    assert.ok(llms.includes(`[Guide](${site}/other/guide/)`), `expected Guide at ${site}/other/guide/; got:\n${llms}`);
-    assert.ok(llms.includes(`[Other FAQ](${site}/other/faq)`), `expected Other FAQ at ${site}/other/faq; got:\n${llms}`);
-    assert.ok(llms.includes(`[Docs FAQ](${site}/faq)`), `expected Docs FAQ at ${site}/faq; got:\n${llms}`);
+    assert.ok(
+      llms.includes(`[Other](${site}/other/)`),
+      `expected Other at ${site}/other/; got:\n${llms}`,
+    );
+    assert.ok(
+      llms.includes(`[Guide](${site}/other/guide/)`),
+      `expected Guide at ${site}/other/guide/; got:\n${llms}`,
+    );
+    assert.ok(
+      llms.includes(`[Other FAQ](${site}/other/faq)`),
+      `expected Other FAQ at ${site}/other/faq; got:\n${llms}`,
+    );
+    assert.ok(
+      llms.includes(`[Docs FAQ](${site}/faq)`),
+      `expected Docs FAQ at ${site}/faq; got:\n${llms}`,
+    );
     assert.ok(!/README/.test(llms), `no URL should carry a README segment; got:\n${llms}`);
 
     pass(name);
@@ -149,12 +161,15 @@ async function testVersionedSiteWithBaseUrl() {
 
     assert.ok(
       root.includes('](https://example.com/sub/get-started)'),
-      `root should link to /sub/get-started; got:\n${root}`
+      `root should link to /sub/get-started; got:\n${root}`,
     );
-    assert.ok(!root.includes('/stable/'), `root links should not leak into /stable/; got:\n${root}`);
+    assert.ok(
+      !root.includes('/stable/'),
+      `root links should not leak into /stable/; got:\n${root}`,
+    );
     assert.ok(
       stable.includes('](https://example.com/sub/stable/get-started)'),
-      `stable should link to /sub/stable/get-started; got:\n${stable}`
+      `stable should link to /sub/stable/get-started; got:\n${stable}`,
     );
 
     pass(name);
@@ -176,7 +191,7 @@ async function testBlogWithBaseUrl() {
     fs.mkdirSync(path.dirname(postPath), { recursive: true });
     fs.writeFileSync(
       postPath,
-      '---\ntitle: Blog Welcome\ndescription: Blog Welcome page.\nslug: welcome\n---\n\n# Blog Welcome\n\nBlog body.'
+      '---\ntitle: Blog Welcome\ndescription: Blog Welcome page.\nslug: welcome\n---\n\n# Blog Welcome\n\nBlog body.',
     );
 
     const p = plugin(makeMockContext(tmpDir, outDir, '/sub/'), {
@@ -190,11 +205,11 @@ async function testBlogWithBaseUrl() {
     const llms = fs.readFileSync(path.join(outDir, 'llms.txt'), 'utf8');
     assert.ok(
       llms.includes('[Blog Welcome](https://example.com/sub/blog/welcome)'),
-      `expected Blog Welcome at /sub/blog/welcome; got:\n${llms}`
+      `expected Blog Welcome at /sub/blog/welcome; got:\n${llms}`,
     );
     assert.ok(
       llms.includes('[Docs Welcome](https://example.com/sub/welcome)'),
-      `expected Docs Welcome at /sub/welcome; got:\n${llms}`
+      `expected Docs Welcome at /sub/welcome; got:\n${llms}`,
     );
 
     pass(name);

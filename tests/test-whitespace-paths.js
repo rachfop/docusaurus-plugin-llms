@@ -43,10 +43,10 @@ const testCases = [
       title: 'Test Document',
       description: 'Test description',
       content: 'Test content',
-      path: '   ',  // Whitespace-only
-      frontMatter: {}
+      path: '   ', // Whitespace-only
+      frontMatter: {},
     },
-    expectedFilename: 'test-document.md'
+    expectedFilename: 'test-document.md',
   },
   {
     name: 'Handles tabs-only path',
@@ -54,10 +54,10 @@ const testCases = [
       title: 'Another Document',
       description: 'Another description',
       content: 'Another content',
-      path: '\t\t\t',  // Tabs-only
-      frontMatter: {}
+      path: '\t\t\t', // Tabs-only
+      frontMatter: {},
     },
-    expectedFilename: 'another-document.md'
+    expectedFilename: 'another-document.md',
   },
   {
     name: 'Handles mixed whitespace path',
@@ -65,10 +65,10 @@ const testCases = [
       title: 'Mixed Whitespace Doc',
       description: 'Mixed description',
       content: 'Mixed content',
-      path: ' \t \n ',  // Mixed whitespace
-      frontMatter: {}
+      path: ' \t \n ', // Mixed whitespace
+      frontMatter: {},
     },
-    expectedFilename: 'mixed-whitespace-doc.md'
+    expectedFilename: 'mixed-whitespace-doc.md',
   },
   {
     name: 'Handles whitespace around .md',
@@ -76,10 +76,10 @@ const testCases = [
       title: 'Extension Test',
       description: 'Extension description',
       content: 'Extension content',
-      path: '  .md  ',  // Whitespace around .md
-      frontMatter: {}
+      path: '  .md  ', // Whitespace around .md
+      frontMatter: {},
     },
-    expectedFilename: 'extension-test.md'
+    expectedFilename: 'extension-test.md',
   },
   {
     name: 'Handles normal path correctly',
@@ -88,9 +88,9 @@ const testCases = [
       description: 'Normal description',
       content: 'Normal content',
       path: 'docs/normal-doc.md',
-      frontMatter: {}
+      frontMatter: {},
     },
-    expectedFilename: 'docs/normal-doc.md'
+    expectedFilename: 'docs/normal-doc.md',
   },
   {
     name: 'Handles path with leading/trailing whitespace',
@@ -98,10 +98,10 @@ const testCases = [
       title: 'Trimmed Path',
       description: 'Trimmed description',
       content: 'Trimmed content',
-      path: '  docs/valid-path.md  ',  // Should work after trim
-      frontMatter: {}
+      path: '  docs/valid-path.md  ', // Should work after trim
+      frontMatter: {},
     },
-    expectedFilename: 'docs/valid-path.md'
+    expectedFilename: 'docs/valid-path.md',
   },
   {
     name: 'Handles empty string path',
@@ -110,9 +110,9 @@ const testCases = [
       description: 'Empty description',
       content: 'Empty content',
       path: '',
-      frontMatter: {}
+      frontMatter: {},
     },
-    expectedFilename: 'empty-path-doc.md'
+    expectedFilename: 'empty-path-doc.md',
   },
   {
     name: 'Handles null path with whitespace slug',
@@ -122,10 +122,10 @@ const testCases = [
       content: 'Null path content',
       path: 'docs/original.md',
       frontMatter: {
-        slug: '   '  // Whitespace-only slug - should be ignored
-      }
+        slug: '   ', // Whitespace-only slug - should be ignored
+      },
     },
-    expectedFilename: 'docs/original.md'  // Should keep original path when slug is invalid
+    expectedFilename: 'docs/original.md', // Should keep original path when slug is invalid
   },
   {
     name: 'Handles null path with whitespace id',
@@ -135,11 +135,11 @@ const testCases = [
       content: 'Null path id content',
       path: 'docs/original.md',
       frontMatter: {
-        id: '\t\t'  // Whitespace-only id - should be ignored
-      }
+        id: '\t\t', // Whitespace-only id - should be ignored
+      },
     },
-    expectedFilename: 'docs/original.md'  // Should keep original path when id is invalid
-  }
+    expectedFilename: 'docs/original.md', // Should keep original path when id is invalid
+  },
 ];
 
 async function runTests() {
@@ -159,7 +159,7 @@ async function runTests() {
         'https://example.com',
         'docs',
         [],
-        true // preserveDirectoryStructure
+        true, // preserveDirectoryStructure
       );
 
       // Check that a file was generated
@@ -204,11 +204,11 @@ async function runTests() {
 
 // Run the tests
 runTests()
-  .then(success => {
+  .then((success) => {
     console.log(success ? '🎉 All whitespace path tests passed!' : '❌ Some tests failed.');
     process.exit(success ? 0 : 1);
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('Test execution error:', error);
     process.exit(1);
   });
