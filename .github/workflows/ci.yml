@@ -22,6 +22,20 @@ jobs:
       - run: npm run test:unit
       - run: npm run test:integration
 
+  # oxlint and oxfmt need Node ^20.19 || >=22.12, so they run once on 22
+  # rather than in the test matrix, which still covers Node 18 for users.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
   # Build the docs site so broken links and anchors in docs/ fail the PR
   # (the site config throws on both) instead of the deploy after merge.
   docs-site:
