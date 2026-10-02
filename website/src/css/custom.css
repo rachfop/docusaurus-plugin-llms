@@ -93,8 +93,25 @@ body {
 
 .navbar {
   border-bottom: 1px solid var(--site-border);
-  backdrop-filter: saturate(180%) blur(8px);
+  background-color: transparent;
+}
+
+/*
+ * The translucent blur sits on a pseudo-element. A backdrop-filter on
+ * .navbar itself makes it the containing block for the fixed-position
+ * mobile sidebar, which then clips to the navbar's height.
+ */
+.navbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background-color: color-mix(in srgb, var(--ifm-background-color) 88%, transparent);
+  backdrop-filter: saturate(180%) blur(8px);
+}
+
+.navbar-sidebar {
+  background-color: var(--ifm-background-color);
 }
 
 .navbar__title {
