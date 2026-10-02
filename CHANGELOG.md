@@ -7,215 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `versions[].routePrefix`, for explicit versions served inside the route base
+  path (`/docs/<version>/`) (#88).
+
+### Changed
+
+- `versions: 'auto'` follows Docusaurus versioning: the last version writes the
+  root files, the current docs go under `next/`, and the docs plugin's
+  `lastVersion`, `includeCurrentVersion`, `onlyIncludeVersions`, and
+  `disableVersioning` options apply (#88).
+- Each locale's files use the page translations in `i18n/<locale>/` (#88).
+- HTML tables, line breaks, and `<img>` tags become Markdown text and images,
+  and HTML and MDX comments are removed (#85).
+- Duplicate `llms-full.txt` headings get a space before the suffix:
+  `## Install (Api)` (#86).
+- Option validation rejects output paths outside the build directory,
+  duplicate output file names, a `processingBatchSize` that isn't a positive
+  integer, and invalid per-version options (#78, #84, #88).
+
 ### Fixed
 
-- **`INDEX.md` and `README.md` linked to pages that don't exist** (#74):
-  URL resolution recognized only a lowercase `index`, so `INDEX.md`,
-  `Index.md`, and `README.md` got a file-name URL that 404s. They now resolve
-  to their directory's route, following Docusaurus's own convention.
-- **Descriptions picked up code fences, tables, and JSX** (#76): with no
-  frontmatter `description`, the first block under the H1 became the page
-  description even when it was a code fence, `:::note` admonition, table,
-  JSX/HTML element, HTML comment, or standalone image. Description extraction
-  now skips those blocks and masks code fences, so a fence containing a blank
-  line no longer splits into fragments.
-- **Multi-section sites linked to file-name URLs** (#77): on unversioned
-  sites, a section whose `routeBasePath` isn't `/` matched no routes, so its
-  docs fell back to URLs like `/other/README`. Route scoping also ignored the
-  site `baseUrl`. `routeBasePath`, version `path`, and `blogRouteBasePath` are
-  now matched relative to `baseUrl`.
-- **`logLevel: 'quiet'` printed normal output**: the level map fell back to
-  `normal` with `||`, and `LogLevel.QUIET` is `0`. Quiet mode now prints errors
-  only.
-- **`processingBatchSize` of `0` or less hung the build**: the batch loop
-  never advanced. The option must now be a positive integer, and other values
-  fail option validation.
-- **A frontmatter `slug` could write files outside the build directory**: with
-  `generateMarkdownFiles`, a slug such as `../../../escaped` wrote its markdown
-  file above `outDir`. Markdown paths now drop `.` and `..` segments, and any
-  path that still resolves outside the output directory falls back to a
-  filename from the page title.
-- **Output filenames and version paths could escape the build directory**:
-  `customLLMFiles[].filename`, `llmsTxtFilename`, `llmsFullTxtFilename`, and
-  `versions[].path` accepted absolute paths and `..` segments. Option
-  validation now rejects them, and a write-time check skips any file outside
-  `outDir`.
-- **Generated files with the same name overwrote each other**: an
-  `llmsTxtFilename` equal to `llmsFullTxtFilename`, or a custom filename equal
-  to a standard output or another custom file, silently replaced one file with
-  another. Option validation now rejects these collisions, counting only the
-  files that are generated.
-- **Custom LLM files overwrote markdown files from `llms.txt`**: with
-  `generateMarkdownFiles`, each custom file assigned markdown paths from
-  scratch, so a page could overwrite another page's file (for example two
-  sections' `intro.md` with `preserveDirectoryStructure: false`), leaving an
-  `llms.txt` link serving the wrong page. Each version now assigns every doc
-  one markdown file, shared by `llms.txt`, `llms-full.txt`, and custom files.
-- **Versioned markdown files repeated the version path**: with `versions` and
-  `generateMarkdownFiles`, a page at `/stable/get-started` was written to
-  `build/stable/stable/get-started.md` while `stable/llms.txt` linked
-  `/stable/get-started.md`. Files now land at the linked path.
-- **Prose lines starting with "import" were deleted**: inlined partials, and
-  pages built with `excludeImports`, lost any line beginning with `import `,
-  so prose wrapped onto a line starting "import the SDK ..." dropped that
-  line. A multi-line `import { ... } from '...'` was half-removed. Only ES
-  import statements with a quoted module specifier are removed now,
-  multi-line ones whole.
-- **Code samples in nested partials were emptied or spliced**: imports and
-  partial usage inside a nested partial's code fence were resolved as real,
-  and one partial's body could be spliced into another partial's code sample
-  (`<B />` in a fence in partial A). Code is masked at every resolution level,
-  and inlined partial bodies are protected from later splices.
-- **Long JSX tags hung the build**: a tag with many brace-valued attributes
-  and one deeply nested expression backtracked exponentially (seconds at 24
-  attributes, longer beyond). The attribute matcher has one way to match each
-  value and finishes in linear time.
-- **HTML tags were removed with no separator**: `a<br/>b` became `ab`, table
-  cells ran together, and `<img>` disappeared. Block tags (`br`, `p`, `div`,
-  `li`, `tr`, ...) now leave a line break, adjacent cells are separated by a
-  pipe (`a | b`), and `<img src alt>` becomes `![alt](src)`, so image-URL
-  rewriting applies to it.
-- **Nested and blockquoted fences were not masked**: a ```` fence showing a
-  ``` fence closed at the inner fence, and fences inside `>` blockquotes were
-  not masked, so HTML in those samples was stripped. Closing fences follow
-  CommonMark (same character, at least as long as the opener), and
-  blockquoted fences are masked.
-- **Descriptions came from code comments and MDX comments**: the H1 fallback
-  read `# install deps` from a bash fence, and a `{/* TODO */}` paragraph
-  became the description. Both are skipped, and MDX `{/* */}` and HTML
-  `<!-- -->` comments outside code are stripped from the output.
-- **Some partial imports and usages were not inlined**: the
-  `import { default as X } from './_x.mdx'` and
-  `import Y, { toc } from './_y.mdx'` forms lost the partial body and leaked
-  the import line, and a partial used with element children
-  (`<P><b>x</b></P>`) was not replaced.
-- **`preserveComponents` couldn't keep `<Table>`-style components or
-  `<TabItem>`**: HTML tag stripping matched names case-insensitively, so a
-  component such as `<Table>` or `<B>` was stripped as HTML, and `<TabItem>`
-  became a label line before the preserve check ran, leaving an unbalanced
-  `</TabItem>`. HTML stripping matches lowercase element names only, and a
-  preserved `TabItem` keeps its tag.
-- **Tab labels read the wrong attribute or kept quotes**: `data-label="x"`
-  was read as `label`, and `label={"Python"}` produced `**"Python"**`. The
-  attribute name must follow whitespace, and a brace expression holding a
-  single string or template literal yields the literal's text.
-- **Page titles could break llms.txt links and headings**: a title containing
-  `]`, `[`, or `\` ended or nested the link text, and a multi-line title split
-  the TOC line and the `## ` / `# ` heading. Titles are collapsed to one line,
-  and link text escapes `\`, `[`, and `]`.
-- **TOC descriptions stopped at the first line break**: with no frontmatter
-  `description`, a hard-wrapped first paragraph was cut at its first line.
-  The paragraph's lines are joined before the 150-character truncation.
-  Whitespace runs in every TOC description collapse to one space.
-- **Blog posts were listed under the last docs section's heading**: with
-  several `docsDir` sections and `includeBlog`, blog links followed the last
-  section's links in llms.txt. They're grouped under a `## Blog` heading.
-- **`useRelativeUrls`, `rewriteImageUrls`, and `warnOnIgnoredFiles` accepted
-  any value**: `useRelativeUrls: 'false'` passed validation and enabled the
-  option. These options must be booleans.
-- **`logLevel` leaked between plugin instances**: the level was module-wide,
-  so with two instances the last one constructed set the level for both
-  (a `quiet` instance printed output). Each instance's `postBuild` logs at its
-  own level, including when Docusaurus runs the instances concurrently.
-- **Duplicate llms-full.txt headings had no space before the suffix**: a
-  repeated title became `## Guide(Install)` or `## Intro(3)`. The suffix
-  follows a space: `## Guide (Install)`, `## Intro (3)`. This changes the
-  llms-full.txt headings of sites with duplicate page titles.
-- **`rewriteImageUrls` skipped some relative image paths**: `![a](img/x.png)`
-  (no `./`), `![a](<./my img.png>)`, and `![a](./my%20img.png)` kept their
-  source paths. Markdown image paths that aren't absolute, root-relative, or
-  aliases are rewritten, percent-decoded for the asset lookup as Docusaurus
-  does, and spaces in the asset URL are percent-encoded.
-- **Docs pages linked to page or blog routes**: with a single docs section,
-  route matching took the shortest route ending in the file name, so
-  `docs/about.md` linked `/about` and `docs/install.md` linked
-  `/blog/install`. Docs files match routes under their section's
-  `routeBasePath` first and never match routes under `blogRouteBasePath`;
-  blog files match blog routes only.
-- **Date-prefixed blog posts linked to pages that don't exist**:
-  `blog/2024-01-01-hello.md` and `blog/2024-01-01-hello/index.md` linked
-  `/blog/2024-01-01-hello`. They follow Docusaurus's date convention and link
-  `/blog/2024/01/01/hello`.
-- **Section-root index pages linked to unrelated routes**: `docs/index.md` in a
-  section with `routeBasePath: '/'` matched any route ending in `/docs` (such
-  as `/blog/tags/docs`), and a multi-section root index linked `/guide/`. A
-  section-root index links its section's root route.
-- **A `baseUrl` equal to the route base was dropped from links**: with
-  `baseUrl: '/docs/'` and docs at `/docs/docs/intro`, markdown file links and
-  file-path fallback links omitted one `/docs`. Paths relative to the
-  `baseUrl` always get it prepended.
-- **Frontmatter `slug` and `id` resolved to the wrong page**: an index file
-  with an `id` took the URL and markdown file of the doc that `id` named;
-  a relative slug on an index file resolved against the parent directory; a
-  relative slug under a number-prefixed folder (`01-guides/`) kept the prefix;
-  and with `generateMarkdownFiles`, an absolute or nested slug dropped the
-  route base from the file path (`slug: /custom/path` wrote
-  `custom/path.md`, served at `/docs/custom/path`). Slugs and ids resolve
-  following Docusaurus: absolute slugs join the route base, relative slugs and
-  ids join the file's directory with number prefixes stripped, and index files
-  ignore `id`. Markdown files for route-resolved pages take their path from
-  the route.
-- **Number-prefixed files named after their folder used file-name URLs**:
-  `docs/02-api/02-api.md` linked `/docs/02-api/02-api`. It links `/docs/api`.
-- **Spaces and accents broke links and markdown file names**: routes with
-  spaces or accents appeared unencoded in `llms.txt` links, and generated
-  markdown files were written under percent-encoded names
-  (`docs/my%20file.md`). Links are percent-encoded per segment, and files are
-  written under the decoded names.
-- **Partials in `_`-prefixed directories were listed as pages**: files such as
-  `docs/_partials/snip.md` appeared in `llms.txt`. Docusaurus excludes
-  `**/_*/**`, and so does the plugin; those files stay available for imports.
-- **Custom heading ids appeared in titles**: `# Getting started {#start}`
-  produced the title `Getting started {#start}`, and the heading was emitted
-  twice in generated files. The trailing `{#id}` is dropped from titles and
-  duplicate-heading detection.
-- **`pathTransformation` left duplicate segments and trailing slashes**:
-  `ignorePaths: ['api']` turned `api/api/x` into `api/x`, and `addPaths` on an
-  empty path produced `docs/`. Every matching segment is removed, and an empty
-  path becomes the added path.
-- **`versions: 'auto'` linked the wrong version's pages**: on a default site
-  the current docs linked the last version's `/docs/...` pages, and versioned
-  docs linked `/versioned_docs/version-<id>/...` URLs that 404. Auto mode
-  follows the docs plugin's routing: each version links pages under
-  `/<routeBasePath>/<versionPath>/`, honors `lastVersion`,
-  `includeCurrentVersion`, `onlyIncludeVersions`, and per-version `path`, and
-  writes to `<outDir>/<versionPath>/`, so the last version owns the root
-  `llms.txt` and the current docs write to `next/`. Explicit versions accept
-  `routePrefix: ''` to describe the same layout.
-- **Translated locales got source-language content**: a locale build such as
-  `build/fr/llms.txt` read every page from the source files. A non-default
-  locale reads each page from its translation under
-  `i18n/<locale>/docusaurus-plugin-content-docs/` or
-  `docusaurus-plugin-content-blog/` when one exists, and from the source file
-  otherwise.
-- **Invalid per-version options passed validation**: `versions[].docsDir`,
-  `customLLMFiles`, and `includeOrder` got shape checks only, so a section
-  without a `path` aborted every later version while the build succeeded, and
-  a custom file without `includePatterns` listed every doc. They get the same
-  validation as the top-level options, and a version that fails during
-  generation is logged without stopping the remaining versions.
-- **Blog posts were repeated in every version**: with `versions` and
-  `includeBlog`, each version's files listed the blog. The blog appears in the
-  root version's files only.
+- Links and Markdown file paths match the routes Docusaurus builds for index
+  and README pages, slugs and ids, number-prefixed files, date-prefixed blog
+  posts, multi-section and `baseUrl` sites, and paths with spaces or accents
+  (#74, #77, #87).
+- Content cleaning keeps prose lines that start with "import", code samples
+  inside partials, and blank lines inside code, and long JSX tags don't hang
+  the build (#85).
+- Page descriptions skip code fences, tables, admonitions, JSX, and comments,
+  and a wrapped first paragraph is joined before it's truncated (#76, #85,
+  #86).
+- Generated files stay inside the build directory and don't overwrite each
+  other (#84).
+- `logLevel: 'quiet'` prints errors only, and each plugin instance uses its
+  own level (#78, #86).
+- Titles with brackets or line breaks, components in `preserveComponents`
+  named like HTML tags, `TabItem` labels, the blog heading on multi-section
+  sites, and image rewriting for relative paths (#86).
 
 ### Documentation
 
-- Corrected option behavior in the docs: `addMdExtension` applies only with
-  `generateMarkdownFiles`, `customLLMFiles[].includeUnmatchedLast` defaults to
-  `true`, any `.md`/`.mdx` import is inlined, and `processingBatchSize` sets
-  how often verbose mode logs progress.
-- Documented how page titles and descriptions are chosen, directory index
-  handling, and the `llms-full.txt` page structure.
-- **Blank lines inside code samples were collapsed**: content cleaning
-  squeezed runs of blank lines everywhere, so a code sample with two blank
-  lines between functions came out with one. Blank lines are now collapsed
-  only outside code, including the whitespace-only lines left by indented
-  HTML.
-- **Truncated TOC descriptions could leave a link or code span open**: the
-  150-character cut could land inside `[text](url)` or an inline code span,
-  breaking the markdown of that llms.txt line. Body descriptions keep link
-  text only (their links are relative to the page), and a cut that would
-  leave a link or code span open moves before it.
+- Corrected documented option behavior, and documented how titles and
+  descriptions are chosen, directory index pages, versioned sites, and
+  translated sites (#79, #82, #88).
 
 ## [0.6.0] - 2026-08-31
 
