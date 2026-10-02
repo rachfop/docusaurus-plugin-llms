@@ -26,6 +26,18 @@ const config = {
     },
   },
 
+  // Homepage type: Newsreader for prose, IBM Plex Mono for the file samples.
+  stylesheets: [
+    {
+      href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&display=swap',
+      type: 'text/css',
+    },
+  ],
+  headTags: [
+    { tagName: 'link', attributes: { rel: 'preconnect', href: 'https://fonts.googleapis.com' } },
+    { tagName: 'link', attributes: { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' } },
+  ],
+
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
@@ -77,14 +89,24 @@ const config = {
   ],
 
   themeConfig: {
+    // The only image is the square logo, so use the small-card layout.
+    image: 'img/favicon.png',
+    metadata: [{ name: 'twitter:card', content: 'summary' }],
     navbar: {
       title: 'docusaurus-plugin-llms',
+      logo: { alt: 'llms logo', src: 'img/favicon.png' },
       items: [
         {
           type: 'docSidebar',
           sidebarId: 'docs',
           position: 'left',
           label: 'Docs',
+        },
+        {
+          // pathname:// links bypass the router but still get the baseUrl.
+          to: 'pathname:///llms.txt',
+          label: 'llms.txt',
+          position: 'right',
         },
         {
           href: 'https://github.com/rachfop/docusaurus-plugin-llms',

@@ -1,6 +1,6 @@
 /**
- * Any CSS overrides for the docs site. The default classic preset styles are
- * a fine baseline; this file is intentionally minimal.
+ * Site-wide overrides on top of the classic preset. Homepage styles live in
+ * src/pages/index.module.css.
  */
 :root {
   --ifm-color-primary: #2e8555;
