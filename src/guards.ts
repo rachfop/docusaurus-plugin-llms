@@ -29,9 +29,7 @@ export function isNonEmptyString(value: unknown): value is string {
  * @returns The value as a string when it is a finite number, otherwise unchanged
  */
 export function coerceFrontMatterString(value: unknown): unknown {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? String(value)
-    : value;
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : value;
 }
 
 /**
@@ -93,10 +91,7 @@ export class ValidationError extends Error {
  * @returns The validated value
  * @throws ValidationError if the value is null or undefined
  */
-export function validateRequired<T>(
-  value: T | null | undefined,
-  paramName: string
-): T {
+export function validateRequired<T>(value: T | null | undefined, paramName: string): T {
   if (value === null || value === undefined) {
     throw new ValidationError(`Required parameter '${paramName}' is null or undefined`);
   }
@@ -114,18 +109,22 @@ export function validateRequired<T>(
 export function validateString(
   value: unknown,
   paramName: string,
-  options: { minLength?: number; maxLength?: number; pattern?: RegExp } = {}
+  options: { minLength?: number; maxLength?: number; pattern?: RegExp } = {},
 ): string {
   if (typeof value !== 'string') {
     throw new ValidationError(`Parameter '${paramName}' must be a string, got ${typeof value}`);
   }
 
   if (options.minLength !== undefined && value.length < options.minLength) {
-    throw new ValidationError(`Parameter '${paramName}' must be at least ${options.minLength} characters`);
+    throw new ValidationError(
+      `Parameter '${paramName}' must be at least ${options.minLength} characters`,
+    );
   }
 
   if (options.maxLength !== undefined && value.length > options.maxLength) {
-    throw new ValidationError(`Parameter '${paramName}' exceeds maximum length of ${options.maxLength}`);
+    throw new ValidationError(
+      `Parameter '${paramName}' exceeds maximum length of ${options.maxLength}`,
+    );
   }
 
   if (options.pattern && !options.pattern.test(value)) {
@@ -146,7 +145,7 @@ export function validateString(
 export function validateArray<T>(
   value: unknown,
   paramName: string,
-  elementValidator?: (item: unknown) => boolean
+  elementValidator?: (item: unknown) => boolean,
 ): T[] {
   if (!Array.isArray(value)) {
     throw new ValidationError(`Parameter '${paramName}' must be an array`);

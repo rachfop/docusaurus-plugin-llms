@@ -20,7 +20,7 @@ async function createTempDir() {
 async function cleanupTempDir(tmpDir) {
   try {
     await fs.rm(tmpDir, { recursive: true, force: true });
-  } catch (error) {
+  } catch {
     // Ignore cleanup errors
   }
 }
@@ -31,7 +31,7 @@ async function makeReadOnly(dirPath) {
     // On Unix-like systems, chmod 444 makes it read-only
     await fs.chmod(dirPath, 0o444);
     return true;
-  } catch (error) {
+  } catch {
     console.warn('Warning: Could not make directory read-only. Skipping permission tests.');
     return false;
   }
@@ -41,7 +41,7 @@ async function makeReadOnly(dirPath) {
 async function restoreWritePermissions(dirPath) {
   try {
     await fs.chmod(dirPath, 0o755);
-  } catch (error) {
+  } catch {
     // Ignore restore errors
   }
 }
@@ -69,28 +69,22 @@ const testCases = [
             content: 'Test content',
             url: 'https://example.com/test',
             path: '/test.md',
-            description: 'Test description'
-          }
+            description: 'Test description',
+          },
         ];
 
         const outputPath = path.join(readOnlyDir, 'test-output.txt');
 
         try {
-          await generateLLMFile(
-            docs,
-            outputPath,
-            'Test Title',
-            'Test Description',
-            false
-          );
+          await generateLLMFile(docs, outputPath, 'Test Title', 'Test Description', false);
 
           // If we get here, the test failed because no error was thrown
           await restoreWritePermissions(readOnlyDir);
           return { passed: false, error: 'Expected write error but none was thrown' };
         } catch (error) {
           // Check if the error message is descriptive
-          const hasDescriptiveError = error.message.includes('Failed to write file') &&
-                                      error.message.includes(outputPath);
+          const hasDescriptiveError =
+            error.message.includes('Failed to write file') && error.message.includes(outputPath);
 
           await restoreWritePermissions(readOnlyDir);
 
@@ -99,14 +93,14 @@ const testCases = [
           } else {
             return {
               passed: false,
-              error: `Error message not descriptive enough: ${error.message}`
+              error: `Error message not descriptive enough: ${error.message}`,
             };
           }
         }
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'generateLLMFile with fullContent handles write errors',
@@ -129,8 +123,8 @@ const testCases = [
             content: 'Test content',
             url: 'https://example.com/test',
             path: '/test.md',
-            description: 'Test description'
-          }
+            description: 'Test description',
+          },
         ];
 
         const outputPath = path.join(readOnlyDir, 'test-output-full.txt');
@@ -141,14 +135,14 @@ const testCases = [
             outputPath,
             'Test Title',
             'Test Description',
-            true // fullContent
+            true, // fullContent
           );
 
           await restoreWritePermissions(readOnlyDir);
           return { passed: false, error: 'Expected write error but none was thrown' };
         } catch (error) {
-          const hasDescriptiveError = error.message.includes('Failed to write file') &&
-                                      error.message.includes(outputPath);
+          const hasDescriptiveError =
+            error.message.includes('Failed to write file') && error.message.includes(outputPath);
 
           await restoreWritePermissions(readOnlyDir);
 
@@ -157,14 +151,14 @@ const testCases = [
           } else {
             return {
               passed: false,
-              error: `Error message not descriptive enough: ${error.message}`
+              error: `Error message not descriptive enough: ${error.message}`,
             };
           }
         }
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'generateIndividualMarkdownFiles handles mkdir errors',
@@ -188,8 +182,8 @@ const testCases = [
             url: 'https://example.com/test',
             path: '/nested/path/test.md',
             description: 'Test description',
-            frontMatter: {}
-          }
+            frontMatter: {},
+          },
         ];
 
         try {
@@ -197,7 +191,7 @@ const testCases = [
           await generateIndividualMarkdownFiles(
             docs,
             path.join(readOnlyParent, 'output'),
-            'https://example.com'
+            'https://example.com',
           );
 
           await restoreWritePermissions(readOnlyParent);
@@ -212,14 +206,14 @@ const testCases = [
           } else {
             return {
               passed: false,
-              error: `Error message not descriptive enough: ${error.message}`
+              error: `Error message not descriptive enough: ${error.message}`,
             };
           }
         }
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'generateIndividualMarkdownFiles handles write errors',
@@ -247,22 +241,18 @@ const testCases = [
             url: 'https://example.com/test',
             path: '/test.md',
             description: 'Test description',
-            frontMatter: {}
-          }
+            frontMatter: {},
+          },
         ];
 
         try {
-          await generateIndividualMarkdownFiles(
-            docs,
-            outputDir,
-            'https://example.com'
-          );
+          await generateIndividualMarkdownFiles(docs, outputDir, 'https://example.com');
 
           await restoreWritePermissions(testFilePath);
           return { passed: false, error: 'Expected write error but none was thrown' };
         } catch (error) {
-          const hasDescriptiveError = error.message.includes('Failed to write file') &&
-                                      error.message.includes(testFilePath);
+          const hasDescriptiveError =
+            error.message.includes('Failed to write file') && error.message.includes(testFilePath);
 
           await restoreWritePermissions(testFilePath);
 
@@ -271,14 +261,14 @@ const testCases = [
           } else {
             return {
               passed: false,
-              error: `Error message not descriptive enough: ${error.message}`
+              error: `Error message not descriptive enough: ${error.message}`,
             };
           }
         }
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'Error messages include full file paths for debugging',
@@ -295,13 +285,15 @@ const testCases = [
           return { passed: true, skipped: true };
         }
 
-        const docs = [{
-          title: 'Test',
-          content: 'Content',
-          url: 'https://example.com/test',
-          path: '/test.md',
-          description: 'Desc'
-        }];
+        const docs = [
+          {
+            title: 'Test',
+            content: 'Content',
+            url: 'https://example.com/test',
+            path: '/test.md',
+            description: 'Desc',
+          },
+        ];
 
         const outputPath = path.join(readOnlyDir, 'subdir', 'test.txt');
 
@@ -313,22 +305,22 @@ const testCases = [
           await restoreWritePermissions(readOnlyDir);
 
           // Check if the error message contains the full path
-          const containsFullPath = error.message.includes(outputPath) ||
-                                  error.message.includes(path.dirname(outputPath));
+          const containsFullPath =
+            error.message.includes(outputPath) || error.message.includes(path.dirname(outputPath));
 
           if (containsFullPath) {
             return { passed: true };
           } else {
             return {
               passed: false,
-              error: `Error message does not include full path: ${error.message}`
+              error: `Error message does not include full path: ${error.message}`,
             };
           }
         }
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'Successful file operations complete without errors',
@@ -345,23 +337,18 @@ const testCases = [
             content: 'This should work',
             url: 'https://example.com/success',
             path: '/success.md',
-            description: 'Success test'
-          }
+            description: 'Success test',
+          },
         ];
 
         const outputPath = path.join(outputDir, 'success.txt');
 
         try {
-          await generateLLMFile(
-            docs,
-            outputPath,
-            'Success Title',
-            'Success Description',
-            false
-          );
+          await generateLLMFile(docs, outputPath, 'Success Title', 'Success Description', false);
 
           // Verify the file was actually created
-          const fileExists = await fs.access(outputPath)
+          const fileExists = await fs
+            .access(outputPath)
             .then(() => true)
             .catch(() => false);
 
@@ -383,7 +370,7 @@ const testCases = [
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
+    },
   },
   {
     name: 'generateIndividualMarkdownFiles creates nested directories successfully',
@@ -403,20 +390,21 @@ const testCases = [
             url: 'https://example.com/deep/nested/path/test',
             path: '/deep/nested/path/test.md',
             description: 'Nested test',
-            frontMatter: {}
-          }
+            frontMatter: {},
+          },
         ];
 
         try {
           const result = await generateIndividualMarkdownFiles(
             docs,
             outputDir,
-            'https://example.com'
+            'https://example.com',
           );
 
           // Verify the file was created in the nested directory
           const expectedPath = path.join(outputDir, 'deep', 'nested', 'path', 'test.md');
-          const fileExists = await fs.access(expectedPath)
+          const fileExists = await fs
+            .access(expectedPath)
             .then(() => true)
             .catch(() => false);
 
@@ -425,7 +413,7 @@ const testCases = [
           } else {
             return {
               passed: false,
-              error: `File not created at expected path: ${expectedPath}`
+              error: `File not created at expected path: ${expectedPath}`,
             };
           }
         } catch (error) {
@@ -434,8 +422,8 @@ const testCases = [
       } finally {
         await cleanupTempDir(tmpDir);
       }
-    }
-  }
+    },
+  },
 ];
 
 async function runTests() {
@@ -472,7 +460,9 @@ async function runTests() {
 
   console.log(`\n========================================`);
   console.log(`File I/O Error Handling Tests Summary:`);
-  console.log(`Passed: ${passed}, Failed: ${failed}, Skipped: ${skipped}, Total: ${testCases.length}`);
+  console.log(
+    `Passed: ${passed}, Failed: ${failed}, Skipped: ${skipped}, Total: ${testCases.length}`,
+  );
   console.log(`========================================\n`);
 
   return failed === 0;
@@ -480,7 +470,7 @@ async function runTests() {
 
 // Run the tests
 runTests()
-  .then(success => {
+  .then((success) => {
     if (success) {
       console.log('🎉 All file I/O error handling tests passed!');
       process.exit(0);
@@ -489,7 +479,7 @@ runTests()
       process.exit(1);
     }
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('Fatal error running tests:', error);
     process.exit(1);
   });

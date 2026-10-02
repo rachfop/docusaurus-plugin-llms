@@ -14,7 +14,7 @@ async function readFile(filePath) {
 
   // Remove UTF-8 BOM if present
   // UTF-8 BOM is the character U+FEFF at the start of the file
-  if (content.charCodeAt(0) === 0xFEFF) {
+  if (content.charCodeAt(0) === 0xfeff) {
     content = content.slice(1);
   }
 
@@ -27,50 +27,50 @@ const testCases = [
     name: 'File with UTF-8 BOM',
     content: '\uFEFF# Test Document\n\nThis file has a BOM at the start.',
     expected: '# Test Document\n\nThis file has a BOM at the start.',
-    shouldHaveBOM: true
+    shouldHaveBOM: true,
   },
   {
     name: 'File without BOM',
     content: '# Test Document\n\nThis file has no BOM.',
     expected: '# Test Document\n\nThis file has no BOM.',
-    shouldHaveBOM: false
+    shouldHaveBOM: false,
   },
   {
     name: 'File with BOM and frontmatter',
     content: '\uFEFF---\ntitle: Test\n---\n\n# Content\n\nSome content here.',
     expected: '---\ntitle: Test\n---\n\n# Content\n\nSome content here.',
-    shouldHaveBOM: true
+    shouldHaveBOM: true,
   },
   {
     name: 'Empty file with BOM',
     content: '\uFEFF',
     expected: '',
-    shouldHaveBOM: true
+    shouldHaveBOM: true,
   },
   {
     name: 'Empty file without BOM',
     content: '',
     expected: '',
-    shouldHaveBOM: false
+    shouldHaveBOM: false,
   },
   {
     name: 'File with BOM and imports',
     content: '\uFEFFimport Component from "./Component";\n\n# Test\n\nContent here.',
     expected: 'import Component from "./Component";\n\n# Test\n\nContent here.',
-    shouldHaveBOM: true
+    shouldHaveBOM: true,
   },
   {
     name: 'File with BOM character in the middle (should not be removed)',
     content: '# Test\n\nSome text \uFEFF with BOM in middle.',
     expected: '# Test\n\nSome text \uFEFF with BOM in middle.',
-    shouldHaveBOM: false
+    shouldHaveBOM: false,
   },
   {
     name: 'File with multiple lines and BOM at start',
     content: '\uFEFF# Heading 1\n\n## Heading 2\n\nParagraph 1\n\nParagraph 2',
     expected: '# Heading 1\n\n## Heading 2\n\nParagraph 1\n\nParagraph 2',
-    shouldHaveBOM: true
-  }
+    shouldHaveBOM: true,
+  },
 ];
 
 async function runTests() {
@@ -91,17 +91,19 @@ async function runTests() {
 
         // Verify BOM was written correctly
         const rawContent = await fs.promises.readFile(testFilePath, 'utf8');
-        const hasBOM = rawContent.charCodeAt(0) === 0xFEFF;
+        const hasBOM = rawContent.charCodeAt(0) === 0xfeff;
 
         if (test.shouldHaveBOM && !hasBOM) {
-          console.log('  ⚠️  WARNING: BOM was not written to file (this might be a Node.js/filesystem quirk)');
+          console.log(
+            '  ⚠️  WARNING: BOM was not written to file (this might be a Node.js/filesystem quirk)',
+          );
         }
 
         // Read the file with our BOM-stripping function
         const result = await readFile(testFilePath);
 
         // Check if BOM was removed
-        const resultHasBOM = result.charCodeAt(0) === 0xFEFF;
+        const resultHasBOM = result.charCodeAt(0) === 0xfeff;
         const pass = result === test.expected && !resultHasBOM;
 
         console.log(`  ${pass ? '✅ PASS' : '❌ FAIL'}`);
@@ -120,7 +122,6 @@ async function runTests() {
 
         // Clean up test file
         await fs.promises.unlink(testFilePath);
-
       } catch (error) {
         console.log('  ❌ ERROR:', error.message);
       }
@@ -131,7 +132,7 @@ async function runTests() {
     // Clean up temp directory
     try {
       await fs.promises.rmdir(tempDir);
-    } catch (error) {
+    } catch {
       // Directory might not be empty or might not exist
     }
   }
@@ -155,26 +156,26 @@ function testBOMDetection() {
       name: 'String with BOM',
       input: '\uFEFFHello World',
       expectedHasBOM: true,
-      expectedWithoutBOM: 'Hello World'
+      expectedWithoutBOM: 'Hello World',
     },
     {
       name: 'String without BOM',
       input: 'Hello World',
       expectedHasBOM: false,
-      expectedWithoutBOM: 'Hello World'
+      expectedWithoutBOM: 'Hello World',
     },
     {
       name: 'Empty string',
       input: '',
       expectedHasBOM: false,
-      expectedWithoutBOM: ''
+      expectedWithoutBOM: '',
     },
     {
       name: 'String with only BOM',
       input: '\uFEFF',
       expectedHasBOM: true,
-      expectedWithoutBOM: ''
-    }
+      expectedWithoutBOM: '',
+    },
   ];
 
   let passCount = 0;
@@ -183,7 +184,7 @@ function testBOMDetection() {
     console.log(`BOM Detection Test ${index + 1}: ${test.name}`);
 
     try {
-      const hasBOM = test.input.charCodeAt(0) === 0xFEFF;
+      const hasBOM = test.input.charCodeAt(0) === 0xfeff;
       const withoutBOM = hasBOM ? test.input.slice(1) : test.input;
 
       const detectionPass = hasBOM === test.expectedHasBOM;
@@ -204,7 +205,6 @@ function testBOMDetection() {
       if (pass) {
         passCount++;
       }
-
     } catch (error) {
       console.log('  ❌ ERROR:', error.message);
     }

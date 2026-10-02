@@ -8,7 +8,6 @@
  * - Graceful no-op for unknown images or non-existent asset directory
  */
 
-const assert = require('assert');
 const path = require('path');
 const fs = require('fs').promises;
 const os = require('os');
@@ -194,7 +193,8 @@ async function runTests() {
       ['bar.jpg', ['/assets/images/bar-222.jpg']],
     ]);
     const input = '![Foo](./img/foo.png)\n\nSome text\n\n![Bar](../img/bar.jpg)';
-    const expected = '![Foo](https://example.com/assets/images/foo-111.png)\n\nSome text\n\n![Bar](https://example.com/assets/images/bar-222.jpg)';
+    const expected =
+      '![Foo](https://example.com/assets/images/foo-111.png)\n\nSome text\n\n![Bar](https://example.com/assets/images/bar-222.jpg)';
     const out = await rewriteRelativeImageUrls(input, srcFile, map, siteUrl, '/fake/build');
     if (out === expected) {
       console.log('  ✅ PASS\n');
@@ -239,7 +239,13 @@ async function runTests() {
   {
     const map = makeMap('logo.png', '/assets/images/logo-abc.png');
     const input = '![Logo](./img/logo.png)';
-    const out = await rewriteRelativeImageUrls(input, srcFile, map, 'https://example.com/', '/fake/build');
+    const out = await rewriteRelativeImageUrls(
+      input,
+      srcFile,
+      map,
+      'https://example.com/',
+      '/fake/build',
+    );
     if (out === '![Logo](https://example.com/assets/images/logo-abc.png)') {
       console.log('  ✅ PASS\n');
     } else {
@@ -250,7 +256,11 @@ async function runTests() {
 
   // Cleanup
   for (const dir of tempDirs) {
-    try { await fs.rm(dir, { recursive: true }); } catch { /* ignore */ }
+    try {
+      await fs.rm(dir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
   }
 
   // Summary
@@ -263,7 +273,7 @@ async function runTests() {
   }
 }
 
-runTests().catch(err => {
+runTests().catch((err) => {
   console.error('Fatal error:', err);
   process.exit(1);
 });

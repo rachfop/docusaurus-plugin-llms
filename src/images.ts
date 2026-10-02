@@ -87,7 +87,7 @@ export async function rewriteRelativeImageUrls(
   sourceFilePath: string,
   imageAssetMap: Map<string, string[]>,
   siteUrl: string,
-  outDir: string
+  outDir: string,
 ): Promise<string> {
   const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
   const sourceDir = path.dirname(sourceFilePath);
@@ -141,9 +141,13 @@ export async function rewriteRelativeImageUrls(
               assetPath = candidate;
               break;
             }
-          } catch { /* candidate unreadable — skip */ }
+          } catch {
+            /* candidate unreadable — skip */
+          }
         }
-      } catch { /* source unreadable — keep original */ }
+      } catch {
+        /* source unreadable — keep original */
+      }
     }
 
     // Preserve any query string / fragment (e.g. "?raw=1", "#anchor") so we
@@ -154,11 +158,13 @@ export async function rewriteRelativeImageUrls(
   }
 
   // Apply all substitutions in a single pass, then restore masked code.
-  return restore(masked.replace(imageRefRe, (match, mdPrefix, mdPath, htmlPrefix, htmlPath) => {
-    const relPath = mdPath ?? htmlPath;
-    const target = resolved.get(relPath);
-    if (!target || target === relPath) return match; // no change
-    if (mdPrefix) return `${mdPrefix}${target}`;
-    return `${htmlPrefix}${target}`;
-  }));
+  return restore(
+    masked.replace(imageRefRe, (match, mdPrefix, mdPath, htmlPrefix, htmlPath) => {
+      const relPath = mdPath ?? htmlPath;
+      const target = resolved.get(relPath);
+      if (!target || target === relPath) return match; // no change
+      if (mdPrefix) return `${mdPrefix}${target}`;
+      return `${htmlPrefix}${target}`;
+    }),
+  );
 }

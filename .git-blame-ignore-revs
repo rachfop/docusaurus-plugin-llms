@@ -1,0 +1,5 @@
+# Mechanical formatting commits, skipped by `git blame`.
+# Enable locally with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: format the repo with oxfmt
+594fc2dc185ed9e52024268e4457c52e17ad46b5

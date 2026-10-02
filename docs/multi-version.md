@@ -18,14 +18,14 @@ The `versions` option accepts either an explicit array of version objects or the
 
 Each version object accepts these fields:
 
-| Field            | Type              | Default              | Description                                                   |
-|------------------|-------------------|----------------------|---------------------------------------------------------------|
-| `name`           | `string` (required) | none               | Version identifier (for example `'nightly'`, `'stable'`, or `'0.0.1'`). Must be unique across the array. |
-| `label`          | `string`          | `name`               | Human-readable label written into the `Version:` line of the generated files. |
-| `docsDir`        | `string \| DocsSection[]` | top-level `docsDir` | Source docs directory (or sections) for this version, relative to the site directory. |
-| `path`           | `string`          | `name`               | Output subdirectory and route prefix. Use `''` for the site root. |
-| `customLLMFiles` | `CustomLLMFile[]` | top-level `customLLMFiles` | Per-version custom LLM files. |
-| `includeOrder`   | `string[]`        | top-level `includeOrder` | Per-version include order. |
+| Field            | Type                      | Default                    | Description                                                                                              |
+| ---------------- | ------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `name`           | `string` (required)       | none                       | Version identifier (for example `'nightly'`, `'stable'`, or `'0.0.1'`). Must be unique across the array. |
+| `label`          | `string`                  | `name`                     | Human-readable label written into the `Version:` line of the generated files.                            |
+| `docsDir`        | `string \| DocsSection[]` | top-level `docsDir`        | Source docs directory (or sections) for this version, relative to the site directory.                    |
+| `path`           | `string`                  | `name`                     | Output subdirectory and route prefix. Use `''` for the site root.                                        |
+| `customLLMFiles` | `CustomLLMFile[]`         | top-level `customLLMFiles` | Per-version custom LLM files.                                                                            |
+| `includeOrder`   | `string[]`                | top-level `includeOrder`   | Per-version include order.                                                                               |
 
 Any field left unset on a version falls back to the matching top-level plugin option, so you declare shared settings like `customLLMFiles` and `includeOrder` once and override them per version.
 
@@ -41,11 +41,11 @@ plugins: [
     'docusaurus-plugin-llms',
     {
       // Shared defaults inherited by every version:
-      customLLMFiles: [ /* llms-python.txt, ... */ ],
+      customLLMFiles: [/* llms-python.txt, ... */],
 
       versions: [
-        { name: 'nightly', label: 'Nightly', docsDir: 'docs',                       path: '' },
-        { name: 'stable',  label: 'v2.0',    docsDir: 'versioned_docs/version-2.0', path: 'stable' },
+        { name: 'nightly', label: 'Nightly', docsDir: 'docs', path: '' },
+        { name: 'stable', label: 'v2.0', docsDir: 'versioned_docs/version-2.0', path: 'stable' },
       ],
     },
   ],
@@ -65,7 +65,7 @@ plugins: [
   [
     'docusaurus-plugin-llms',
     {
-      customLLMFiles: [ /* ... */ ],
+      customLLMFiles: [/* ... */],
       versions: 'auto',
     },
   ],

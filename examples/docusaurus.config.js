@@ -5,14 +5,14 @@
 // This is just an example file and doesn't need type checking
 const themes = {
   github: {},
-  dracula: {}
+  dracula: {},
 };
 
 const config = {
   title: 'My Documentation Site',
   tagline: 'Documentation made for humans and LLMs',
   favicon: 'img/favicon.ico',
-  
+
   url: 'https://my-website.com',
   baseUrl: '/',
 
@@ -28,44 +28,40 @@ const config = {
   },
 
   // Example 1: Basic usage
-  plugins: [
-    'docusaurus-plugin-llms',
-  ],
+  plugins: ['docusaurus-plugin-llms'],
 
   // Example 2: With options (uncomment to use)
-  /*
-  plugins: [
-    [
-      'docusaurus-plugin-llms',
-      {
-        // Generate only the full content file
-        generateLLMsTxt: true,
-        generateLLMsFullTxt: true,
-        
-        // Custom base directory (if your docs are in a different folder)
-        docsDir: 'documentation',
-        
-        // Ignore specific files or directories
-        ignoreFiles: [
-          'private/*',
-          'unreleased/*',
-          '**/drafts/**'
-        ],
-        
-        // Custom title and description
-        title: 'My Project API Documentation',
-        description: 'Complete reference material for My Project API',
-        
-        // Custom filenames
-        llmsTxtFilename: 'documentation-index.txt',
-        llmsFullTxtFilename: 'documentation-full.txt',
-        
-        // Include blog posts
-        includeBlog: true
-      }
-    ]
-  ],
-  */
+  // plugins: [
+  //   [
+  //     'docusaurus-plugin-llms',
+  //     {
+  //       // Generate only the full content file
+  //       generateLLMsTxt: true,
+  //       generateLLMsFullTxt: true,
+  //
+  //       // Custom base directory (if your docs are in a different folder)
+  //       docsDir: 'documentation',
+  //
+  //       // Ignore specific files or directories
+  //       ignoreFiles: [
+  //         'private/*',
+  //         'unreleased/*',
+  //         '**/drafts/**'
+  //       ],
+  //
+  //       // Custom title and description
+  //       title: 'My Project API Documentation',
+  //       description: 'Complete reference material for My Project API',
+  //
+  //       // Custom filenames
+  //       llmsTxtFilename: 'documentation-index.txt',
+  //       llmsFullTxtFilename: 'documentation-full.txt',
+  //
+  //       // Include blog posts
+  //       includeBlog: true
+  //     }
+  //   ]
+  // ],
 
   presets: [
     [
@@ -162,4 +158,4 @@ const config = {
   },
 };
 
-module.exports = config; 
+module.exports = config;

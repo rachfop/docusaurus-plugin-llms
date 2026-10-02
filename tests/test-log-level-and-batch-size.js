@@ -67,21 +67,27 @@ for (const [level, expectInfo, expectVerbose] of [
     logger.warn('warn line');
     logger.verbose('verbose line');
   });
-  check(`logLevel '${level}': info/warn ${expectInfo ? 'shown' : 'hidden'}`,
+  check(
+    `logLevel '${level}': info/warn ${expectInfo ? 'shown' : 'hidden'}`,
     lines.includes('[docusaurus-plugin-llms] info line') === expectInfo &&
       lines.includes('[docusaurus-plugin-llms] warn line') === expectInfo,
-    `got: ${JSON.stringify(lines)}`);
-  check(`logLevel '${level}': verbose ${expectVerbose ? 'shown' : 'hidden'}`,
+    `got: ${JSON.stringify(lines)}`,
+  );
+  check(
+    `logLevel '${level}': verbose ${expectVerbose ? 'shown' : 'hidden'}`,
     lines.includes('[docusaurus-plugin-llms] verbose line') === expectVerbose,
-    `got: ${JSON.stringify(lines)}`);
+    `got: ${JSON.stringify(lines)}`,
+  );
 }
 setLogLevel(LogLevel.NORMAL);
 
 for (const bad of [0, -5, 2.5, '50', NaN]) {
   const message = initError({ processingBatchSize: bad });
-  check(`processingBatchSize ${JSON.stringify(bad)} rejected`,
+  check(
+    `processingBatchSize ${JSON.stringify(bad)} rejected`,
     message === 'processingBatchSize must be a positive integer',
-    `got: ${message}`);
+    `got: ${message}`,
+  );
 }
 for (const good of [1, 50, 100]) {
   check(`processingBatchSize ${good} accepted`, initError({ processingBatchSize: good }) === null);

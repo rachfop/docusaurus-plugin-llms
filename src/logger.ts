@@ -8,7 +8,7 @@
 export enum LogLevel {
   QUIET = 0,
   NORMAL = 1,
-  VERBOSE = 2
+  VERBOSE = 2,
 }
 
 let currentLogLevel = LogLevel.NORMAL;
@@ -42,5 +42,5 @@ export const logger = {
     if (currentLogLevel >= LogLevel.VERBOSE) {
       console.log(`[docusaurus-plugin-llms] ${message}`);
     }
-  }
+  },
 };

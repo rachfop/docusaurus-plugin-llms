@@ -14,7 +14,7 @@ import {
   getErrorMessage,
   ValidationError,
   validateRequired,
-  validateString
+  validateString,
 } from './guards';
 import { logger } from './logger';
 
@@ -51,9 +51,7 @@ export function normalizePath(filePath: string): string {
  * @returns True if the path is within limits, false otherwise
  */
 export function validatePathLength(filePath: string): boolean {
-  const maxLength = process.platform === 'win32'
-    ? MAX_PATH_LENGTH_WINDOWS
-    : MAX_PATH_LENGTH_UNIX;
+  const maxLength = process.platform === 'win32' ? MAX_PATH_LENGTH_WINDOWS : MAX_PATH_LENGTH_UNIX;
 
   if (filePath.length > maxLength) {
     logger.error(`Path exceeds maximum length (${maxLength}): ${filePath}`);
@@ -72,7 +70,7 @@ export function validatePathLength(filePath: string): boolean {
 export function shortenPathIfNeeded(
   fullPath: string,
   outputDir: string,
-  relativePath: string
+  relativePath: string,
 ): string {
   if (validatePathLength(fullPath)) {
     return fullPath;
@@ -97,7 +95,12 @@ export function shortenPathIfNeeded(
  * @param docsDir - Docs directory name (e.g., 'docs')
  * @returns Whether the file should be ignored
  */
-export function shouldIgnoreFile(filePath: string, baseDir: string, ignorePatterns: string[], docsDir: string = 'docs'): boolean {
+export function shouldIgnoreFile(
+  filePath: string,
+  baseDir: string,
+  ignorePatterns: string[],
+  docsDir: string = 'docs',
+): boolean {
   if (!isNonEmptyArray(ignorePatterns)) {
     return false;
   }
@@ -114,7 +117,7 @@ export function shouldIgnoreFile(filePath: string, baseDir: string, ignorePatter
     ? normalizePath(path.relative(docsBaseDir, resolvedFile))
     : null;
 
-  return ignorePatterns.some(pattern => {
+  return ignorePatterns.some((pattern) => {
     // Try matching against site-relative path
     if (minimatch(siteRelativePath, pattern, minimatchOptions)) {
       return true;
@@ -145,7 +148,7 @@ export async function readMarkdownFiles(
   ignorePatterns: string[] = [],
   docsDir: string = 'docs',
   warnOnIgnoredFiles: boolean = false,
-  visitedPaths: Set<string> = new Set()
+  visitedPaths: Set<string> = new Set(),
 ): Promise<string[]> {
   // Get real path to detect symlink loops
   let realPath: string;
@@ -182,7 +185,7 @@ export async function readMarkdownFiles(
       try {
         const stats = await fs.stat(fullPath);
         isDir = stats.isDirectory();
-      } catch (error: unknown) {
+      } catch {
         // Broken symlink, warn and skip it
         logger.warn(`Skipping broken symlink: ${fullPath}`);
         continue;
@@ -190,7 +193,14 @@ export async function readMarkdownFiles(
     }
 
     if (isDir) {
-      const subDirFiles = await readMarkdownFiles(fullPath, baseDir, ignorePatterns, docsDir, warnOnIgnoredFiles, visitedPaths);
+      const subDirFiles = await readMarkdownFiles(
+        fullPath,
+        baseDir,
+        ignorePatterns,
+        docsDir,
+        warnOnIgnoredFiles,
+        visitedPaths,
+      );
       files.push(...subDirFiles);
     } else if (!entry.name.includes('.')) {
       // File without extension
@@ -221,7 +231,7 @@ export async function readMarkdownFiles(
  */
 export function applyPathTransformations(
   urlPath: string,
-  pathTransformation?: PluginOptions['pathTransformation']
+  pathTransformation?: PluginOptions['pathTransformation'],
 ): string {
   if (!isDefined(pathTransformation)) {
     return urlPath;
@@ -239,7 +249,7 @@ export function applyPathTransformations(
       const ignoreRegex = new RegExp(`(^|/)(${escapedIgnorePath})(/|$)`, 'g');
       transformedPath = transformedPath.replace(ignoreRegex, '$1$3');
     }
-    
+
     // Clean up any double slashes that might have been created
     transformedPath = transformedPath.replace(/\/+/g, '/');
 
@@ -247,13 +257,13 @@ export function applyPathTransformations(
     // leave a trailing slash, e.g. ignorePaths:['intro'] on 'api/intro').
     transformedPath = transformedPath.replace(/^\/|\/$/g, '');
   }
-  
+
   // Add path segments if they're not already present
   if (isNonEmptyArray(pathTransformation.addPaths)) {
     // Process in reverse order to maintain the specified order in the final path
     // This is because each path is prepended to the front
     const pathsToAdd = [...pathTransformation.addPaths].reverse();
-    
+
     for (const addPath of pathsToAdd) {
       // Only add if not already present at the beginning
       if (!transformedPath.startsWith(addPath + '/') && transformedPath !== addPath) {
@@ -261,7 +271,7 @@ export function applyPathTransformations(
       }
     }
   }
-  
+
   return transformedPath;
 }
 
@@ -278,7 +288,7 @@ export function sanitizeForFilename(
   options: {
     preserveUnicode?: boolean;
     preserveCase?: boolean;
-  } = {}
+  } = {},
 ): string {
   // Validate input parameters
   validateString(input, 'input');
@@ -306,9 +316,7 @@ export function sanitizeForFilename(
   sanitized = sanitized.replace(/^\.+/, '');
 
   // Clean up multiple dashes and trim
-  sanitized = sanitized
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  sanitized = sanitized.replace(/-+/g, '-').replace(/^-+|-+$/g, '');
 
   return sanitized || fallback;
 }
@@ -324,7 +332,7 @@ export function sanitizeForFilename(
 export function ensureUniqueIdentifier(
   baseIdentifier: string,
   usedIdentifiers: Set<string>,
-  suffix: (counter: number, base: string) => string = (counter) => `(${counter})`
+  suffix: (counter: number, base: string) => string = (counter) => `(${counter})`,
 ): string {
   // Validate input parameters
   validateString(baseIdentifier, 'baseIdentifier', { minLength: 1 });
@@ -349,7 +357,9 @@ export function ensureUniqueIdentifier(
       const timestamp = Date.now().toString(36);
       const random = Math.random().toString(36).substring(2, 8);
       uniqueIdentifier = `${baseIdentifier}-${timestamp}-${random}`;
-      logger.warn(`Maximum iterations reached for unique identifier. Using fallback: ${uniqueIdentifier}`);
+      logger.warn(
+        `Maximum iterations reached for unique identifier. Using fallback: ${uniqueIdentifier}`,
+      );
       break;
     }
   }
@@ -399,13 +409,13 @@ export function joinSiteUrl(siteUrl: string, routePath: string): string {
   try {
     const base = new URL(siteUrl);
     const basePath = base.pathname.replace(/\/+$/, ''); // '' for root, '/docs' otherwise
-    const full = basePath && path !== basePath && !path.startsWith(`${basePath}/`)
-      ? `${basePath}${path}`
-      : path;
+    const full =
+      basePath && path !== basePath && !path.startsWith(`${basePath}/`)
+        ? `${basePath}${path}`
+        : path;
     return `${base.origin}${full}`;
   } catch {
     // Malformed siteUrl — string-concatenate; siteUrl retains its baseUrl.
     return `${siteUrl.replace(/\/+$/, '')}${path}`;
   }
 }
-

@@ -16,149 +16,149 @@ const testCases = [
     name: 'Literal dot should not match any character',
     input: 'docs/backup/test',
     config: { ignorePaths: ['docs.backup'] },
-    expected: 'docs/backup/test',  // Should NOT match because . is literal
-    description: 'docs.backup should only match literal "docs.backup", not "docs/backup"'
+    expected: 'docs/backup/test', // Should NOT match because . is literal
+    description: 'docs.backup should only match literal "docs.backup", not "docs/backup"',
   },
   {
     name: 'Literal dot should match when present',
     input: 'docs.backup/test',
     config: { ignorePaths: ['docs.backup'] },
-    expected: 'test',  // Should match literal "docs.backup"
-    description: 'docs.backup should match literal "docs.backup"'
+    expected: 'test', // Should match literal "docs.backup"
+    description: 'docs.backup should match literal "docs.backup"',
   },
   {
     name: 'Asterisk should be treated as literal character',
     input: 'api/methods/test',
     config: { ignorePaths: ['api*'] },
-    expected: 'api/methods/test',  // Should NOT match because * is literal
-    description: 'api* should only match literal "api*", not "api"'
+    expected: 'api/methods/test', // Should NOT match because * is literal
+    description: 'api* should only match literal "api*", not "api"',
   },
   {
     name: 'Asterisk literal should match when present',
     input: 'api*/methods/test',
     config: { ignorePaths: ['api*'] },
-    expected: 'methods/test',  // Should match literal "api*"
-    description: 'api* should match literal "api*"'
+    expected: 'methods/test', // Should match literal "api*"
+    description: 'api* should match literal "api*"',
   },
   {
     name: 'Plus sign should be treated as literal',
     input: 'c++/reference/test',
     config: { ignorePaths: ['c++'] },
-    expected: 'reference/test',  // Should match literal "c++"
-    description: 'c++ should match literal "c++"'
+    expected: 'reference/test', // Should match literal "c++"
+    description: 'c++ should match literal "c++"',
   },
   {
     name: 'Question mark should be treated as literal',
     input: 'help?/faq/test',
     config: { ignorePaths: ['help?'] },
-    expected: 'faq/test',  // Should match literal "help?"
-    description: 'help? should match literal "help?"'
+    expected: 'faq/test', // Should match literal "help?"
+    description: 'help? should match literal "help?"',
   },
   {
     name: 'Caret should be treated as literal',
     input: 'docs^/test',
     config: { ignorePaths: ['docs^'] },
-    expected: 'test',  // Should match literal "docs^"
-    description: 'docs^ should match literal "docs^"'
+    expected: 'test', // Should match literal "docs^"
+    description: 'docs^ should match literal "docs^"',
   },
   {
     name: 'Dollar sign should be treated as literal',
     input: 'price$/test',
     config: { ignorePaths: ['price$'] },
-    expected: 'test',  // Should match literal "price$"
-    description: 'price$ should match literal "price$"'
+    expected: 'test', // Should match literal "price$"
+    description: 'price$ should match literal "price$"',
   },
   {
     name: 'Curly braces should be treated as literal',
     input: 'template{}/test',
     config: { ignorePaths: ['template{}'] },
-    expected: 'test',  // Should match literal "template{}"
-    description: 'template{} should match literal "template{}"'
+    expected: 'test', // Should match literal "template{}"
+    description: 'template{} should match literal "template{}"',
   },
   {
     name: 'Parentheses should be treated as literal',
     input: 'func()/test',
     config: { ignorePaths: ['func()'] },
-    expected: 'test',  // Should match literal "func()"
-    description: 'func() should match literal "func()"'
+    expected: 'test', // Should match literal "func()"
+    description: 'func() should match literal "func()"',
   },
   {
     name: 'Pipe should be treated as literal',
     input: 'option|/test',
     config: { ignorePaths: ['option|'] },
-    expected: 'test',  // Should match literal "option|"
-    description: 'option| should match literal "option|"'
+    expected: 'test', // Should match literal "option|"
+    description: 'option| should match literal "option|"',
   },
   {
     name: 'Square brackets should be treated as literal',
     input: 'array[]/test',
     config: { ignorePaths: ['array[]'] },
-    expected: 'test',  // Should match literal "array[]"
-    description: 'array[] should match literal "array[]"'
+    expected: 'test', // Should match literal "array[]"
+    description: 'array[] should match literal "array[]"',
   },
   {
     name: 'Backslash should be treated as literal',
     input: 'windows\\path/test',
     config: { ignorePaths: ['windows\\path'] },
-    expected: 'test',  // Should match literal "windows\path"
-    description: 'windows\\path should match literal "windows\\path"'
+    expected: 'test', // Should match literal "windows\path"
+    description: 'windows\\path should match literal "windows\\path"',
   },
   {
     name: 'Version number with dot',
     input: 'v1.0/api/test',
     config: { ignorePaths: ['v1.0'] },
-    expected: 'api/test',  // Should match literal "v1.0"
-    description: 'v1.0 should match literal "v1.0", not "v1X0"'
+    expected: 'api/test', // Should match literal "v1.0"
+    description: 'v1.0 should match literal "v1.0", not "v1X0"',
   },
   {
     name: 'Version number should not wildcard',
     input: 'v1X0/api/test',
     config: { ignorePaths: ['v1.0'] },
-    expected: 'v1X0/api/test',  // Should NOT match because dot is literal
-    description: 'v1.0 should not match "v1X0"'
+    expected: 'v1X0/api/test', // Should NOT match because dot is literal
+    description: 'v1.0 should not match "v1X0"',
   },
   {
     name: 'Multiple special characters combined',
     input: 'api*v1.0/test',
     config: { ignorePaths: ['api*v1.0'] },
-    expected: 'test',  // Should match literal "api*v1.0"
-    description: 'api*v1.0 should match literal "api*v1.0"'
+    expected: 'test', // Should match literal "api*v1.0"
+    description: 'api*v1.0 should match literal "api*v1.0"',
   },
   {
     name: 'Complex path with special characters',
     input: 'docs/api(v2.0)/methods/test',
     config: { ignorePaths: ['api(v2.0)'] },
-    expected: 'docs/methods/test',  // Should match literal "api(v2.0)"
-    description: 'api(v2.0) should match literal "api(v2.0)"'
+    expected: 'docs/methods/test', // Should match literal "api(v2.0)"
+    description: 'api(v2.0) should match literal "api(v2.0)"',
   },
   {
     name: 'Normal path without special characters still works',
     input: 'docs/api/test',
     config: { ignorePaths: ['docs'] },
-    expected: 'api/test',  // Normal case should still work
-    description: 'Normal path transformation should still work'
+    expected: 'api/test', // Normal case should still work
+    description: 'Normal path transformation should still work',
   },
   {
     name: 'Multiple ignorePaths with special characters',
     input: 'v1.0/api*/test',
     config: { ignorePaths: ['v1.0', 'api*'] },
-    expected: 'test',  // Should match both literal patterns
-    description: 'Multiple ignorePaths with special chars should work'
+    expected: 'test', // Should match both literal patterns
+    description: 'Multiple ignorePaths with special chars should work',
   },
   {
     name: 'Regex injection attempt should fail',
     input: 'docs/api/test',
     config: { ignorePaths: ['.*'] },
-    expected: 'docs/api/test',  // Should NOT match because .* is treated as literal ".*", not as wildcard
-    description: '.* should not act as a regex wildcard matching everything'
+    expected: 'docs/api/test', // Should NOT match because .* is treated as literal ".*", not as wildcard
+    description: '.* should not act as a regex wildcard matching everything',
   },
   {
     name: 'Regex injection with literal match',
     input: '.*/test',
     config: { ignorePaths: ['.*'] },
-    expected: 'test',  // Should match literal ".*"
-    description: '.* should match literal ".*" when present'
-  }
+    expected: 'test', // Should match literal ".*"
+    description: '.* should match literal ".*" when present',
+  },
 ];
 
 // Run tests

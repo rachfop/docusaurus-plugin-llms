@@ -136,15 +136,24 @@ test('isNonEmptyArray: returns true for array with mixed types', () => {
 
 // Edge cases with combinations
 test('Edge case: distinguishes between 0 and null', () => {
-  assert(isDefined(0) === true && isDefined(null) === false, '0 should be defined but null should not');
+  assert(
+    isDefined(0) === true && isDefined(null) === false,
+    '0 should be defined but null should not',
+  );
 });
 
 test('Edge case: distinguishes between empty string and null', () => {
-  assert(isDefined('') === true && isDefined(null) === false, 'empty string should be defined but null should not');
+  assert(
+    isDefined('') === true && isDefined(null) === false,
+    'empty string should be defined but null should not',
+  );
 });
 
 test('Edge case: distinguishes between false and undefined', () => {
-  assert(isDefined(false) === true && isDefined(undefined) === false, 'false should be defined but undefined should not');
+  assert(
+    isDefined(false) === true && isDefined(undefined) === false,
+    'false should be defined but undefined should not',
+  );
 });
 
 test('Edge case: isNonEmptyString with mixed whitespace', () => {
@@ -152,7 +161,10 @@ test('Edge case: isNonEmptyString with mixed whitespace', () => {
 });
 
 test('Edge case: isNonEmptyString with content and whitespace', () => {
-  assert(isNonEmptyString(' a ') === true, 'string with content should be valid even with whitespace');
+  assert(
+    isNonEmptyString(' a ') === true,
+    'string with content should be valid even with whitespace',
+  );
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

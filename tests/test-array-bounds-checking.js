@@ -37,62 +37,62 @@ const testCases = [
     name: 'Empty string description',
     description: '',
     expectedFirstLine: '',
-    expectedCleaned: ''
+    expectedCleaned: '',
   },
   {
     name: 'Single line description',
     description: 'This is a single line',
     expectedFirstLine: 'This is a single line',
-    expectedCleaned: 'This is a single line'
+    expectedCleaned: 'This is a single line',
   },
   {
     name: 'Multi-line description',
     description: 'First line\nSecond line\nThird line',
     expectedFirstLine: 'First line',
-    expectedCleaned: 'First line'
+    expectedCleaned: 'First line',
   },
   {
     name: 'Description with heading marker',
     description: '# Heading\nContent here',
     expectedFirstLine: '# Heading',
-    expectedCleaned: 'Heading'
+    expectedCleaned: 'Heading',
   },
   {
     name: 'Description with multiple heading markers',
     description: '## Sub Heading\nContent here',
     expectedFirstLine: '## Sub Heading',
-    expectedCleaned: 'Sub Heading'
+    expectedCleaned: 'Sub Heading',
   },
   {
     name: 'Null description (treated as empty)',
     description: null,
     expectedFirstLine: '',
-    expectedCleaned: ''
+    expectedCleaned: '',
   },
   {
     name: 'Undefined description (treated as empty)',
     description: undefined,
     expectedFirstLine: '',
-    expectedCleaned: ''
+    expectedCleaned: '',
   },
   {
     name: 'Whitespace-only description',
     description: '   \n   \n   ',
     expectedFirstLine: '   ',
-    expectedCleaned: '   '
+    expectedCleaned: '   ',
   },
   {
     name: 'Very long description (should truncate)',
     description: 'a'.repeat(200),
     expectedFirstLine: 'a'.repeat(200),
-    expectedCleaned: 'a'.repeat(147) + '...'
+    expectedCleaned: 'a'.repeat(147) + '...',
   },
   {
     name: 'Description with newline at start',
     description: '\nFirst line after newline',
     expectedFirstLine: '',
-    expectedCleaned: ''
-  }
+    expectedCleaned: '',
+  },
 ];
 
 // Test cases for content first line extraction
@@ -100,28 +100,28 @@ const contentTestCases = [
   {
     name: 'Empty content',
     content: '',
-    expectedFirstLine: ''
+    expectedFirstLine: '',
   },
   {
     name: 'Single line content',
     content: 'Single line',
-    expectedFirstLine: 'Single line'
+    expectedFirstLine: 'Single line',
   },
   {
     name: 'Multi-line content',
     content: 'First line\nSecond line',
-    expectedFirstLine: 'First line'
+    expectedFirstLine: 'First line',
   },
   {
     name: 'Content with leading/trailing whitespace',
     content: '  \n  First line after whitespace  \n  ',
-    expectedFirstLine: 'First line after whitespace'
+    expectedFirstLine: 'First line after whitespace',
   },
   {
     name: 'Content with heading',
     content: '# Heading\nParagraph content',
-    expectedFirstLine: '# Heading'
-  }
+    expectedFirstLine: '# Heading',
+  },
 ];
 
 // Run tests
@@ -200,7 +200,7 @@ function runEdgeCaseValidation() {
         const lines = emptyString.split('\n');
         const firstLine = lines.length > 0 ? lines[0] : '';
         return firstLine === '' && firstLine !== undefined;
-      }
+      },
     },
     {
       name: 'No undefined propagation from whitespace-only split',
@@ -209,7 +209,7 @@ function runEdgeCaseValidation() {
         const lines = whitespace.split('\n');
         const firstLine = lines.length > 0 ? lines[0] : '';
         return firstLine === '   ' && firstLine !== undefined;
-      }
+      },
     },
     {
       name: 'Handling of string with only newline',
@@ -218,7 +218,7 @@ function runEdgeCaseValidation() {
         const lines = onlyNewline.split('\n');
         const firstLine = lines.length > 0 ? lines[0] : '';
         return firstLine === '' && lines.length === 2; // split('\n') on '\n' gives ['', '']
-      }
+      },
     },
     {
       name: 'Consistent behavior with replace on empty string',
@@ -226,20 +226,21 @@ function runEdgeCaseValidation() {
         const emptyString = '';
         const cleaned = emptyString.replace(/^(#+)\s+/g, '');
         return cleaned === '';
-      }
+      },
     },
     {
       name: 'Safe substring on empty string',
       test: () => {
         const emptyString = '';
         try {
-          const result = emptyString.length > 150 ? emptyString.substring(0, 147) + '...' : emptyString;
+          const result =
+            emptyString.length > 150 ? emptyString.substring(0, 147) + '...' : emptyString;
           return result === '';
-        } catch (error) {
+        } catch {
           return false;
         }
-      }
-    }
+      },
+    },
   ];
 
   let validationPass = 0;
@@ -262,7 +263,9 @@ function runEdgeCaseValidation() {
     }
   });
 
-  console.log(`\nEdge Case Validation: ${validationPass}/${validationPass + validationFail} passed`);
+  console.log(
+    `\nEdge Case Validation: ${validationPass}/${validationPass + validationFail} passed`,
+  );
 
   return validationFail === 0;
 }

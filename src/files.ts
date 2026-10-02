@@ -27,7 +27,7 @@ export async function readFile(filePath: string): Promise<string> {
 
   // Remove UTF-8 BOM if present
   // UTF-8 BOM is the character U+FEFF at the start of the file
-  if (content.charCodeAt(0) === 0xFEFF) {
+  if (content.charCodeAt(0) === 0xfeff) {
     content = content.slice(1);
   }
 
