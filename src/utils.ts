@@ -359,6 +359,31 @@ export function ensureUniqueIdentifier(
 }
 
 /**
+ * The site's baseUrl as a route prefix ('/sub' for baseUrl '/sub/'), or ''
+ * when the site is served from the root. Derived from `siteUrl`, which is
+ * `siteConfig.url + siteConfig.baseUrl`.
+ */
+export function getSiteBasePath(siteUrl: string): string {
+  try {
+    return new URL(siteUrl).pathname.replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Remove the site's baseUrl from the front of a route, so it can be compared
+ * against version prefixes and routeBasePaths, which are relative to the
+ * baseUrl. Docusaurus's routesPaths include the baseUrl; routes without it are
+ * returned unchanged.
+ */
+export function stripSiteBasePath(route: string, basePath: string): string {
+  if (!basePath) return route;
+  if (route === basePath) return '/';
+  return route.startsWith(`${basePath}/`) ? route.slice(basePath.length) : route;
+}
+
+/**
  * Join a route path onto `siteUrl`, preserving the baseUrl pathname that
  * `siteUrl` already carries (e.g. `https://host/docs`). The route is prepended
  * with the baseUrl only when it doesn't already start with it, so the baseUrl is

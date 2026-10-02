@@ -20,6 +20,8 @@ import {
   isNonEmptyArray,
   isDefined,
   joinSiteUrl,
+  getSiteBasePath,
+  stripSiteBasePath,
   stripNumberPrefix
 } from './utils';
 import { processFilesWithPatterns } from './processor';
@@ -286,19 +288,13 @@ export async function generateIndividualMarkdownFiles(
   const updatedDocs: DocInfo[] = [];
   const usedPaths = new Set<string>();
 
-  // Derive the site's baseUrl path segment (e.g. "some/subpath") from siteUrl,
-  // which already equals siteConfig.url + siteConfig.baseUrl. This segment must
-  // be stripped from each doc's URL pathname before deriving the physical file
-  // location, since Docusaurus writes its own build output relative to the
-  // output root *without* the baseUrl segment and relies on the hosting platform
-  // to mount the whole output under baseUrl. Leaving it in would nest generated
-  // files one level too deep, effectively applying baseUrl twice on disk.
-  let siteBasePath = '';
-  try {
-    siteBasePath = new URL(siteUrl).pathname.replace(/^\/+|\/+$/g, '');
-  } catch {
-    // Malformed siteUrl — leave siteBasePath empty, nothing to strip.
-  }
+  // The site's baseUrl must be stripped from each doc's URL pathname before
+  // deriving the physical file location, since Docusaurus writes its own build
+  // output relative to the output root *without* the baseUrl segment and relies
+  // on the hosting platform to mount the whole output under baseUrl. Leaving it
+  // in would nest generated files one level too deep, effectively applying
+  // baseUrl twice on disk.
+  const siteBasePath = getSiteBasePath(siteUrl);
 
   for (const doc of docs) {
     // Resolve this doc's own section rather than just using the first section's docsDir.
@@ -313,24 +309,10 @@ export async function generateIndividualMarkdownFiles(
 
     if (isNonEmptyString(doc.url)) {
       try {
-        // Extract clean pathname: "https://site.com/guides/start" → "guides/start.md"
-        let urlPathname = new URL(doc.url).pathname
-          .replace(/^\/+/, '') // remove leading slash
-          .replace(/\/+$/, ''); // remove trailing slash
-
-        // Strip the site's baseUrl segment before deriving the physical path, so
-        // the file lands relative to the output root (matching Docusaurus's own
-        // HTML build output) rather than nested under a duplicated baseUrl dir.
-        if (siteBasePath) {
-          if (urlPathname === siteBasePath) {
-            urlPathname = '';
-          } else {
-            const baseUrlPrefix = `${siteBasePath}/`;
-            if (urlPathname.startsWith(baseUrlPrefix)) {
-              urlPathname = urlPathname.slice(baseUrlPrefix.length);
-            }
-          }
-        }
+        // Extract clean pathname relative to the baseUrl:
+        // "https://site.com/sub/guides/start" → "guides/start.md"
+        const route = new URL(doc.url).pathname.replace(/\/+$/, '') || '/';
+        const urlPathname = stripSiteBasePath(route, siteBasePath).replace(/^\/+/, '');
 
         if (urlPathname === '') {
           // Root page (slug: /) → serve as index.md

@@ -24,7 +24,9 @@ import {
   coerceFrontMatterString,
   stripPathNumberPrefixes,
   rewriteRelativeImageUrls,
-  joinSiteUrl
+  joinSiteUrl,
+  getSiteBasePath,
+  stripSiteBasePath
 } from './utils';
 
 /**
@@ -311,6 +313,11 @@ export async function processMarkdownFile(
   };
 }
 
+/** True when `route` is `base` itself or lies beneath it. */
+function isRouteUnder(route: string, base: string): boolean {
+  return route === base || route.startsWith(`${base}/`);
+}
+
 /**
  * Restrict a route list to the subtree owned by the current version.
  *
@@ -318,16 +325,19 @@ export async function processMarkdownFile(
  * - A non-empty `routePrefix` (e.g. '/stable') keeps only routes under it.
  * - The root version (empty prefix) drops routes owned by sibling versions,
  *   so its links don't resolve into a versioned subtree.
+ *
+ * Prefixes are relative to the site's baseUrl (`basePath`).
  */
 function scopeRoutesToVersion(
   routesPaths: string[],
+  basePath: string,
   routePrefix?: string,
   siblingPrefixes?: string[]
 ): string[] {
   const prefix = routePrefix ? routePrefix.replace(/\/+$/, '') : '';
   if (prefix) {
-    return routesPaths.filter(
-      route => route === prefix || route.startsWith(`${prefix}/`)
+    return routesPaths.filter(route =>
+      isRouteUnder(stripSiteBasePath(route, basePath), prefix)
     );
   }
 
@@ -336,12 +346,10 @@ function scopeRoutesToVersion(
     .filter(Boolean);
   if (siblings.length === 0) return routesPaths;
 
-  return routesPaths.filter(
-    route =>
-      !siblings.some(
-        sibling => route === sibling || route.startsWith(`${sibling}/`)
-      )
-  );
+  return routesPaths.filter(route => {
+    const relativeRoute = stripSiteBasePath(route, basePath);
+    return !siblings.some(sibling => isRouteUnder(relativeRoute, sibling));
+  });
 }
 
 /**
@@ -419,8 +427,10 @@ async function resolveDocumentUrl(
   // In multi-version mode, restrict matching to routes owned by this version so
   // links resolve within the correct subtree (e.g. a 'stable' doc links to
   // /stable/... and the root version's links avoid versioned subtrees).
+  const basePath = getSiteBasePath(context.siteUrl);
   let scopedRoutes = scopeRoutesToVersion(
     context.routesPaths,
+    basePath,
     context.routePrefix,
     context.siblingPrefixes
   );
@@ -442,9 +452,9 @@ async function resolveDocumentUrl(
     const cleanRouteBase = routeBase.replace(/^\/+|\/+$/g, '');
     if (cleanRouteBase) {
       const versionPrefix = context.routePrefix ? context.routePrefix.replace(/^\/+|\/+$/g, '') : '';
-      const scopedRouteBase = `/${versionPrefix}/${cleanRouteBase}`.replace(/\/+$/, '');
-      scopedRoutes = scopedRoutes.filter(
-        r => r === scopedRouteBase || r.startsWith(`${scopedRouteBase}/`)
+      const scopedRouteBase = `/${[versionPrefix, cleanRouteBase].filter(Boolean).join('/')}`;
+      scopedRoutes = scopedRoutes.filter(r =>
+        isRouteUnder(stripSiteBasePath(r, basePath), scopedRouteBase)
       );
     }
   }
@@ -489,18 +499,15 @@ async function resolveDocumentUrl(
         const versionPrefix = context.routePrefix
           ? context.routePrefix.replace(/^\/+|\/+$/g, '')
           : '';
-        let sectionBase = versionPrefix || '/';
-        if (matchedSection && matchedSection.routeBasePath !== '/') {
-          const routeBase = matchedSection.routeBasePath.replace(/^\/+|\/+$/g, '');
-          sectionBase = versionPrefix
-            ? `/${versionPrefix}/${routeBase}`
-            : `/${routeBase}`;
-        }
+        const sectionRouteBase = matchedSection
+          ? matchedSection.routeBasePath.replace(/^\/+|\/+$/g, '')
+          : '';
+        const sectionBase = `/${[versionPrefix, sectionRouteBase].filter(Boolean).join('/')}`;
         // Look for an exact or trailing-slash-equivalent route, scoped to
         // this version and section (scopedRoutes was built above exactly for
         // this; searching all routesPaths would cross version subtrees).
         const rootMatch = scopedRoutes.find(r => {
-          const clean = r.replace(/\/+$/, '') || '/';
+          const clean = stripSiteBasePath(r.replace(/\/+$/, '') || '/', basePath);
           return clean === sectionBase;
         });
         return rootMatch ?? sectionBase;
