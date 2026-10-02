@@ -792,9 +792,10 @@ export default function docusaurusPluginLLMs(
 
   const { siteDir, siteConfig, outDir } = context;
 
-  // A non-default locale reads translated docs and blog posts from the
-  // locale's localization directory, as Docusaurus does when the locale has
-  // `translate` enabled (the default when i18n/<locale> exists).
+  // The locale being built reads translated docs and blog posts from its
+  // localization directory, as Docusaurus does for every locale (the default
+  // one included) unless the locale sets `translate: false`. Files without a
+  // translation fall back to the source file.
   const { i18n, localizationDir } = context as Partial<
     Pick<LoadContext, 'i18n' | 'localizationDir'>
   >;
@@ -803,9 +804,7 @@ export default function docusaurusPluginLLMs(
     i18n?.localeConfigs as Record<string, { translate?: boolean }> | undefined
   )?.[currentLocale ?? ''];
   const translatedLocaleDir =
-    isNonEmptyString(currentLocale) &&
-    currentLocale !== i18n?.defaultLocale &&
-    localeConfig?.translate !== false
+    isNonEmptyString(currentLocale) && localeConfig?.translate !== false
       ? (localizationDir ?? path.join(siteDir, 'i18n', currentLocale))
       : undefined;
 

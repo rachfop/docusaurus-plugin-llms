@@ -426,6 +426,21 @@ async function testDefaultLocaleUnchanged() {
   check('en llms-full.txt is English', en.read('llms-full.txt').includes('English intro.'));
 }
 
+async function testDefaultLocaleTranslations() {
+  console.log('\ni18n: the default locale reads its own i18n folder too');
+  const routes = I18N_ROUTES.map((r) => r.replace(/^\/fr/, '') || '/');
+  const files = {
+    ...I18N_FILES,
+    'i18n/en/docusaurus-plugin-content-docs/current/intro.md': page(
+      'Intro',
+      'Edited English intro.',
+    ),
+  };
+  const en = await runSite(files, { includeBlog: true }, routes, { locale: 'en' });
+  const full = en.read('llms-full.txt');
+  check('en llms-full.txt uses i18n/en override', full.includes('Edited English intro.'), full);
+}
+
 function testVersionValidation() {
   console.log('\nper-version options get the top-level validation');
   const ctx = {
@@ -509,6 +524,7 @@ async function main() {
   await testI18nTranslatedContent();
   await testI18nVersioned();
   await testDefaultLocaleUnchanged();
+  await testDefaultLocaleTranslations();
   testVersionValidation();
   await testVersionFailureIsolated();
 
