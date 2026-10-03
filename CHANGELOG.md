@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `versions: 'auto'` follows Docusaurus versioning: the last version writes the
-  root files, the current docs go under `next/`, and the docs plugin's
-  `lastVersion`, `includeCurrentVersion`, `onlyIncludeVersions`, and
-  `disableVersioning` options apply (#88).
+  root files, the current docs go under `next/` with the label `Next`, and the
+  docs plugin's `lastVersion`, `includeCurrentVersion`, `onlyIncludeVersions`,
+  and `disableVersioning` options apply (#88, #93).
 - Each locale's files use the page translations in `i18n/<locale>/` (#88).
 - HTML tables, line breaks, and `<img>` tags become Markdown text and images,
   and HTML and MDX comments are removed (#85).
@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   #86).
 - Generated files stay inside the build directory and don't overwrite each
   other (#84).
+- Empty and unclosed code fences are left as written, `<img>` tags with a
+  `require()` source become Markdown images, and `@site/` images are
+  rewritten (#92).
 - `logLevel: 'quiet'` prints errors only, and each plugin instance uses its
   own level (#78, #86).
 - Titles with brackets or line breaks, components in `preserveComponents`
