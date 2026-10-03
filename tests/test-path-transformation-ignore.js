@@ -105,6 +105,17 @@ description: A test tutorial
 This is a test tutorial.`,
   );
 
+  // A single options argument is ProcessFileOptions, so the transformation
+  // goes under `pathTransformation`.
+  let allCorrect = true;
+  const report = (url, expected) => {
+    const correct = url === expected;
+    if (!correct) allCorrect = false;
+    console.log(`URL: ${url}`);
+    console.log(`Expected: ${expected}`);
+    console.log(`${correct ? '✅' : '❌'} Correct: ${correct}\n`);
+  };
+
   // Test 1: Default URL generation
   console.log('Test 1: Default URL generation');
   const result1 = await processMarkdownFile(
@@ -113,9 +124,7 @@ This is a test tutorial.`,
     'https://example.com',
     'docs',
   );
-  console.log(`URL: ${result1.url}`);
-  console.log(`Expected: https://example.com/docs/tutorials/draft`);
-  console.log(`✅ Correct: ${result1.url === 'https://example.com/docs/tutorials/draft'}\n`);
+  report(result1.url, 'https://example.com/docs/tutorials/draft');
 
   // Test 2: With ignorePaths
   console.log('Test 2: With ignorePaths ["tutorials"]');
@@ -124,11 +133,9 @@ This is a test tutorial.`,
     path.join(TEST_DIR, 'docs'),
     'https://example.com',
     'docs',
-    { ignorePaths: ['tutorials'] },
+    { pathTransformation: { ignorePaths: ['tutorials'] } },
   );
-  console.log(`URL: ${result2.url}`);
-  console.log(`Expected: https://example.com/docs/draft`);
-  console.log(`✅ Correct: ${result2.url === 'https://example.com/docs/draft'}\n`);
+  report(result2.url, 'https://example.com/docs/draft');
 
   // Test 3: Ignore the path prefix itself
   console.log('Test 3: With ignorePaths ["docs"]');
@@ -137,11 +144,9 @@ This is a test tutorial.`,
     path.join(TEST_DIR, 'docs'),
     'https://example.com',
     'docs',
-    { ignorePaths: ['docs'] },
+    { pathTransformation: { ignorePaths: ['docs'] } },
   );
-  console.log(`URL: ${result3.url}`);
-  console.log(`Expected: https://example.com/tutorials/draft`);
-  console.log(`✅ Correct: ${result3.url === 'https://example.com/tutorials/draft'}\n`);
+  report(result3.url, 'https://example.com/tutorials/draft');
 
   // Test 4: Add paths
   console.log('Test 4: With addPaths ["reference"]');
@@ -150,13 +155,9 @@ This is a test tutorial.`,
     path.join(TEST_DIR, 'docs'),
     'https://example.com',
     'docs',
-    { addPaths: ['reference'] },
+    { pathTransformation: { addPaths: ['reference'] } },
   );
-  console.log(`URL: ${result4.url}`);
-  console.log(`Expected: https://example.com/docs/reference/tutorials/draft`);
-  console.log(
-    `✅ Correct: ${result4.url === 'https://example.com/docs/reference/tutorials/draft'}\n`,
-  );
+  report(result4.url, 'https://example.com/docs/reference/tutorials/draft');
 
   // Test 5: Combined transformations
   console.log('Test 5: With ignorePaths ["tutorials"] and addPaths ["api"]');
@@ -166,20 +167,20 @@ This is a test tutorial.`,
     'https://example.com',
     'docs',
     {
-      ignorePaths: ['tutorials'],
-      addPaths: ['api'],
+      pathTransformation: {
+        ignorePaths: ['tutorials'],
+        addPaths: ['api'],
+      },
     },
   );
-  console.log(`URL: ${result5.url}`);
-  console.log(`Expected: https://example.com/docs/api/draft`);
-  console.log(`✅ Correct: ${result5.url === 'https://example.com/docs/api/draft'}\n`);
+  report(result5.url, 'https://example.com/docs/api/draft');
 
   // Cleanup
   if (fs.existsSync(TEST_DIR)) {
     fs.rmSync(TEST_DIR, { recursive: true });
   }
 
-  return true;
+  return allCorrect;
 }
 
 // Run all tests

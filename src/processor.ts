@@ -181,9 +181,12 @@ export async function processMarkdownFile(
   const content = await readFile(contentFilePath);
   const { data, content: markdownContent } = matter(content);
 
-  // Skip draft files (accept both boolean true and the string "true", which
-  // some editors emit as quoted frontmatter).
-  if (data.draft === true || data.draft === 'true') {
+  // Skip draft files. Docusaurus validates `draft` as a Joi boolean with
+  // conversion, so the string "true" in any letter case is a draft too.
+  if (
+    data.draft === true ||
+    (typeof data.draft === 'string' && data.draft.toLowerCase() === 'true')
+  ) {
     return null;
   }
 
@@ -526,14 +529,17 @@ async function resolveDocumentUrl(
 
   // In multi-version mode, restrict matching to routes owned by this version so
   // links resolve within the correct subtree (e.g. a 'stable' doc links to
-  // /stable/... and the root version's links avoid versioned subtrees).
+  // /stable/... and the root version's links avoid versioned subtrees). Blog
+  // posts aren't versioned, so they match the blog's routes in any version.
   const basePath = getSiteBasePath(context.siteUrl);
-  let scopedRoutes = scopeRoutesToVersion(
-    context.routesPaths,
-    basePath,
-    context.routePrefix,
-    context.siblingPrefixes,
-  );
+  let scopedRoutes = isBlogFile
+    ? context.routesPaths
+    : scopeRoutesToVersion(
+        context.routesPaths,
+        basePath,
+        context.routePrefix,
+        context.siblingPrefixes,
+      );
 
   // The section's root route, relative to the baseUrl. Routes beneath it
   // belong to this section; the blog isn't versioned.

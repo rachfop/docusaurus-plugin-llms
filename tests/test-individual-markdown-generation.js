@@ -147,7 +147,7 @@ async function runIndividualMarkdownGenerationTests() {
 
       try {
         // Generate individual markdown files
-        await generateIndividualMarkdownFiles(
+        const result = await generateIndividualMarkdownFiles(
           testCase.docs,
           testDir,
           testCase.siteUrl,
@@ -340,7 +340,7 @@ async function testEdgeCases() {
       console.log(`Edge Case Test: ${testCase.name}`);
 
       try {
-        await generateIndividualMarkdownFiles(
+        const result = await generateIndividualMarkdownFiles(
           testCase.docs,
           testDir,
           'https://example.com',

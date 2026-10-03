@@ -603,6 +603,8 @@ function readDocsPluginConfigs(siteConfig: unknown): DocsPluginConfig[] {
  * - a version is served at `/<routeBasePath>/<versionPath>/`, where the
  *   version path is its configured `path`, else '' for the last version,
  *   'next' for `current`, and the version name otherwise
+ * - a version's label is its configured `label`, else 'Next' for `current`
+ *   and the version name otherwise (`getVersionLabel`)
  * Each version writes its files under `<outDir>/<versionPath>/`, so the version
  * served at the unprefixed route owns the root files.
  */
@@ -666,7 +668,10 @@ function detectVersions(
       ];
     }
 
-    return { name, label: meta.label, docsDir, path: versionPath, routePrefix: '' };
+    // Docusaurus labels a version with its configured label, else 'Next' for
+    // the current docs and the version name otherwise.
+    const label = meta.label ?? (name === 'current' ? 'Next' : name);
+    return { name, label, docsDir, path: versionPath, routePrefix: '' };
   });
 }
 
