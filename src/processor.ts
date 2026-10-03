@@ -401,6 +401,7 @@ export async function processMarkdownFile(
           imageAssetMap,
           siteUrl,
           outDir,
+          siteDir,
         )
       : cleanedContent;
 
