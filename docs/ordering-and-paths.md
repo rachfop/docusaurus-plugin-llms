@@ -4,7 +4,7 @@ description: Set the order of documents with glob patterns, rewrite URLs for fil
 
 # Ordering and path transformation
 
-These options set the order documents appear in, rewrite the URLs of files that match no Docusaurus route, and set the batch size for progress logging. All of them are optional.
+These options set the order documents appear in, write links as site-relative paths, rewrite the URLs of files that match no Docusaurus route, and set the batch size for progress logging. This page also covers how the plugin resolves each page's URL. All of them are optional.
 
 For the full option list, see [configuration options](./configuration.md). For per-file variants of the ordering options, see [custom LLM files](./content-generation.md#generate-custom-llm-files).
 
@@ -69,6 +69,29 @@ Nesting depth follows the glob you write. `tutorials/beginner/**/*` matches begi
 ```
 
 Custom LLM files have their own `orderPatterns` and `includeUnmatchedLast` fields. See [custom LLM files](./content-generation.md#generate-custom-llm-files) for details.
+
+## How page URLs are resolved
+
+The plugin links each page to the route Docusaurus built for it, which it receives through the `postBuild` hook. It derives the route from the page's file path and front matter the way Docusaurus does:
+
+- Numeric ordering prefixes such as `01-` are dropped from every folder and file name, so `docs/01-guides/02-setup.md` links to `/docs/guides/setup`.
+- `index.md`, `README.md`, and a file named after its folder (`api/api.md`), in any letter case, link to their folder's URL.
+- A front matter `slug` that starts with `/` replaces the page's path under the section's `routeBasePath`: `slug: /start` in `docs/guides/intro.md` links to `/docs/start`.
+- Any other `slug` replaces the file name and keeps the folder: `slug: setup` in `docs/01-guides/intro.md` links to `/docs/guides/setup`.
+- A front matter `id` replaces the file name the same way, except on index, `README`, and folder-named files, where Docusaurus ignores it.
+- A page matches routes under its own section's `routeBasePath` first, and docs pages never link to blog routes.
+
+When `generateMarkdownFiles` is on, each `.md` file's path follows the same route, so `slug: /start` writes `docs/start.md`.
+
+## Relative links
+
+`useRelativeUrls` (type `boolean`, default `false`) writes each link in `llms.txt` and in links-only custom files as a path from the site root, keeping the `baseUrl`:
+
+```
+- [Intro](/sub/docs/intro): Docs intro.
+```
+
+Use it when the same build is served from more than one host, or when the site `url` in `docusaurus.config.js` isn't the URL readers use. Image URLs written by `rewriteImageUrls` stay absolute.
 
 ## Path transformation
 

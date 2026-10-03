@@ -47,7 +47,7 @@ These options select which files the plugin reads and in what order.
 | ---------------------- | ------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `docsDir`              | `string \| DocsSection[]` | `'docs'` | Documentation source. A string base directory, or an array of section objects for multi-instance setups. See [Documentation sections](#documentation-sections).                           |
 | `ignoreFiles`          | `string[]`                | `[]`     | Glob patterns for files to skip.                                                                                                                                                          |
-| `includeBlog`          | `boolean`                 | `false`  | Whether to include blog content.                                                                                                                                                          |
+| `includeBlog`          | `boolean`                 | `false`  | Whether to include blog posts. See [include blog posts](content-generation.md#include-blog-posts).                                                                                        |
 | `blogDir`              | `string`                  | `'blog'` | Filesystem path to the blog content directory, relative to the site root.                                                                                                                 |
 | `blogRouteBasePath`    | `string`                  | `'blog'` | Docusaurus `routeBasePath` for the blog plugin, relative to the site `baseUrl`. Set this to match `presets.blog.routeBasePath` if you've customized it (for example `'news'`).            |
 | `includeOrder`         | `string[]`                | `[]`     | Glob patterns controlling the order files are processed in.                                                                                                                               |
@@ -80,12 +80,12 @@ These options remove markup from the source Markdown before the plugin writes it
 
 These options control the links the plugin emits.
 
-| Option               | Type      | Default     | Description                                                                                                                                |
-| -------------------- | --------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `addMdExtension`     | `boolean` | `true`      | Append `.md` to link URLs in `llms.txt`, per the llmstxt.org spec. Only applies when `generateMarkdownFiles` is `true`.                    |
-| `useRelativeUrls`    | `boolean` | `false`     | Emit links relative to the site origin (for example `/docs/page.md`). Useful for subpath deployments where the site `url` can't be pinned. |
-| `rewriteImageUrls`   | `boolean` | `false`     | Rewrite relative image references to absolute hashed build-output URLs so LLMs can resolve them.                                           |
-| `pathTransformation` | `object`  | `undefined` | Fallback path rewriting for URL construction. See [Path transformation](#path-transformation).                                             |
+| Option               | Type      | Default     | Description                                                                                                                        |
+| -------------------- | --------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `addMdExtension`     | `boolean` | `true`      | Append `.md` to link URLs in `llms.txt`, per the llmstxt.org spec. Only applies when `generateMarkdownFiles` is `true`.            |
+| `useRelativeUrls`    | `boolean` | `false`     | Write links as paths from the site root (for example `/docs/page.md`). See [relative links](ordering-and-paths.md#relative-links). |
+| `rewriteImageUrls`   | `boolean` | `false`     | Rewrite relative image references to absolute hashed build-output URLs so LLMs can resolve them.                                   |
+| `pathTransformation` | `object`  | `undefined` | Fallback path rewriting for URL construction. See [Path transformation](#path-transformation).                                     |
 
 The `pathTransformation` object accepts these fields:
 
