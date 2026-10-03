@@ -155,6 +155,26 @@ Version: 1.0.0
 This file contains all documentation content in a single document following the llmstxt.org standard.
 ```
 
+## Include blog posts
+
+With `includeBlog: true`, the plugin adds the posts in the blog directory to `llms.txt` and `llms-full.txt`. `blogDir` (default `'blog'`) is the blog's folder, relative to the site directory, and `blogRouteBasePath` (default `'blog'`) is the blog plugin's `routeBasePath`, relative to the site `baseUrl`. Set both to match your blog plugin config:
+
+```js
+{
+  includeBlog: true,
+  blogDir: 'news',
+  blogRouteBasePath: 'news',
+}
+```
+
+Each post links to the route Docusaurus builds for it:
+
+- A post named with a date, such as `2024-01-01-hello.md` or `2024-01-01-hello/index.md`, links to `/blog/2024/01/01/hello`.
+- A post with a front matter `slug` links to that slug under the blog route, such as `/blog/my-custom`.
+- Posts with `draft: true` are skipped.
+
+`ignoreFiles` and `includeOrder` patterns match blog posts by their site-relative path, such as `blog/2024-01-01-hello.md`. When `docsDir` lists several sections, the posts appear under a `## Blog` heading in `llms.txt`. In versions mode, posts appear in the version written at the site root only.
+
 ## How partials are resolved
 
 The plugin supports [Docusaurus partials](https://docusaurus.io/docs/markdown-features/react#importing-markdown), the reusable MDX files imported into other documents. Partials are handled with no extra configuration:
