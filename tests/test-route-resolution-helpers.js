@@ -5,14 +5,14 @@
  */
 
 const path = require('path');
-const fs = require('fs-extra');
+const fs = require('fs/promises');
 const { processFilesWithPatterns } = require('../lib/processor');
 
 const TEST_DIR = path.join(__dirname, 'route-helpers-test');
 const DOCS_DIR = path.join(TEST_DIR, 'docs');
 
 async function setupTestFiles() {
-  await fs.ensureDir(DOCS_DIR);
+  await fs.mkdir(DOCS_DIR, { recursive: true });
 
   await fs.writeFile(path.join(DOCS_DIR, 'simple.md'), '# Simple\n\nSimple test file.');
 
@@ -20,7 +20,7 @@ async function setupTestFiles() {
 
   await fs.writeFile(path.join(DOCS_DIR, '02-another.md'), '# Another\n\nAnother numbered file.');
 
-  await fs.ensureDir(path.join(DOCS_DIR, '01-category'));
+  await fs.mkdir(path.join(DOCS_DIR, '01-category'), { recursive: true });
   await fs.writeFile(
     path.join(DOCS_DIR, '01-category', 'nested.md'),
     '# Nested\n\nNested file in numbered category.',
@@ -33,8 +33,10 @@ async function setupTestFiles() {
 }
 
 async function cleanupTestFiles() {
-  await fs.remove(TEST_DIR);
+  await fs.rm(TEST_DIR, { recursive: true, force: true });
 }
+
+let failed = 0;
 
 async function runTests() {
   console.log('Testing route resolution helper functions...\n');
@@ -63,6 +65,7 @@ async function runTests() {
       if (simpleDoc && simpleDoc.url === 'https://example.com/simple') {
         console.log('  ✓ PASS: Suffix match for simple.md');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected simple.md to resolve to /simple');
         console.log(`    Got: ${simpleDoc?.url}`);
       }
@@ -70,6 +73,7 @@ async function runTests() {
       if (numberedDoc && numberedDoc.url === 'https://example.com/numbered') {
         console.log('  ✓ PASS: Suffix match for numbered file (prefix stripped)');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected 01-numbered.md to resolve to /numbered');
         console.log(`    Got: ${numberedDoc?.url}`);
       }
@@ -94,6 +98,7 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/another') {
         console.log('  ✓ PASS: Numbered prefix stripped and matched');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected 02-another.md to resolve to /another');
         console.log(`    Got: ${doc?.url}`);
       }
@@ -118,6 +123,7 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/category/nested') {
         console.log('  ✓ PASS: Nested numbered prefix stripped and matched');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected nested file to resolve to /category/nested');
         console.log(`    Got: ${doc?.url}`);
       }
@@ -142,6 +148,7 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/category/double') {
         console.log('  ✓ PASS: Double numbered prefixes handled correctly');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected double numbered file to resolve correctly');
         console.log(`    Got: ${doc?.url}`);
       }
@@ -165,6 +172,7 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/docs/simple') {
         console.log('  ✓ PASS: Fallback URL construction works');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected fallback URL to be /docs/simple');
         console.log(`    Got: ${doc?.url}`);
       }
@@ -189,6 +197,7 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/another') {
         console.log('  ✓ PASS: Shortest route (stable) preferred over versioned');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected shortest match /another');
         console.log(`    Got: ${doc?.url}`);
       }
@@ -201,7 +210,7 @@ async function runTests() {
     // producing the doubled /docs/docs/manual/get-started URL.
     console.log('\nTest 7: Issue #31 — docsDir stripping prevents docs/docs doubling');
     {
-      await fs.ensureDir(path.join(DOCS_DIR, 'manual'));
+      await fs.mkdir(path.join(DOCS_DIR, 'manual'), { recursive: true });
       await fs.writeFile(
         path.join(DOCS_DIR, 'manual', 'get-started.md'),
         '# Get Started\n\nGet started guide.',
@@ -223,6 +232,7 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/manual/get-started') {
         console.log('  ✓ PASS: No docs/docs doubling — resolved to /manual/get-started');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected /manual/get-started (not /docs/docs/manual/get-started)');
         console.log(`    Got: ${doc?.url}`);
       }
@@ -247,6 +257,7 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/simple/') {
         console.log('  ✓ PASS: Trailing-slash route matched and URL preserved');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected URL with trailing slash /simple/');
         console.log(`    Got: ${doc?.url}`);
       }
@@ -255,7 +266,7 @@ async function runTests() {
     // Test 9: Directory collapsing (generics/generics.md -> /generics)
     console.log('\nTest 9: Directory collapsing — dir/dir.md resolves to /dir');
     {
-      await fs.ensureDir(path.join(DOCS_DIR, 'generics'));
+      await fs.mkdir(path.join(DOCS_DIR, 'generics'), { recursive: true });
       await fs.writeFile(
         path.join(DOCS_DIR, 'generics', 'generics.md'),
         '# Generics\n\nGenerics documentation.',
@@ -277,6 +288,7 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/generics') {
         console.log('  ✓ PASS: generics/generics.md collapsed to /generics');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected /generics (not /generics/generics)');
         console.log(`    Got: ${doc?.url}`);
       }
@@ -306,6 +318,7 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/python-to-mojo') {
         console.log('  ✓ PASS: Frontmatter id override resolved to /python-to-mojo');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected /python-to-mojo via frontmatter id override');
         console.log(`    Got: ${doc?.url}`);
       }
@@ -335,12 +348,18 @@ async function runTests() {
       if (doc && doc.url === 'https://example.com/welcome') {
         console.log('  ✓ PASS: Frontmatter slug override resolved to /welcome');
       } else {
+        failed++;
         console.log('  ✗ FAIL: Expected /welcome via frontmatter slug override');
         console.log(`    Got: ${doc?.url}`);
       }
     }
 
-    console.log('\n✓ All route resolution helper tests completed');
+    if (failed > 0) {
+      console.log(`\n✗ ${failed} route resolution helper checks failed`);
+      process.exitCode = 1;
+    } else {
+      console.log('\n✓ All route resolution helper tests completed');
+    }
   } catch (err) {
     console.error('Test failed with error:', err);
     process.exit(1);

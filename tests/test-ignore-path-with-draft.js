@@ -202,7 +202,17 @@ async function testDraftFilteringVsIgnorePatterns() {
   console.log('- ignore patterns filter files before processing (path-based)');
   console.log('- ignore patterns can exclude files regardless of their draft status');
 
-  return true;
+  const titles = (docs) => docs.map((doc) => doc.title).sort();
+  const noFilteringOk =
+    JSON.stringify(titles(noFiltering)) ===
+    JSON.stringify(['Advanced Tutorial', 'Draft Naming Convention', 'Getting Started', 'Home']);
+  const withIgnoreOk =
+    JSON.stringify(titles(withIgnore)) ===
+    JSON.stringify(['Advanced Tutorial', 'Getting Started', 'Home']);
+  console.log(`\n✅ draft: true page excluded, draft-named page kept: ${noFilteringOk}`);
+  console.log(`✅ "**/draft*.md" excludes both draft-named files: ${withIgnoreOk}`);
+
+  return noFilteringOk && withIgnoreOk;
 }
 
 // Run all tests

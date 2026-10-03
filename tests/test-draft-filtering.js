@@ -52,6 +52,10 @@ This content should appear in llms.txt.`,
     },
   },
   {
+    // Docusaurus validates front matter with Joi in convert mode
+    // (utils-validation validateFrontMatter: `convert: true`; `draft` is
+    // `Joi.boolean()` in validationSchemas.js), which reads the string "true"
+    // as boolean true, so a quoted "true" is still a draft.
     name: 'Should exclude pages with draft: "true" (string)',
     content: `---
 title: String Draft Page
@@ -60,12 +64,8 @@ draft: "true"
 
 # This is a draft page with string value
 
-This should still be included as draft is a string, not boolean.`,
-    expectedResult: {
-      title: 'String Draft Page',
-      description: 'This is a draft page with string value',
-      // Other fields will be validated in the test
-    },
+Docusaurus converts the string to a boolean, so this page is a draft.`,
+    expectedResult: null,
   },
 ];
 
@@ -190,11 +190,10 @@ This is another published article.`,
       true, // includeUnmatched
     );
 
-    // Count non-draft files
-    const expectedNonDraftCount = allFiles.filter((file) => {
-      const content = fs.readFileSync(file, 'utf-8');
-      return !content.includes('draft: true');
-    }).length;
+    // Non-draft files: the test cases without an expected null result, plus
+    // published1.md and published2.md.
+    const expectedNonDraftCount =
+      testCases.filter((testCase) => testCase.expectedResult !== null).length + 2;
 
     if (processedDocs.length === expectedNonDraftCount) {
       console.log(`✅ processFilesWithPatterns correctly filtered draft pages`);

@@ -1,90 +1,15 @@
 /**
- * Tests for array bounds checking in path operations
+ * Tests for array bounds checking in path operations: duplicate titles in
+ * llms-full.txt get a folder-name or numeric suffix from the real
+ * generateLLMFile, whatever the shape of the doc's path.
  *
  * Run with: node test-path-bounds-checking.js
  */
 
-// Import the ensureUniqueIdentifier utility
-function ensureUniqueIdentifier(baseIdentifier, usedIdentifiers, suffixGenerator) {
-  let identifier = baseIdentifier;
-  let counter = 1;
-
-  while (usedIdentifiers.has(identifier.toLowerCase())) {
-    counter++;
-    const suffix = suffixGenerator(counter, baseIdentifier);
-    identifier = `${baseIdentifier} ${suffix}`;
-  }
-
-  usedIdentifiers.add(identifier.toLowerCase());
-  return identifier;
-}
-
-// Mock the generateLLMFile function from generator.ts with the fixed logic
-function generateLLMFile(
-  docs,
-  outputPath,
-  fileTitle,
-  fileDescription,
-  includeFullContent,
-  version,
-) {
-  console.log(`Generating file: ${outputPath}, version: ${version || 'undefined'}`);
-  const versionInfo = version ? `\n\nVersion: ${version}` : '';
-
-  if (includeFullContent) {
-    // Generate full content file with header deduplication
-    const usedHeaders = new Set();
-    const fullContentSections = docs.map((doc) => {
-      // Check if content already starts with the same heading to avoid duplication
-      const trimmedContent = doc.content.trim();
-      const firstLine = trimmedContent.split('\n')[0];
-
-      // Check if the first line is a heading that matches our title
-      const headingMatch = firstLine.match(/^#+\s+(.+)$/);
-      const firstHeadingText = headingMatch ? headingMatch[1].trim() : null;
-
-      // Generate unique header using the utility function
-      const uniqueHeader = ensureUniqueIdentifier(doc.title, usedHeaders, (counter) => {
-        // Try to make it more descriptive by adding the file path info if available
-        if (doc.path && counter === 2) {
-          const pathParts = doc.path.split('/');
-          // FIXED: Changed from > 1 to >= 2 to properly check array bounds
-          const folderName = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : '';
-          if (folderName) {
-            return `(${folderName.charAt(0).toUpperCase() + folderName.slice(1)})`;
-          }
-        }
-        return `(${counter})`;
-      });
-
-      if (firstHeadingText === doc.title) {
-        // Content already has the same heading, replace it with our unique header
-        const restOfContent = trimmedContent.split('\n').slice(1).join('\n');
-        return `## ${uniqueHeader}
-
-${restOfContent}`;
-      } else {
-        // Content doesn't have the same heading, add our unique H2 header
-        return `## ${uniqueHeader}
-
-${doc.content}`;
-      }
-    });
-
-    const llmFileContent = `# ${fileTitle}
-
-> ${fileDescription}${versionInfo}
-
-This file contains all documentation content in a single document following the llmstxt.org standard.
-
-${fullContentSections.join('\n\n---\n\n')}
-`;
-
-    return llmFileContent;
-  }
-
-  return '';
-}
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { generateLLMFile } = require('../lib/generator');
 
 // Test cases for path bounds checking
 const testCases = [
@@ -224,52 +149,55 @@ const testCases = [
   },
 ];
 
-function runTests() {
+async function runTests() {
   console.log('Running path bounds checking tests...\n');
 
   let passCount = 0;
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'llms-path-bounds-'));
 
-  testCases.forEach((test, index) => {
-    console.log(`Test ${index + 1}: ${test.name}`);
-    console.log(`  ${test.description}`);
+  try {
+    for (const [index, test] of testCases.entries()) {
+      console.log(`Test ${index + 1}: ${test.name}`);
+      console.log(`  ${test.description}`);
 
-    try {
-      const output = generateLLMFile(
-        test.docs,
-        '/mock/output.txt',
-        'Test Documentation',
-        'Test description',
-        true,
-        'test-version',
-      );
+      try {
+        const outputPath = path.join(outDir, `llms-full-${index}.txt`);
+        await generateLLMFile(
+          test.docs,
+          outputPath,
+          'Test Documentation',
+          'Test description',
+          true,
+          'test-version',
+        );
+        const output = fs.readFileSync(outputPath, 'utf8');
 
-      // Extract H2 headers from the output (document sections should be H2)
-      const headerMatches = output.match(/^## .+$/gm) || [];
-      const actualHeaders = headerMatches.map((h) => h.replace(/^## /, ''));
+        // Extract H2 headers from the output (document sections should be H2)
+        const headerMatches = output.match(/^## .+$/gm) || [];
+        const actualHeaders = headerMatches.map((h) => h.replace(/^## /, ''));
 
-      console.log(`  Expected headers: ${test.expectedHeaders.join(', ')}`);
-      console.log(`  Actual headers: ${actualHeaders.join(', ')}`);
+        console.log(`  Expected headers: ${test.expectedHeaders.join(', ')}`);
+        console.log(`  Actual headers: ${actualHeaders.join(', ')}`);
 
-      // Check if headers match expected
-      const headersMatch =
-        actualHeaders.length === test.expectedHeaders.length &&
-        actualHeaders.every((header, i) => header === test.expectedHeaders[i]);
+        const headersMatch =
+          actualHeaders.length === test.expectedHeaders.length &&
+          actualHeaders.every((header, i) => header === test.expectedHeaders[i]);
 
-      if (headersMatch) {
-        console.log('  ✅ PASS');
-        passCount++;
-      } else {
-        console.log('  ❌ FAIL');
-        console.log(`    Expected: [${test.expectedHeaders.join(', ')}]`);
-        console.log(`    Actual: [${actualHeaders.join(', ')}]`);
+        if (headersMatch) {
+          console.log('  ✅ PASS');
+          passCount++;
+        } else {
+          console.log('  ❌ FAIL');
+        }
+      } catch (error) {
+        console.log('  ❌ ERROR:', error.message);
       }
-    } catch (error) {
-      console.log('  ❌ ERROR:', error.message);
-      console.log('    Stack:', error.stack);
-    }
 
-    console.log('');
-  });
+      console.log('');
+    }
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
 
   console.log(`Results: ${passCount} of ${testCases.length} tests passed.`);
 
@@ -281,5 +209,7 @@ function runTests() {
   }
 }
 
-// Run the tests
-runTests();
+runTests().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

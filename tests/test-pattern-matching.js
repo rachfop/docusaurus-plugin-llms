@@ -6,13 +6,16 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const pluginModule = require('../lib/index');
 const plugin = pluginModule.default;
 
-// Create test directory structure
-const TEST_DIR = path.join(__dirname, '..', 'test-docs');
-const OUTPUT_DIR = path.join(__dirname, '..', 'test-output');
+// Create test directory structure in a temp site, so the tracked test-docs
+// fixtures stay untouched.
+const ROOT_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'llms-pattern-matching-'));
+const TEST_DIR = path.join(ROOT_DIR, 'site');
+const OUTPUT_DIR = path.join(ROOT_DIR, 'output');
 
 // Setup test docs structure
 async function setupTestDocs() {
@@ -305,6 +308,7 @@ async function main() {
     await setupTestDocs();
     await runTests();
     const success = verifyResults();
+    fs.rmSync(ROOT_DIR, { recursive: true, force: true });
 
     if (success) {
       console.log('✅ All pattern matching tests passed successfully!');
@@ -314,6 +318,7 @@ async function main() {
       process.exit(1);
     }
   } catch (error) {
+    fs.rmSync(ROOT_DIR, { recursive: true, force: true });
     console.error('Test failed with error:', error);
     process.exit(1);
   }

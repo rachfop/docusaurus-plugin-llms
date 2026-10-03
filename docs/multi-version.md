@@ -117,7 +117,7 @@ build/
     └── llms-full.txt
 ```
 
-Each version's label is its `versions.<name>.label` from the docs plugin config, or its name otherwise, so the current docs are labeled `current` unless you set `versions.current.label`. If `versions.json` is absent, the plugin generates only the current docs.
+Each version's label follows Docusaurus: its `versions.<name>.label` from the docs plugin config when set, otherwise `Next` for the current docs and the version name for any other version. If `versions.json` is absent, the plugin generates only the current docs.
 
 ## Output layout and version identity
 
