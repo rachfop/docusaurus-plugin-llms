@@ -18,7 +18,7 @@
   "author": "Patrick Rachford",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rachfop/docusaurus-plugin-llms.git"
+    "url": "git+https://github.com/rachfop/docusaurus-plugin-llms.git"
   },
   "funding": {
     "type": "github",
