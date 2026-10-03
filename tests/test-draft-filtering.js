@@ -67,6 +67,34 @@ draft: "true"
 Docusaurus converts the string to a boolean, so this page is a draft.`,
     expectedResult: null,
   },
+  {
+    // Joi's boolean conversion ignores case: "TRUE" and "True" are true.
+    name: 'Should exclude pages with draft: "TRUE" (any case)',
+    content: `---
+title: Upper Draft Page
+draft: "TRUE"
+---
+
+# Upper-case draft
+
+Docusaurus reads "TRUE" as true, so this page is a draft.`,
+    expectedResult: null,
+  },
+  {
+    name: 'Should include pages with draft: "FALSE"',
+    content: `---
+title: Upper Published Page
+draft: "FALSE"
+---
+
+# Upper-case published
+
+Docusaurus reads "FALSE" as false.`,
+    expectedResult: {
+      title: 'Upper Published Page',
+      description: 'Docusaurus reads "FALSE" as false.',
+    },
+  },
 ];
 
 // Test function

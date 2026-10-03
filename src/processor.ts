@@ -181,9 +181,12 @@ export async function processMarkdownFile(
   const content = await readFile(contentFilePath);
   const { data, content: markdownContent } = matter(content);
 
-  // Skip draft files (accept both boolean true and the string "true", which
-  // some editors emit as quoted frontmatter).
-  if (data.draft === true || data.draft === 'true') {
+  // Skip draft files. Docusaurus validates `draft` as a Joi boolean with
+  // conversion, so the string "true" in any letter case is a draft too.
+  if (
+    data.draft === true ||
+    (typeof data.draft === 'string' && data.draft.toLowerCase() === 'true')
+  ) {
     return null;
   }
 
