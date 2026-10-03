@@ -6,6 +6,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { Dirent } from 'fs';
 import { maskCodeSegments } from './content';
+import { isDefined } from './guards';
 
 /** Image extensions recognised by Docusaurus / browsers (regex alternation). */
 const IMAGE_EXTENSIONS = 'png|jpe?g|gif|svg|webp|bmp|ico|avif|tiff?';
@@ -58,6 +59,38 @@ export async function buildImageAssetMap(outDir: string): Promise<Map<string, st
 }
 
 /**
+ * Find the build-output copy of a site file under a static directory: for
+ * `<siteDir>/<dir>/<p>`, the file `<outDir>/<p>` with the same bytes (each
+ * leading directory is tried as the static directory, shortest first).
+ * Returns its site-root-relative URL path, or null when there is none.
+ */
+async function findStaticCopy(
+  sourceFile: string,
+  siteDir: string,
+  outDir: string,
+): Promise<string | null> {
+  const segments = path.relative(siteDir, sourceFile).split(path.sep);
+  if (segments[0] === '..' || path.isAbsolute(segments[0])) return null;
+  let srcBytes: Buffer;
+  try {
+    srcBytes = await fs.readFile(sourceFile);
+  } catch {
+    return null;
+  }
+  for (let i = 1; i < segments.length; i++) {
+    const rel = segments.slice(i);
+    try {
+      if (srcBytes.equals(await fs.readFile(path.join(outDir, ...rel)))) {
+        return `/${rel.join('/')}`;
+      }
+    } catch {
+      /* no copy at this depth */
+    }
+  }
+  return null;
+}
+
+/**
  * Rewrite relative image references in markdown content to absolute URLs
  * pointing to the hashed build output in `assets/images/`.
  *
@@ -67,8 +100,13 @@ export async function buildImageAssetMap(outDir: string): Promise<Map<string, st
  *   - HTML img tags:    `<img src="./img/foo.png" />`  (both quote styles)
  *
  * As in Docusaurus, a markdown image path that is not absolute, root-relative,
- * or an alias (`@site/...`) resolves against the source file's directory, and
- * is percent-decoded before the lookup.
+ * or an alias resolves against the source file's directory, and is
+ * percent-decoded before the lookup. When `siteDir` is given, a `@site/<p>`
+ * path resolves to `<siteDir>/<p>`: Docusaurus bundles it like a relative
+ * image, so it takes the same lookup. A `@site/` image with no bundled asset
+ * (one small enough to be inlined as a data URI) that the build serves from a
+ * static directory (`@site/static/<p>` copied to `<outDir>/<p>`, confirmed by
+ * comparing bytes) is rewritten to `<siteUrl><p>`.
  *
  * Resolution strategy:
  *   1. Extract the basename from the relative path (e.g., `foo.png`).
@@ -85,6 +123,7 @@ export async function buildImageAssetMap(outDir: string): Promise<Map<string, st
  * @param imageAssetMap  - Lookup map built by `buildImageAssetMap`
  * @param siteUrl        - Site base URL used to build absolute image URLs
  * @param outDir         - Build output directory (needed for byte comparison)
+ * @param siteDir        - Site directory, for resolving `@site/` image paths
  * @returns Content with rewritten image URLs
  */
 export async function rewriteRelativeImageUrls(
@@ -93,6 +132,7 @@ export async function rewriteRelativeImageUrls(
   imageAssetMap: Map<string, string[]>,
   siteUrl: string,
   outDir: string,
+  siteDir?: string,
 ): Promise<string> {
   const baseUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
   const sourceDir = path.dirname(sourceFilePath);
@@ -112,7 +152,9 @@ export async function rewriteRelativeImageUrls(
   // filtering is done separately with imgExtRe so we don't accidentally miss
   // legitimate multi-level paths.
   const imageRefRe = /(!\[[^\]]*\]\()(?:<([^<>\n]+)>|([^)"'\s<>]+))|(src=["'])(\.[^"'\s]+)/gi;
-  const isRelative = (p: string): boolean => !/^(?:[a-z][a-z0-9+.-]*:|[/#@~])/i.test(p);
+  const isSiteAlias = (p: string): boolean => isDefined(siteDir) && p.startsWith('@site/');
+  const isRelative = (p: string): boolean =>
+    isSiteAlias(p) || !/^(?:[a-z][a-z0-9+.-]*:|[/#@~])/i.test(p);
   // The file-system path a reference names: no query/fragment, percent-decoded.
   const toFsPath = (ref: string): string => {
     const bare = ref.split('?')[0].split('#')[0];
@@ -122,6 +164,12 @@ export async function rewriteRelativeImageUrls(
       return bare;
     }
   };
+
+  // The source file an image reference names.
+  const toSourceFile = (ref: string): string =>
+    isSiteAlias(ref)
+      ? path.join(siteDir!, toFsPath(ref).slice('@site/'.length))
+      : path.resolve(sourceDir, toFsPath(ref));
 
   // Collect unique relative paths that point to image files
   const uniquePaths = new Set<string>();
@@ -148,7 +196,7 @@ export async function rewriteRelativeImageUrls(
       assetPath = candidates[0];
     } else if (candidates.length > 1) {
       // Multiple files with same basename — byte-compare to find the right one
-      const absSource = path.resolve(sourceDir, toFsPath(relPath));
+      const absSource = toSourceFile(relPath);
       try {
         const srcBytes = await fs.readFile(absSource);
         for (const candidate of candidates) {
@@ -165,6 +213,13 @@ export async function rewriteRelativeImageUrls(
       } catch {
         /* source unreadable — keep original */
       }
+    }
+
+    // A `@site/<dir>/<p>` image with no bundled asset: the build output
+    // serves it at `/<p>` when `<dir>` is a static directory, which copies
+    // its files to the output root. Matching bytes confirm the copy.
+    if (!assetPath && isSiteAlias(relPath)) {
+      assetPath = await findStaticCopy(toSourceFile(relPath), siteDir!, outDir);
     }
 
     // Preserve any query string / fragment (e.g. "?raw=1", "#anchor") so we

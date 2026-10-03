@@ -32,28 +32,57 @@ export function maskCodeSegments(content: string): {
     segments.push(code);
     return token;
   };
+  const restore = (s: string): string =>
+    s.replace(new RegExp(`￼CODE${id}:(\\d+)￼`, 'g'), (_t, i) => segments[Number(i)] ?? '');
 
   // Fenced code blocks first: opening fence (>=3 backticks or tildes) through a
   // closing fence of the same character that is at least as long as the
   // opener (CommonMark), so a ```` fence can show a ``` fence inside it. The
+  // block may be empty (the closer on the line after the opener). The
   // leading newline (if any) stays outside the token so line structure is
   // unchanged.
   let masked = content.replace(
-    /(^|\n)([ \t]*(?:(`{3,})[^\n]*\n[\s\S]*?\n[ \t]*\3`*|(~{3,})[^\n]*\n[\s\S]*?\n[ \t]*\4~*)[ \t]*)(?=\n|$)/g,
+    /(^|\n)([ \t]*(?:(`{3,})[^\n]*(?:\n[\s\S]*?)??\n[ \t]*\3`*|(~{3,})[^\n]*(?:\n[\s\S]*?)??\n[ \t]*\4~*)[ \t]*)(?=\n|$)/g,
     (_match, lead, block) => `${lead}${store(block)}`,
   );
 
+  // An opening fence left without a closer runs to the end of its container
+  // (CommonMark): the end of the document, or for an indented opener (inside
+  // a list item) the first non-blank line indented less than the opener. A
+  // backtick opener's info string has no backticks, so a line of inline code
+  // is not an opener. Blocks masked above inside the region are restored into
+  // it, so its token holds the region as written.
+  const unclosedFence = /(^|\n)([ \t]*)(?:`{3,}[^`\n]*|~{3,}[^\n]*)(?=\n|$)/;
+  let open: RegExpExecArray | null;
+  let from = 0;
+  while ((open = unclosedFence.exec(masked.slice(from))) !== null) {
+    const start = from + open.index + open[1].length;
+    const indent = open[2].length;
+    let end = masked.length;
+    if (indent > 0) {
+      const dedent = new RegExp(`\\n(?![ \\t]{${indent}}|[ \\t]*(?:\\n|$))`, 'g');
+      dedent.lastIndex = start;
+      const next = dedent.exec(masked);
+      if (next) end = next.index;
+    }
+    const token = store(restore(masked.slice(start, end)));
+    masked = masked.slice(0, start) + token + masked.slice(end);
+    from = start + token.length;
+  }
+
   // Fences inside blockquotes: every line of the block carries a `>` prefix.
+  // An opener without a closer runs to the end of the blockquote.
   masked = masked.replace(
     /(^|\n)([ \t]*>(?:[ \t]*>)*[ \t]*(?:(`{3,})[^\n]*(?:\n[ \t]*>[^\n]*?)*?\n[ \t]*>(?:[ \t]*>)*[ \t]*\3`*|(~{3,})[^\n]*(?:\n[ \t]*>[^\n]*?)*?\n[ \t]*>(?:[ \t]*>)*[ \t]*\4~*)[ \t]*)(?=\n|$)/g,
     (_match, lead, block) => `${lead}${store(block)}`,
   );
+  masked = masked.replace(
+    /(^|\n)([ \t]*>(?:[ \t]*>)*[ \t]*(?:`{3,}[^`\n]*|~{3,}[^\n]*)(?:\n[ \t]*>[^\n]*)*)(?=\n|$)/g,
+    (_match, lead, block) => `${lead}${store(restore(block))}`,
+  );
 
   // Then inline code spans (`code`, ``co`de``) — a span never crosses a line.
   masked = masked.replace(/(`+)(?:(?!\1)[^\n])+?\1/g, (m) => store(m));
-
-  const restore = (s: string): string =>
-    s.replace(new RegExp(`￼CODE${id}:(\\d+)￼`, 'g'), (_t, i) => segments[Number(i)] ?? '');
 
   return { masked, restore };
 }
@@ -373,6 +402,24 @@ function quotedTagAttr(tag: string, name: string): string | undefined {
 }
 
 /**
+ * Extract the path from a JSX `src` brace expression on an `<img>` tag: a
+ * string literal (`{"./x.png"}`, `{'./x.png'}`, or a template literal without
+ * `${}`), or a `require()` of one (`{require('./x.png').default}`), which the
+ * bundler resolves like a relative import. Any other expression yields
+ * undefined.
+ */
+function imgSrcExpression(tag: string): string | undefined {
+  const m = tag.match(/\ssrc\s*=\s*\{([^{}]*)\}/i);
+  if (!m) return undefined;
+  const literal = /(?:"([^"]*)"|'([^']*)'|`([^`]*)`)/.source;
+  const expression = m[1]
+    .trim()
+    .match(new RegExp(`^(?:${literal}|require\\(\\s*${literal}\\s*\\)(?:\\.default)?)$`));
+  const text = expression?.slice(1).find(isDefined);
+  return isNonEmptyString(text) && !text.includes('${') ? text : undefined;
+}
+
+/**
  * Clean markdown content for LLM consumption
  * @param content - Raw markdown content
  * @param excludeImports - Whether to exclude import statements
@@ -416,8 +463,11 @@ export function cleanMarkdownContent(
   // capitalized name (<Img>, <Table>) is a component, which the JSX pass
   // further down strips or keeps per preserveComponents.
   cleaned = cleaned.replace(new RegExp(`<img\\b${TAG_ATTRS}/?>`, 'g'), (tag) => {
-    const src = quotedTagAttr(tag, 'src');
-    return src ? `![${quotedTagAttr(tag, 'alt') ?? ''}](${src})` : '';
+    // Restore first: a template-literal value (src={`x`}) was masked as
+    // inline code along with the rest of the content.
+    const source = restore(tag);
+    const src = quotedTagAttr(source, 'src') ?? imgSrcExpression(source);
+    return src ? `![${quotedTagAttr(source, 'alt') ?? ''}](${src})` : '';
   });
 
   // Remove common HTML tags (code blocks are already masked out above),

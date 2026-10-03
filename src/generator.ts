@@ -79,19 +79,33 @@ function cleanDescriptionForToc(description: string, fromFrontMatter: boolean = 
     cleaned = cleaned.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1');
   }
 
-  // Truncate if too long (150 characters max with ellipsis)
-  if (cleaned.length <= 150) return cleaned;
-  let truncated = cleaned.substring(0, 147);
-  // A cut inside a code span or link would leave it open and break the TOC
-  // line's markdown, so cut before the unclosed opener instead.
-  if ((truncated.match(/`/g) || []).length % 2 === 1) {
-    truncated = truncated.substring(0, truncated.lastIndexOf('`')).trimEnd();
+  // Truncate if too long (150 characters max with ellipsis). A front matter
+  // description cut to its first line can also leave a code span or link
+  // open (it closes on a later line); that line is balanced and marked as cut
+  // too, and a first line with nothing open is kept as written.
+  if (cleaned.length <= 150) {
+    if (!fromFrontMatter || lines.length < 2) return cleaned;
+    const balanced = cutBeforeOpenSpan(cleaned);
+    if (balanced === cleaned) return cleaned;
+    return balanced ? `${balanced}...` : '';
   }
-  const openLink = truncated.search(/!?\[[^\]]*$|!?\[[^\]]*\]\([^)]*$/);
+  return `${cutBeforeOpenSpan(cleaned.substring(0, 147))}...`;
+}
+
+/**
+ * Cut text before an unclosed code span or link opener: a cut inside one
+ * would leave it open and break the TOC line's markdown.
+ */
+function cutBeforeOpenSpan(text: string): string {
+  let cut = text;
+  if ((cut.match(/`/g) || []).length % 2 === 1) {
+    cut = cut.substring(0, cut.lastIndexOf('`')).trimEnd();
+  }
+  const openLink = cut.search(/!?\[[^\]]*$|!?\[[^\]]*\]\([^)]*$/);
   if (openLink !== -1) {
-    truncated = truncated.substring(0, openLink).trimEnd();
+    cut = cut.substring(0, openLink).trimEnd();
   }
-  return `${truncated}...`;
+  return cut;
 }
 
 /**
