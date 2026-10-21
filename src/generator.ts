@@ -408,14 +408,18 @@ export async function generateIndividualMarkdownFiles(
           // Strip any residual numeric ordering prefixes from each segment.
           // Docusaurus already strips them in resolved URLs, but fallback URLs
           // constructed from the source file path may still contain them.
-          let cleanPathname = urlPathname
-            .split('/')
-            .map(stripNumberPrefix)
-            .join('/')
-            // Strip an existing markdown extension so we don't produce
-            // double extensions like "config.md.md" when doc.url already
-            // ends in .md/.mdx (e.g. in tests or external usage).
-            .replace(/\.mdx?$/i, '');
+          let cleanPathname = urlPathname.split('/').map(stripNumberPrefix).join('/');
+
+          // A URL built without the processor may still carry its source
+          // file's extension ("config.md", as in tests or external usage);
+          // strip it so the file isn't named "config.md.md". A processor URL
+          // never carries one: a trailing ".md" there is the page's route
+          // (`slug: fiber.md`), which Docusaurus builds into the directory
+          // "fiber.md/", so the copy is written beside it as "fiber.md.md"
+          // rather than into it (#98).
+          if (doc.routeResolved === undefined) {
+            cleanPathname = cleanPathname.replace(/\.mdx?$/i, '');
+          }
 
           // When not preserving directory structure, drop the leading route-base
           // segment so paths are flattened relative to the docs root — matching

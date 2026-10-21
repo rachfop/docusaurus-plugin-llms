@@ -118,7 +118,7 @@ The plugin derives each output path from the document's resolved information, in
 3. **Resolved page URL**: otherwise the path comes from the document's built URL (or its source file path if the URL isn't available). Numeric ordering prefixes like `01-` are stripped from each path segment. A directory index (`index.md`, `README.md`, or a `<folder>/<folder>.md` file, in any letter case) takes its directory's URL: `docs/guide/README.md` is served at `/docs/guide/`, so its file is `docs/guide.md`.
 4. **Sanitized title**: when the path would otherwise be empty, the document title is turned into a filename (lowercased, unsafe characters and whitespace replaced with `-`).
 
-When two documents would get the same path, the plugin appends a counter (`config-2.md`, `config-3.md`, and so on). A page whose URL is the site root is written as `index.md`.
+When two documents would get the same path, the plugin appends a counter (`config-2.md`, `config-3.md`, and so on). A page whose URL is the site root is written as `index.md`. A route that itself ends in `.md` (`slug: fiber.md`) keeps it and gets the extension added, so the file is `fiber.md.md`, beside the `fiber.md/` directory Docusaurus builds for that page.
 
 ## What each file contains
 

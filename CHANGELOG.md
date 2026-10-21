@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A page whose slug ends in `.md` (`slug: fiber.md`) gets its Markdown copy
+  at `fiber.md.md` again, beside the `fiber.md/` directory Docusaurus builds
+  for the page, instead of failing with `EISDIR` and leaving `llms.txt` and
+  `llms-full.txt` unwritten (#98).
+
 ## [0.6.1] - 2026-10-02
 
 ### Added
