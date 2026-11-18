@@ -20,7 +20,7 @@ function createTestDoc(filename, frontMatter = {}) {
     path: `docs/${filename}`,
     content: `This is ${baseName} content.`,
     description: `${baseName} documentation`,
-    url: `https://example.com/docs/${filename}`,
+    url: `https://example.com/docs/${filename.replace(/\.md$/, '')}`,
     frontMatter,
   };
 }

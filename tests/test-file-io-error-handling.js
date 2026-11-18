@@ -161,7 +161,7 @@ const testCases = [
     },
   },
   {
-    name: 'generateIndividualMarkdownFiles handles mkdir errors',
+    name: 'generateIndividualMarkdownFiles falls back to the HTML route on mkdir errors',
     async test() {
       const tmpDir = await createTempDir();
 
@@ -187,28 +187,24 @@ const testCases = [
         ];
 
         try {
-          // This should fail when trying to create subdirectories
-          await generateIndividualMarkdownFiles(
+          const result = await generateIndividualMarkdownFiles(
             docs,
             path.join(readOnlyParent, 'output'),
             'https://example.com',
           );
 
           await restoreWritePermissions(readOnlyParent);
-          return { passed: false, error: 'Expected mkdir error but none was thrown' };
-        } catch (error) {
-          const hasDescriptiveError = error.message.includes('Failed to create directory');
-
-          await restoreWritePermissions(readOnlyParent);
-
-          if (hasDescriptiveError) {
+          if (
+            result.length === 1 &&
+            result[0].url === docs[0].url &&
+            result[0].markdownFile === false
+          ) {
             return { passed: true };
-          } else {
-            return {
-              passed: false,
-              error: `Error message not descriptive enough: ${error.message}`,
-            };
           }
+          return { passed: false, error: 'The document did not keep its HTML route' };
+        } catch (error) {
+          await restoreWritePermissions(readOnlyParent);
+          return { passed: false, error: `Generation still aborts: ${error.message}` };
         }
       } finally {
         await cleanupTempDir(tmpDir);
@@ -216,7 +212,7 @@ const testCases = [
     },
   },
   {
-    name: 'generateIndividualMarkdownFiles handles write errors',
+    name: 'generateIndividualMarkdownFiles falls back to the HTML route on write errors',
     async test() {
       const tmpDir = await createTempDir();
 
@@ -246,24 +242,24 @@ const testCases = [
         ];
 
         try {
-          await generateIndividualMarkdownFiles(docs, outputDir, 'https://example.com');
+          const result = await generateIndividualMarkdownFiles(
+            docs,
+            outputDir,
+            'https://example.com',
+          );
 
           await restoreWritePermissions(testFilePath);
-          return { passed: false, error: 'Expected write error but none was thrown' };
-        } catch (error) {
-          const hasDescriptiveError =
-            error.message.includes('Failed to write file') && error.message.includes(testFilePath);
-
-          await restoreWritePermissions(testFilePath);
-
-          if (hasDescriptiveError) {
+          if (
+            result.length === 1 &&
+            result[0].url === docs[0].url &&
+            result[0].markdownFile === false
+          ) {
             return { passed: true };
-          } else {
-            return {
-              passed: false,
-              error: `Error message not descriptive enough: ${error.message}`,
-            };
           }
+          return { passed: false, error: 'The document did not keep its HTML route' };
+        } catch (error) {
+          await restoreWritePermissions(testFilePath);
+          return { passed: false, error: `Generation still aborts: ${error.message}` };
         }
       } finally {
         await cleanupTempDir(tmpDir);

@@ -23,6 +23,8 @@ export interface MarkdownPathRegistry {
   usedPaths: Set<string>;
   /** Source doc path → output-relative path assigned to it. */
   docPaths: Map<string, string>;
+  /** Source doc path → absolute URL of its generated markdown file. */
+  markdownUrls?: Map<string, string>;
 }
 
 /**
@@ -49,6 +51,8 @@ export interface DocInfo {
    * version that owns the standard files lists it in `llms.txt`.
    */
   unversioned?: boolean;
+  /** False when markdown generation failed and `url` is the page's HTML route. */
+  markdownFile?: boolean;
 }
 
 /**
@@ -230,9 +234,10 @@ export interface PluginOptions {
   rewriteImageUrls?: boolean;
 
   /** Whether to emit origin-relative URLs instead of absolute ones (default: false).
-   *  When enabled, links in `llms.txt` use the path only — including the site's
-   *  baseUrl — e.g. `/docs/page.md` instead of `https://site.com/docs/page.md`.
-   *  Useful when the site can't pin a stable `url` (e.g. subpath deployments). */
+   *  Applies to index links and rewritten links between docs in generated
+   *  content. Paths include the site's baseUrl, e.g. `/docs/page.md` instead of
+   *  `https://site.com/docs/page.md`. Useful when the site can't pin a stable
+   *  `url` (e.g. subpath deployments). */
   useRelativeUrls?: boolean;
 
   /**
