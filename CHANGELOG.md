@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A docs section that points at the blog directory keeps its documents in every
   version: only posts collected through `includeBlog` count as unversioned
   content, so a prefixed version no longer drops them from its standard files.
+- Relative links between docs point to each target's generated Markdown file in
+  per-page copies, `llms-full.txt`, and full-content custom files. Inline and
+  reference-style links keep their query strings and fragments;
+  `useRelativeUrls` makes these targets origin-relative (#97).
+- Pages with routes ending in `.md` write Markdown copies such as
+  `fiber.md.md`, separate from Docusaurus's `fiber.md/index.html` route
+  directory. If a Markdown copy cannot be written, the plugin logs the path,
+  links the page's HTML route, and writes the remaining LLM files (#98).
 
 ## [0.6.1] - 2026-10-02
 
