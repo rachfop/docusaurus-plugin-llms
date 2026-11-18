@@ -12,7 +12,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import type { LoadContext, Plugin, Props } from '@docusaurus/types';
 import { PluginOptions, PluginContext, CustomLLMFile, DocsSection, VersionConfig } from './types';
-import { collectDocFiles, generateStandardLLMFiles, generateCustomLLMFiles } from './generator';
+import { collectDocFiles, generateLLMFiles } from './generator';
 import {
   setLogLevel,
   withLogLevel,
@@ -937,7 +937,7 @@ export default function docusaurusPluginLLMs(
               docsSections: version.docsSections,
               docsDir: version.docsSections[0].path,
               outputSubdir: version.pathPrefix,
-              markdownPaths: { usedPaths: new Set(), docPaths: new Map() },
+              markdownPaths: { usedPaths: new Set(), docPaths: new Map(), markdownUrls: new Map() },
               // Only scope routes in multi-version mode; the single default
               // version keeps the original whole-site matching behavior.
               routePrefix: isMultiVersion
@@ -980,8 +980,7 @@ export default function docusaurusPluginLLMs(
                 continue;
               }
 
-              await generateStandardLLMFiles(versionContext, allDocFiles, listsBlogPosts);
-              await generateCustomLLMFiles(versionContext, allDocFiles);
+              await generateLLMFiles(versionContext, allDocFiles, listsBlogPosts);
 
               logger.info(
                 `Stats: ${allDocFiles.length} documents processed` +

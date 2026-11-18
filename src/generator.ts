@@ -4,7 +4,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { DocInfo, DocsSection, MarkdownPathRegistry, PluginContext } from './types';
+import { CustomLLMFile, DocInfo, DocsSection, MarkdownPathRegistry, PluginContext } from './types';
 import {
   writeFile,
   readMarkdownFiles,
@@ -26,6 +26,7 @@ import {
   joinSiteRelativeUrl,
   encodeUrlPathSegments,
   decodeUrlPathSegments,
+  rewriteRelativeDocLinks,
 } from './utils';
 import { processFilesWithPatterns } from './processor';
 import {
@@ -33,6 +34,19 @@ import {
   stripDuplicateTitleHeading,
   stripDuplicateDescriptionParagraph,
 } from './content';
+
+/**
+ * Whether a path names something on disk. Used to decide whether a shared
+ * copy already exists, so a prefixed version does not rewrite the root's file.
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Collapse every whitespace run (including newlines) in a title to one space,
@@ -240,7 +254,8 @@ export async function generateLLMFile(
         doc.description,
         isNonEmptyString(doc.frontMatter?.description),
       );
-      let linkUrl = addMdExtension ? applyMdExtension(doc.url) : doc.url;
+      let linkUrl =
+        addMdExtension && doc.markdownFile !== false ? applyMdExtension(doc.url) : doc.url;
       if (useRelativeUrls) linkUrl = toRelativeUrl(linkUrl);
       return `- [${escapeLinkText(doc.title)}](${linkUrl})${cleanedDescription ? `: ${cleanedDescription}` : ''}`;
     };
@@ -337,6 +352,7 @@ function findSectionForDoc(doc: DocInfo, docsSections?: DocsSection[]): DocsSect
  * @param versionPath - The version's path prefix ('stable'); outputDir is that version's subdirectory, so the prefix is stripped from URLs before mapping them to files and added back to the links
  * @param registry - Paths already assigned in outputDir by an earlier call; a doc found here reuses its file
  * @param unversionedOutputDir - Directory for pages no version owns (blog posts); they keep their unprefixed links and are written once, at the site root
+ * @param useRelativeUrls - Whether rewritten links between docs use origin-relative URLs
  * @returns Updated docs with new URLs pointing to generated markdown files
  */
 export async function generateIndividualMarkdownFiles(
@@ -348,11 +364,27 @@ export async function generateIndividualMarkdownFiles(
   preserveDirectoryStructure: boolean = true,
   docsSections?: DocsSection[],
   versionPath: string = '',
-  registry: MarkdownPathRegistry = { usedPaths: new Set(), docPaths: new Map() },
+  registry: MarkdownPathRegistry = {
+    usedPaths: new Set(),
+    docPaths: new Map(),
+    markdownUrls: new Map(),
+  },
   unversionedOutputDir?: string,
+  useRelativeUrls: boolean = false,
 ): Promise<DocInfo[]> {
   const updatedDocs: DocInfo[] = [];
+  const plannedDocs: Array<{
+    doc: DocInfo;
+    versionPath: string;
+    filePath: string;
+    fullPath: string;
+    reused: boolean;
+    /** A copy the version at the site root owns; a prefixed version leaves it alone. */
+    shared: boolean;
+  }> = [];
   const { usedPaths } = registry;
+  // Callers can omit the link cache; initialize it on first use.
+  registry.markdownUrls ??= new Map<string, string>();
   // Only earlier calls' assignments are reused: docs passed to this call that
   // share a path still get their own, suffixed files.
   const earlierDocPaths = new Map(registry.docPaths);
@@ -374,12 +406,24 @@ export async function generateIndividualMarkdownFiles(
       doc.unversioned && isNonEmptyString(unversionedOutputDir) ? unversionedOutputDir : undefined;
     const docOutputDir = unversionedDir ?? outputDir;
     const docVersionPath = unversionedDir ? '' : versionPath;
+    // The route of unversioned content carries no version prefix, so its links
+    // resolve against the pages at the site root. Only the version written
+    // there owns the shared copy; a prefixed version contributes content to its
+    // own outputs without rewriting that file.
+    const shared = unversionedDir !== undefined && versionPath !== '';
 
     // A doc an earlier pass already wrote keeps that file, so the standard and
     // custom outputs link to the same page and neither overwrites the other.
     const assignedPath = earlierDocPaths.get(doc.path);
     if (assignedPath !== undefined) {
-      updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, docVersionPath, assignedPath));
+      plannedDocs.push({
+        doc,
+        versionPath: docVersionPath,
+        filePath: assignedPath,
+        fullPath: path.join(docOutputDir, assignedPath),
+        reused: true,
+        shared,
+      });
       continue;
     }
 
@@ -419,14 +463,7 @@ export async function generateIndividualMarkdownFiles(
           // Strip any residual numeric ordering prefixes from each segment.
           // Docusaurus already strips them in resolved URLs, but fallback URLs
           // constructed from the source file path may still contain them.
-          let cleanPathname = urlPathname
-            .split('/')
-            .map(stripNumberPrefix)
-            .join('/')
-            // Strip an existing markdown extension so we don't produce
-            // double extensions like "config.md.md" when doc.url already
-            // ends in .md/.mdx (e.g. in tests or external usage).
-            .replace(/\.mdx?$/i, '');
+          let cleanPathname = urlPathname.split('/').map(stripNumberPrefix).join('/');
 
           // When not preserving directory structure, drop the leading route-base
           // segment so paths are flattened relative to the docs root — matching
@@ -437,6 +474,15 @@ export async function generateIndividualMarkdownFiles(
             if (cleanPathname.startsWith(prefix)) {
               cleanPathname = cleanPathname.slice(prefix.length);
             }
+          }
+
+          // A URL built outside the processor can carry the source file's
+          // extension (`config.md`), so its copy keeps that name. A processor
+          // route that ends in `.md` keeps the extension too: Docusaurus builds
+          // that route as a directory, and the copy sits beside it as
+          // `fiber.md.md`.
+          if (doc.routeResolved === undefined) {
+            cleanPathname = cleanPathname.replace(/\.mdx?$/i, '');
           }
 
           relativePath = `${cleanPathname}.md`;
@@ -533,17 +579,32 @@ export async function generateIndividualMarkdownFiles(
     }
     registry.docPaths.set(doc.path, uniquePath);
 
-    const directory = path.dirname(fullPath);
+    plannedDocs.push({
+      doc,
+      versionPath: docVersionPath,
+      filePath: uniquePath,
+      fullPath,
+      reused: false,
+      shared,
+    });
+  }
 
-    // Create directory structure if it doesn't exist
-    try {
-      await fs.mkdir(directory, { recursive: true });
-    } catch (error: unknown) {
-      throw new Error(`Failed to create directory ${directory}: ${getErrorMessage(error)}`);
-    }
+  // Plan every path before writing any content so a relative link can resolve
+  // to its target's generated file, including a target later in the list or
+  // one assigned by an earlier standard/custom generation pass.
+  const linkTargets = new Map(registry.markdownUrls);
+  for (const planned of plannedDocs) {
+    const markdownDoc = toMarkdownDocInfo(
+      planned.doc,
+      siteUrl,
+      planned.versionPath,
+      planned.filePath,
+    );
+    linkTargets.set(planned.doc.path, markdownDoc.url);
+  }
 
-    // Extract preserved frontmatter if specified
-    let preservedFrontMatter: Record<string, any> = {};
+  const renderMarkdown = (doc: DocInfo, content: string, description: string): string => {
+    const preservedFrontMatter: Record<string, any> = {};
     if (isNonEmptyArray(keepFrontMatter) && isDefined(doc.frontMatter)) {
       for (const key of keepFrontMatter) {
         if (key in doc.frontMatter) {
@@ -552,36 +613,177 @@ export async function generateIndividualMarkdownFiles(
       }
     }
 
-    // The file header already emits `# {title}` and the description blockquote,
-    // so strip the body's own identical H1 and its identical first paragraph
-    // (docs without frontmatter get their intro paragraph extracted as the
-    // description); leaving either in would duplicate content the header just
-    // provided. The paragraph strip is an exact-match removal, so it is safe
-    // at any description length.
-    let bodyContent = stripDuplicateTitleHeading(doc.content, doc.title);
-    if (isNonEmptyString(doc.description)) {
-      bodyContent = stripDuplicateDescriptionParagraph(bodyContent, doc.description);
+    // The generated header supplies the title and description.
+    let bodyContent = stripDuplicateTitleHeading(content, doc.title);
+    if (isNonEmptyString(description)) {
+      bodyContent = stripDuplicateDescriptionParagraph(bodyContent, description);
     }
-
-    // Create markdown content using the utility function
-    const markdownContent = createMarkdownContent(
+    return createMarkdownContent(
       doc.title,
-      doc.description,
+      description,
       bodyContent,
-      true, // includeMetadata
+      true,
       Object.keys(preservedFrontMatter).length > 0 ? preservedFrontMatter : undefined,
     );
+  };
 
-    // Write the markdown file
+  const failedPlans = new Set<number>();
+  const availablePlans = new Set<number>();
+  const renderedContents = new Map<number, string>();
+  const renderedDescriptions = new Map<number, string>();
+  // Plans with a copy the root version owns. They contribute content to this
+  // version's outputs and never write the shared file.
+  const skippedPlans = new Set<number>();
+  // Plans whose file this call created or rewrote. Cleanup after a failure
+  // only applies to these: a write that never succeeded can leave a file the
+  // plugin did not produce, and removing it would delete build output or a
+  // user's own file.
+  const writtenPlans = new Set<number>();
+
+  const rewritePlan = (doc: DocInfo, targets: ReadonlyMap<string, string>) => ({
+    content: rewriteRelativeDocLinks(doc.content, doc.path, targets, useRelativeUrls),
+    description: rewriteRelativeDocLinks(doc.description || '', doc.path, targets, useRelativeUrls),
+  });
+
+  const writePlan = async (index: number, content: string, description: string) => {
+    const planned = plannedDocs[index];
     try {
-      await writeFile(fullPath, markdownContent);
+      const directory = path.dirname(planned.fullPath);
+      try {
+        await fs.mkdir(directory, { recursive: true });
+      } catch (error: unknown) {
+        throw new Error(`Failed to create directory ${directory}: ${getErrorMessage(error)}`);
+      }
+      try {
+        await writeFile(planned.fullPath, renderMarkdown(planned.doc, content, description));
+      } catch (error: unknown) {
+        throw new Error(`Failed to write file ${planned.fullPath}: ${getErrorMessage(error)}`);
+      }
+      renderedContents.set(index, content);
+      renderedDescriptions.set(index, description);
+      writtenPlans.add(index);
+      return true;
     } catch (error: unknown) {
-      throw new Error(`Failed to write file ${fullPath}: ${getErrorMessage(error)}`);
+      logger.warn(`${getErrorMessage(error)}. Using the HTML route for ${planned.doc.path}`);
+      return false;
+    }
+  };
+
+  const markFailed = async (index: number, content: string, description: string) => {
+    const planned = plannedDocs[index];
+    failedPlans.add(index);
+    availablePlans.delete(index);
+    renderedContents.delete(index);
+    renderedDescriptions.delete(index);
+    updatedDocs[index] = { ...planned.doc, content, description, markdownFile: false };
+    // Only a file this call wrote is stale output. When the first write to a
+    // path fails, whatever sits there came from somewhere else and stays.
+    // A file an earlier pass assigned also stays: the outputs written then
+    // already link to it, so removing it turns their links into missing pages.
+    if (!writtenPlans.delete(index) || planned.reused) return;
+    try {
+      // The failed write can leave a partial or stale file behind. The path is
+      // a regular file this call created or rewrote, so removing it is safe.
+      await fs.rm(planned.fullPath, { force: true });
+    } catch {
+      // The HTML fallback does not depend on removing the unreadable path.
+    }
+  };
+
+  for (let index = 0; index < plannedDocs.length; index++) {
+    const planned = plannedDocs[index];
+    const { doc } = planned;
+    const markdownDoc = toMarkdownDocInfo(doc, siteUrl, planned.versionPath, planned.filePath);
+    const { content, description } = rewritePlan(doc, linkTargets);
+
+    // The root version writes the shared copy; a prefixed version leaves the
+    // file it finds and only uses its own rewritten content in its outputs.
+    if (planned.shared && (await fileExists(planned.fullPath))) {
+      availablePlans.add(index);
+      skippedPlans.add(index);
+      updatedDocs.push({ ...markdownDoc, content, description });
+      continue;
     }
 
-    updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, docVersionPath, uniquePath));
+    if (planned.reused) {
+      availablePlans.add(index);
+      updatedDocs.push({ ...markdownDoc, content, description });
+      // The file came from an earlier call with possibly different targets, so
+      // its content on disk is unknown; write once instead of comparing.
+      if (!(await writePlan(index, content, description))) {
+        await markFailed(index, content, description);
+      }
+      continue;
+    }
 
-    logger.verbose(`Generated markdown file: ${uniquePath}`);
+    if (await writePlan(index, content, description)) {
+      availablePlans.add(index);
+      updatedDocs.push({ ...markdownDoc, content, description });
+      logger.verbose(`Generated markdown file: ${planned.filePath}`);
+    } else {
+      await markFailed(index, content, description);
+    }
+  }
+
+  while (failedPlans.size > 0) {
+    let failedDuringPass = false;
+    const targets = new Map(registry.markdownUrls);
+    for (const planned of plannedDocs) targets.delete(planned.doc.path);
+    for (const index of availablePlans) {
+      const planned = plannedDocs[index];
+      targets.set(
+        planned.doc.path,
+        toMarkdownDocInfo(planned.doc, siteUrl, planned.versionPath, planned.filePath).url,
+      );
+    }
+    for (const index of failedPlans) {
+      const planned = plannedDocs[index];
+      if (!targets.has(planned.doc.path)) targets.set(planned.doc.path, planned.doc.url);
+    }
+
+    for (let index = 0; index < plannedDocs.length; index++) {
+      const planned = plannedDocs[index];
+      const { doc } = planned;
+      const available = availablePlans.has(index);
+      const baseDoc = available
+        ? toMarkdownDocInfo(doc, siteUrl, planned.versionPath, planned.filePath)
+        : doc;
+      const { content, description } = rewritePlan(doc, targets);
+      updatedDocs[index] = {
+        ...baseDoc,
+        content,
+        description,
+        ...(available ? {} : { markdownFile: false }),
+      };
+
+      if (
+        available &&
+        !skippedPlans.has(index) &&
+        (renderedContents.get(index) !== content || renderedDescriptions.get(index) !== description)
+      ) {
+        if (!(await writePlan(index, content, description))) {
+          await markFailed(index, content, description);
+          failedDuringPass = true;
+        }
+      }
+    }
+
+    if (!failedDuringPass) break;
+  }
+
+  // Keep the cross-pass registry on the files that actually exist. Duplicate
+  // source paths use their last available assignment, matching path planning.
+  for (const planned of plannedDocs) {
+    registry.docPaths.delete(planned.doc.path);
+    registry.markdownUrls.delete(planned.doc.path);
+  }
+  for (const index of availablePlans) {
+    const planned = plannedDocs[index];
+    registry.docPaths.set(planned.doc.path, planned.filePath);
+    registry.markdownUrls.set(
+      planned.doc.path,
+      toMarkdownDocInfo(planned.doc, siteUrl, planned.versionPath, planned.filePath).url,
+    );
   }
 
   return updatedDocs;
@@ -610,6 +812,7 @@ function toMarkdownDocInfo(
     ...doc,
     url: joinSiteRelativeUrl(siteUrl, relativeUrl),
     path: `/${urlPath}`, // Update path to the new markdown file
+    markdownFile: true,
   };
 }
 
@@ -632,12 +835,18 @@ function resolveOutputFile(
 }
 
 /**
- * Generate standard LLM files (llms.txt and llms-full.txt)
+ * Generate the LLM outputs for one version: the individual markdown files,
+ * llms.txt, llms-full.txt, and the configured custom files.
+ *
+ * Every selection is processed before the first file is written, so a link in
+ * any output resolves to the generated markdown of a page another selection
+ * contributes, and every output reflects which markdown files exist.
+ *
  * @param context - Plugin context
  * @param allDocFiles - Array of all document files
  * @param listUnversionedDocs - Whether the files list pages no version owns (blog posts); only the version that owns the standard files passes true
  */
-export async function generateStandardLLMFiles(
+export async function generateLLMFiles(
   context: PluginContext,
   allDocFiles: string[],
   listUnversionedDocs: boolean = true,
@@ -660,48 +869,103 @@ export async function generateStandardLLMFiles(
     processingBatchSize = 100,
     addMdExtension = true,
     useRelativeUrls = false,
+    customLLMFiles = [],
+    ignoreFiles = [],
   } = options;
-
-  if (!generateLLMsTxt && !generateLLMsFullTxt) {
-    logger.warn('No standard LLM files configured for generation. Skipping.');
-    return;
-  }
 
   if (context.outputSubdir && !isPathInside(outDir, versionedOutDir)) {
     logger.warn(`Version output directory ${versionedOutDir} is outside ${outDir}. Skipping.`);
     return;
   }
 
-  // Process files for the standard outputs
-  let processedDocs = await processFilesWithPatterns(
-    context,
-    allDocFiles,
-    [], // No specific include patterns - include all
-    [], // No additional ignore patterns beyond global ignoreFiles
-    includeOrder,
-    includeUnmatchedLast,
-  );
+  // Standard selection: the pages llms.txt and llms-full.txt list.
+  let standardDocs: DocInfo[] | undefined;
+  if (!generateLLMsTxt && !generateLLMsFullTxt) {
+    logger.warn('No standard LLM files configured for generation. Skipping.');
+  } else {
+    const processedDocs = await processFilesWithPatterns(
+      context,
+      allDocFiles,
+      [], // No specific include patterns - include all
+      [], // No additional ignore patterns beyond global ignoreFiles
+      includeOrder,
+      includeUnmatchedLast,
+    );
 
-  // Blog posts are the same content in every version, so only the version that
-  // owns the standard files lists them; the others leave them to their custom
-  // LLM files.
-  if (!listUnversionedDocs) {
-    processedDocs = processedDocs.filter((doc) => !doc.unversioned);
+    // Blog posts are the same content in every version, so only the version
+    // that owns the standard files lists them; the others leave them to their
+    // custom LLM files.
+    const listedDocs = listUnversionedDocs
+      ? processedDocs
+      : processedDocs.filter((doc) => !doc.unversioned);
+    logger.verbose(`Processed ${listedDocs.length} documentation files for standard LLM files`);
+
+    if (isNonEmptyArray(listedDocs)) {
+      standardDocs = listedDocs;
+    } else {
+      logger.warn('No documents found matching patterns for standard LLM files. Skipping.');
+    }
   }
 
-  logger.verbose(`Processed ${processedDocs.length} documentation files for standard LLM files`);
+  // Custom selections: every configured file resolves its pages before any
+  // output is written.
+  const pendingFiles: Array<{
+    customFile: CustomLLMFile;
+    customFilePath: string;
+    docs: DocInfo[];
+  }> = [];
+  if (customLLMFiles.length === 0) {
+    logger.warn('No custom LLM files configured. Skipping.');
+  } else {
+    logger.info(`Generating ${customLLMFiles.length} custom LLM files...`);
+    for (const customFile of customLLMFiles) {
+      logger.verbose(
+        `Processing custom file: ${customFile.filename}, version: ${customFile.version || 'undefined'}`,
+      );
 
-  // Check if we have documents to process
-  if (!isNonEmptyArray(processedDocs)) {
-    logger.warn('No documents found matching patterns for standard LLM files. Skipping.');
-    return;
+      const customFilePath = resolveOutputFile(outDir, versionedOutDir, customFile.filename);
+      if (!customFilePath) continue;
+
+      const combinedIgnores = [...ignoreFiles];
+      if (customFile.ignorePatterns) {
+        combinedIgnores.push(...customFile.ignorePatterns);
+      }
+      const customDocs = await processFilesWithPatterns(
+        context,
+        allDocFiles,
+        customFile.includePatterns,
+        combinedIgnores,
+        customFile.orderPatterns || [],
+        customFile.includeUnmatchedLast ?? true,
+      );
+
+      if (customDocs.length === 0) {
+        logger.warn(`No matching documents found for custom LLM file: ${customFile.filename}`);
+      } else {
+        pendingFiles.push({ customFile, customFilePath, docs: customDocs });
+      }
+    }
   }
 
-  // Generate individual markdown files if requested
-  if (generateMarkdownFiles) {
+  // One markdown pass over every selected page, so a page in one selection can
+  // link to a page another one contributes and the outputs below know which
+  // generated files exist.
+  const unionBySource = new Map<string, DocInfo>();
+  for (const doc of standardDocs ?? []) {
+    if (!unionBySource.has(doc.path)) unionBySource.set(doc.path, doc);
+  }
+  for (const pending of pendingFiles) {
+    for (const doc of pending.docs) {
+      if (!unionBySource.has(doc.path)) unionBySource.set(doc.path, doc);
+    }
+  }
+  const unionDocs = [...unionBySource.values()];
+
+  const generatedBySource = new Map<string, DocInfo>();
+  if (generateMarkdownFiles && unionDocs.length > 0) {
     logger.info('Generating individual markdown files...');
-    processedDocs = await generateIndividualMarkdownFiles(
-      processedDocs,
+    const generatedDocs = await generateIndividualMarkdownFiles(
+      unionDocs,
       versionedOutDir,
       siteUrl,
       context.docsDir,
@@ -711,159 +975,76 @@ export async function generateStandardLLMFiles(
       context.outputSubdir || '',
       context.markdownPaths,
       outDir,
+      useRelativeUrls,
     );
+    for (const [index, doc] of unionDocs.entries()) {
+      const generated = generatedDocs[index];
+      if (generated) generatedBySource.set(doc.path, generated);
+    }
   }
+  const resolveDoc = (doc: DocInfo): DocInfo => generatedBySource.get(doc.path) ?? doc;
 
   // Only append `.md` to links when the individual markdown files are actually
   // generated — otherwise the links point to files that don't exist and 404
   // (issue #41). When generateMarkdownFiles is off, link to the normal routes.
   const emitMdLinks = addMdExtension && generateMarkdownFiles;
 
-  // Generate llms.txt
-  const llmsTxtPath = generateLLMsTxt
-    ? resolveOutputFile(outDir, versionedOutDir, llmsTxtFilename)
-    : undefined;
-  if (llmsTxtPath) {
-    await generateLLMFile(
-      processedDocs,
-      llmsTxtPath,
-      docTitle,
-      docDescription,
-      false, // links only
-      version,
-      rootContent,
-      processingBatchSize,
-      emitMdLinks,
-      useRelativeUrls,
-    );
-  }
-
-  // Generate llms-full.txt
-  const llmsFullTxtPath = generateLLMsFullTxt
-    ? resolveOutputFile(outDir, versionedOutDir, llmsFullTxtFilename)
-    : undefined;
-  if (llmsFullTxtPath) {
-    await generateLLMFile(
-      processedDocs,
-      llmsFullTxtPath,
-      docTitle,
-      docDescription,
-      true, // full content
-      version,
-      fullRootContent,
-      processingBatchSize,
-      emitMdLinks,
-      useRelativeUrls,
-    );
-  }
-}
-
-/**
- * Generate custom LLM files based on configuration
- * @param context - Plugin context
- * @param allDocFiles - Array of all document files
- */
-export async function generateCustomLLMFiles(
-  context: PluginContext,
-  allDocFiles: string[],
-): Promise<void> {
-  const { outDir, siteUrl, docTitle, docDescription, options } = context;
-  const versionedOutDir = path.join(outDir, context.outputSubdir || '');
-  const {
-    customLLMFiles = [],
-    ignoreFiles = [],
-    generateMarkdownFiles = false,
-    processingBatchSize = 100,
-    addMdExtension = true,
-    useRelativeUrls = false,
-  } = options;
-
-  if (customLLMFiles.length === 0) {
-    logger.warn('No custom LLM files configured. Skipping.');
-    return;
-  }
-
-  if (context.outputSubdir && !isPathInside(outDir, versionedOutDir)) {
-    logger.warn(`Version output directory ${versionedOutDir} is outside ${outDir}. Skipping.`);
-    return;
-  }
-
-  logger.info(`Generating ${customLLMFiles.length} custom LLM files...`);
-
-  for (const customFile of customLLMFiles) {
-    logger.verbose(
-      `Processing custom file: ${customFile.filename}, version: ${customFile.version || 'undefined'}`,
-    );
-
-    const customFilePath = resolveOutputFile(outDir, versionedOutDir, customFile.filename);
-    if (!customFilePath) continue;
-
-    // Combine global ignores with custom ignores
-    const combinedIgnores = [...ignoreFiles];
-    if (customFile.ignorePatterns) {
-      combinedIgnores.push(...customFile.ignorePatterns);
-    }
-
-    // Process files according to the custom configuration
-    let customDocs = await processFilesWithPatterns(
-      context,
-      allDocFiles,
-      customFile.includePatterns,
-      combinedIgnores,
-      customFile.orderPatterns || [],
-      customFile.includeUnmatchedLast ?? true,
-    );
-
-    if (customDocs.length > 0) {
-      // Generate individual markdown files if requested
-      if (generateMarkdownFiles) {
-        logger.info(
-          `Generating individual markdown files for custom file: ${customFile.filename}...`,
-        );
-        customDocs = await generateIndividualMarkdownFiles(
-          customDocs,
-          versionedOutDir,
-          siteUrl,
-          context.docsDir,
-          context.options.keepFrontMatter || [],
-          context.options.preserveDirectoryStructure !== false, // Default to true
-          context.docsSections,
-          context.outputSubdir || '',
-          context.markdownPaths,
-          outDir,
-        );
-      }
-
-      // Use custom title/description or fall back to defaults
-      const customTitle = customFile.title || docTitle;
-      const customDescription = customFile.description || docDescription;
-
-      // Only append `.md` to links when the markdown files are actually
-      // generated, so links never point to nonexistent files (issue #41).
-      const emitMdLinks = addMdExtension && generateMarkdownFiles;
-
-      // Per-file `version` wins; otherwise a custom file inherits the current
-      // version's label so version-scoped outputs (stable/llms-python.txt) are
-      // labeled like their llms.txt.
+  if (standardDocs) {
+    const listedDocs = standardDocs.map(resolveDoc);
+    const llmsTxtPath = generateLLMsTxt
+      ? resolveOutputFile(outDir, versionedOutDir, llmsTxtFilename)
+      : undefined;
+    if (llmsTxtPath) {
       await generateLLMFile(
-        customDocs,
-        customFilePath,
-        customTitle,
-        customDescription,
-        customFile.fullContent,
-        customFile.version ?? options.version,
-        customFile.rootContent,
+        listedDocs,
+        llmsTxtPath,
+        docTitle,
+        docDescription,
+        false, // links only
+        version,
+        rootContent,
         processingBatchSize,
         emitMdLinks,
         useRelativeUrls,
       );
-
-      logger.info(
-        `Generated custom LLM file: ${customFile.filename} with ${customDocs.length} documents`,
-      );
-    } else {
-      logger.warn(`No matching documents found for custom LLM file: ${customFile.filename}`);
     }
+
+    const llmsFullTxtPath = generateLLMsFullTxt
+      ? resolveOutputFile(outDir, versionedOutDir, llmsFullTxtFilename)
+      : undefined;
+    if (llmsFullTxtPath) {
+      await generateLLMFile(
+        listedDocs,
+        llmsFullTxtPath,
+        docTitle,
+        docDescription,
+        true, // full content
+        version,
+        fullRootContent,
+        processingBatchSize,
+        emitMdLinks,
+        useRelativeUrls,
+      );
+    }
+  }
+
+  for (const pending of pendingFiles) {
+    const customDocs = pending.docs.map(resolveDoc);
+    await generateLLMFile(
+      customDocs,
+      pending.customFilePath,
+      pending.customFile.title || docTitle,
+      pending.customFile.description || docDescription,
+      pending.customFile.fullContent,
+      pending.customFile.version ?? version,
+      pending.customFile.rootContent,
+      processingBatchSize,
+      emitMdLinks,
+      useRelativeUrls,
+    );
+    logger.info(
+      `Generated custom LLM file: ${pending.customFile.filename} with ${customDocs.length} documents`,
+    );
   }
 }
 
