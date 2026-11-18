@@ -416,6 +416,7 @@ export async function processMarkdownFile(
     description: description || '',
     frontMatter: data,
     routeResolved: isNonEmptyString(resolvedUrl),
+    unversioned: isBlogFile,
   };
 }
 

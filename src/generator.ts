@@ -51,30 +51,6 @@ function escapeLinkText(title: string): string {
 }
 
 /**
- * True when a page's route sits under `routeBase`, ignoring the site's
- * `baseUrl`. Blog routes are the same in every version, so a prefixed version
- * uses this to recognise pages whose markdown file belongs at the site root.
- */
-function isUnderRouteBase(
-  url: string,
-  siteBasePath: string,
-  routeBase: string | undefined,
-): boolean {
-  if (!isNonEmptyString(routeBase) || !isNonEmptyString(url)) return false;
-  const base = routeBase.replace(/^\/+|\/+$/g, '');
-  if (base === '') return false;
-
-  let pathname: string;
-  try {
-    pathname = decodeUrlPathSegments(new URL(url).pathname.replace(/\/+$/, ''));
-  } catch {
-    return false;
-  }
-  const route = stripSiteBasePath(pathname, siteBasePath);
-  return route === `/${base}` || route.startsWith(`/${base}/`);
-}
-
-/**
  * Clean a description for use in a TOC item
  * @param description - The original description
  * @param fromFrontMatter - Whether the description came from front matter
@@ -360,8 +336,7 @@ function findSectionForDoc(doc: DocInfo, docsSections?: DocsSection[]): DocsSect
  * @param docsSections - Configured docsDir sections, used to resolve each doc's own filesystem path and routeBasePath
  * @param versionPath - The version's path prefix ('stable'); outputDir is that version's subdirectory, so the prefix is stripped from URLs before mapping them to files and added back to the links
  * @param registry - Paths already assigned in outputDir by an earlier call; a doc found here reuses its file
- * @param unversionedRouteBase - Route base whose pages ignore the version prefix (the blog); their files are written to `unversionedOutputDir` and keep their unprefixed links
- * @param unversionedOutputDir - Directory for those files, normally the site root
+ * @param unversionedOutputDir - Directory for pages no version owns (blog posts); they keep their unprefixed links and are written once, at the site root
  * @returns Updated docs with new URLs pointing to generated markdown files
  */
 export async function generateIndividualMarkdownFiles(
@@ -374,7 +349,6 @@ export async function generateIndividualMarkdownFiles(
   docsSections?: DocsSection[],
   versionPath: string = '',
   registry: MarkdownPathRegistry = { usedPaths: new Set(), docPaths: new Map() },
-  unversionedRouteBase?: string,
   unversionedOutputDir?: string,
 ): Promise<DocInfo[]> {
   const updatedDocs: DocInfo[] = [];
@@ -392,14 +366,14 @@ export async function generateIndividualMarkdownFiles(
   const siteBasePath = getSiteBasePath(siteUrl);
 
   for (const doc of docs) {
-    // Blog routes carry no version prefix, so their markdown file belongs at
-    // the site root: the version written at the root already emits it, and a
-    // prefixed version should link that copy rather than write a second one
-    // inside its own directory.
-    const unversioned = isUnderRouteBase(doc.url, siteBasePath, unversionedRouteBase);
-    const docOutputDir =
-      unversioned && isNonEmptyString(unversionedOutputDir) ? unversionedOutputDir : outputDir;
-    const docVersionPath = unversioned ? '' : versionPath;
+    // Unversioned content (blog posts) carries no version prefix in its route,
+    // so its markdown file belongs at the site root: the version written at the
+    // root already emits it, and a prefixed version links that copy instead of
+    // writing a second one inside its own directory.
+    const unversionedDir =
+      doc.unversioned && isNonEmptyString(unversionedOutputDir) ? unversionedOutputDir : undefined;
+    const docOutputDir = unversionedDir ?? outputDir;
+    const docVersionPath = unversionedDir ? '' : versionPath;
 
     // A doc an earlier pass already wrote keeps that file, so the standard and
     // custom outputs link to the same page and neither overwrites the other.
@@ -661,10 +635,12 @@ function resolveOutputFile(
  * Generate standard LLM files (llms.txt and llms-full.txt)
  * @param context - Plugin context
  * @param allDocFiles - Array of all document files
+ * @param listUnversionedDocs - Whether the files list pages no version owns (blog posts); only the version that owns the standard files passes true
  */
 export async function generateStandardLLMFiles(
   context: PluginContext,
   allDocFiles: string[],
+  listUnversionedDocs: boolean = true,
 ): Promise<void> {
   const { outDir, siteUrl, docTitle, docDescription, options } = context;
   // Version-scoped output lands under a subdirectory of outDir (e.g. 'stable').
@@ -684,8 +660,6 @@ export async function generateStandardLLMFiles(
     processingBatchSize = 100,
     addMdExtension = true,
     useRelativeUrls = false,
-    includeBlog = false,
-    blogRouteBasePath = 'blog',
   } = options;
 
   if (!generateLLMsTxt && !generateLLMsFullTxt) {
@@ -708,6 +682,13 @@ export async function generateStandardLLMFiles(
     includeUnmatchedLast,
   );
 
+  // Blog posts are the same content in every version, so only the version that
+  // owns the standard files lists them; the others leave them to their custom
+  // LLM files.
+  if (!listUnversionedDocs) {
+    processedDocs = processedDocs.filter((doc) => !doc.unversioned);
+  }
+
   logger.verbose(`Processed ${processedDocs.length} documentation files for standard LLM files`);
 
   // Check if we have documents to process
@@ -729,8 +710,7 @@ export async function generateStandardLLMFiles(
       context.docsSections,
       context.outputSubdir || '',
       context.markdownPaths,
-      includeBlog ? blogRouteBasePath : undefined,
-      includeBlog ? outDir : undefined,
+      outDir,
     );
   }
 
@@ -796,8 +776,6 @@ export async function generateCustomLLMFiles(
     processingBatchSize = 100,
     addMdExtension = true,
     useRelativeUrls = false,
-    includeBlog = false,
-    blogRouteBasePath = 'blog',
   } = options;
 
   if (customLLMFiles.length === 0) {
@@ -852,8 +830,7 @@ export async function generateCustomLLMFiles(
           context.docsSections,
           context.outputSubdir || '',
           context.markdownPaths,
-          includeBlog ? blogRouteBasePath : undefined,
-          includeBlog ? outDir : undefined,
+          outDir,
         );
       }
 

@@ -913,9 +913,6 @@ export default function docusaurusPluginLLMs(
           // listing, or the first version when none writes to the root.
           const rootVersion =
             resolvedVersions.find((v) => v.pathPrefix === '') ?? resolvedVersions[0];
-          const blogDirPrefix = path.join(siteDir, blogDir) + path.sep;
-          const isBlogPostFile = (file: string): boolean =>
-            includeBlog && file.startsWith(blogDirPrefix);
 
           for (const version of resolvedVersions) {
             // Each version owns route roots; other versions skip routes under
@@ -983,13 +980,7 @@ export default function docusaurusPluginLLMs(
                 continue;
               }
 
-              // Only a version that lists blog posts in llms.txt passes them to
-              // the standard files; every version sees them in custom files.
-              const standardDocFiles = listsBlogPosts
-                ? allDocFiles
-                : allDocFiles.filter((file) => !isBlogPostFile(file));
-
-              await generateStandardLLMFiles(versionContext, standardDocFiles);
+              await generateStandardLLMFiles(versionContext, allDocFiles, listsBlogPosts);
               await generateCustomLLMFiles(versionContext, allDocFiles);
 
               logger.info(

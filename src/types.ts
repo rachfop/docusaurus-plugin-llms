@@ -43,6 +43,12 @@ export interface DocInfo {
    * reflects the frontmatter slug/id.
    */
   routeResolved?: boolean;
+  /**
+   * Set by the processor: true when the page's route carries no version prefix
+   * (blog posts). Its markdown file belongs at the site root, and only the
+   * version that owns the standard files lists it in `llms.txt`.
+   */
+  unversioned?: boolean;
 }
 
 /**
