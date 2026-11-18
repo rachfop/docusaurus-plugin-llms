@@ -163,6 +163,37 @@ async function testBlogMarkdownAtSiteRoot() {
   }
 }
 
+// The shared copy keeps the root version's link targets
+async function testSharedCopyKeepsRootLinks() {
+  const name = "The shared blog copy keeps the root version's link targets";
+  const { tmpDir, outDir, p } = makeSite({ markdownFiles: true });
+  // The post links to a page only the version at the site root serves, so a
+  // prefixed version has no target for it.
+  fs.writeFileSync(
+    path.join(tmpDir, 'releases', 'v1.md'),
+    page('v1 release', 'See [start](../docs/get-started.md).'),
+  );
+  try {
+    await p.postBuild({ routesPaths: ROUTES });
+
+    const copy = fs.readFileSync(path.join(outDir, 'releases', 'v1.md'), 'utf8');
+    assert.ok(
+      copy.includes('[start](https://example.com/get-started.md)'),
+      `the root version resolves the link to its own page:\n${copy}`,
+    );
+    assert.ok(
+      !copy.includes('../docs/get-started.md'),
+      'a prefixed version does not overwrite the copy with its unresolved link',
+    );
+
+    pass(name);
+  } catch (err) {
+    fail(name, err.message);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 // Test 3: llms.txt keeps the documented link scope per version
 async function testStandardFilesKeepVersionScope() {
   const name = "Blog posts stay out of a prefixed version's llms.txt";
@@ -229,6 +260,7 @@ async function testDocsInBlogDirStayVersioned() {
 async function main() {
   await testCustomFileInEveryVersion();
   await testBlogMarkdownAtSiteRoot();
+  await testSharedCopyKeepsRootLinks();
   await testStandardFilesKeepVersionScope();
   await testDocsInBlogDirStayVersioned();
 

@@ -249,14 +249,19 @@ const testCases = [
           );
 
           await restoreWritePermissions(testFilePath);
+          const surviving = await fs.readFile(testFilePath, 'utf8').catch(() => '');
           if (
             result.length === 1 &&
             result[0].url === docs[0].url &&
-            result[0].markdownFile === false
+            result[0].markdownFile === false &&
+            surviving === 'existing content'
           ) {
             return { passed: true };
           }
-          return { passed: false, error: 'The document did not keep its HTML route' };
+          return {
+            passed: false,
+            error: 'The document did not keep its HTML route, or the pre-existing file was removed',
+          };
         } catch (error) {
           await restoreWritePermissions(testFilePath);
           return { passed: false, error: `Generation still aborts: ${error.message}` };

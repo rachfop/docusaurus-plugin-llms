@@ -1,4 +1,4 @@
-/** Rewrite documentation links in generated Markdown content. */
+/** Rewrites links between documentation pages in generated Markdown content. */
 
 import * as path from 'path';
 import { maskCodeSegments } from './content';
@@ -59,7 +59,9 @@ function enclosingListContentIndent(linesBefore: readonly string[]): number | un
  * The four-column rule counts from the enclosing container's content column,
  * measured after any blockquote markers. Inside a list item, indentation
  * between the content column and that column plus four continues the item's
- * paragraph, so such a link is ordinary text.
+ * paragraph, so such a link is ordinary text. A line directly under a
+ * paragraph line continues that paragraph: an indented code block cannot
+ * interrupt one.
  *
  * @param linePrefix - Text from the start of the link's line through the link's opening
  * @param text - The document being rewritten, with code segments masked
@@ -69,8 +71,31 @@ function startsIndentedCode(linePrefix: string, text: string, lineStart: number)
   const unquoted = stripBlockquotePrefix(linePrefix);
   const indent = indentWidth(/^[ \t]*/.exec(unquoted)?.[0] ?? '');
   if (indent < 4) return false;
-  const contentIndent = enclosingListContentIndent(text.slice(0, lineStart).split('\n'));
-  return contentIndent === undefined || indent >= contentIndent + 4 || indent < contentIndent;
+  const linesBefore = text.slice(0, lineStart).split('\n');
+  const previousLine = linesBefore.length >= 2 ? linesBefore[linesBefore.length - 2] : undefined;
+  const contentIndent = enclosingListContentIndent(linesBefore);
+  if (contentIndent !== undefined) return indent >= contentIndent + 4 || indent < contentIndent;
+  return !continuesParagraph(previousLine);
+}
+
+/** A line that opens a block construct, which a following indented line cannot continue. */
+const blockStartRe =
+  /^[ \t]*(?:#{1,6}[ \t]|>|[-*+][ \t]|\d{1,9}[.)][ \t]|`{3,}|~{3,}|\[|<|\||[-*_]{3,}[ \t]*$|={1,}[ \t]*$)/;
+
+/**
+ * Whether an indented line directly under `previousLine` continues its
+ * paragraph. A blank line, a block construct, masked code, or an earlier
+ * indented line ends the paragraph, so the indented line opens a code block
+ * instead.
+ */
+function continuesParagraph(previousLine: string | undefined): boolean {
+  if (previousLine === undefined) return false;
+  // Masked code leaves a placeholder token on the line it replaced.
+  if (/[\u{FFFC}]/u.test(previousLine)) return false;
+  const line = stripBlockquotePrefix(previousLine);
+  if (!/\S/.test(line)) return false;
+  if (/^[ \t]{4,}/.test(line) || line.startsWith('\t')) return false;
+  return !blockStartRe.test(line);
 }
 
 /** Split a link destination into its file path and query/fragment suffix. */
@@ -161,13 +186,17 @@ export function rewriteRelativeDocLinks(
     return `${prefix}${angleDestination !== undefined ? `<${rewritten}>` : rewritten}`;
   };
 
-  // A leading ! makes this an image, not a page link. Plain destinations
-  // accept escapes and balanced parentheses; a title after whitespace stays
-  // outside the matched portion.
+  // A leading ! makes this an image, not a page link. Link text accepts one
+  // level of nested brackets and escaped characters, so a linked image
+  // (`[![badge](./b.svg)](./page.md)`) and text such as `[the [install] steps]`
+  // match. Plain destinations accept escapes and balanced parentheses; a title
+  // after whitespace stays outside the matched portion.
   const inlineLinkRe =
-    /(?<!!)(\[[^\]]*\]\()(?:<([^<>\n]+)>|((?:\\.|[^\\()\s<>]|\((?:\\.|[^\\()\s<>])*\))+))/g;
+    /(?<!!)(\[(?:[^[\]\\]|\\.|\[(?:[^[\]\\]|\\.)*\])*\]\()(?:<([^<>\n]+)>|((?:\\.|[^\\()\s<>]|\((?:\\.|[^\\()\s<>])*\))+))/g;
+  // A footnote definition (`[^1]: ...`) is not a link definition, so its body
+  // stays as written.
   const referenceDefinitionRe =
-    /(^[ \t]*(?:>[ \t]*)*[ \t]{0,3}\[[^\]]+\]:[ \t]*)(?:<([^<>\n]+)>|(\S+))/gm;
+    /(^[ \t]*(?:>[ \t]*)*[ \t]{0,3}\[(?!\^)[^\]]+\]:[ \t]*)(?:<([^<>\n]+)>|(\S+))/gm;
 
   const withReferences = masked.replace(
     referenceDefinitionRe,

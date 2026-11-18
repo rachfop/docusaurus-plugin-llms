@@ -91,7 +91,7 @@ When `generateMarkdownFiles` is on, each `.md` file's path follows the same rout
 - [Intro](/sub/docs/intro): Docs intro.
 ```
 
-Use it when the same build is served from more than one host, or when the site `url` in `docusaurus.config.js` isn't the URL readers use. The option also makes rewritten links between docs origin-relative in [individual Markdown files](./markdown-files.md#what-each-file-contains) and full-content LLM files. Image URLs written by `rewriteImageUrls` stay absolute.
+Use it when the same build is served from more than one host, or when the site `url` in `docusaurus.config.js` isn't the URL readers use. The option also applies to rewritten links between docs in [individual Markdown files](./markdown-files.md#what-each-file-contains) and full-content LLM files, which then carry the same path from the site root. Image URLs written by `rewriteImageUrls` stay absolute.
 
 ## Path transformation
 

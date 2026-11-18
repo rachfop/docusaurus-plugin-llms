@@ -120,7 +120,7 @@ The plugin derives each output path from the document's resolved information, in
 
 When two documents would get the same path, the plugin appends a counter (`config-2.md`, `config-3.md`, and so on). A page whose URL is the site root is written as `index.md`.
 
-A route that ends in `.md` gets another `.md` suffix. Docusaurus writes the HTML page at `guide/fiber.md/index.html`, so the plugin writes its Markdown copy at `guide/fiber.md.md`.
+The plugin adds a second `.md` to a route that ends in `.md`: Docusaurus writes the HTML page at `guide/fiber.md/index.html`, so the Markdown copy lands at `guide/fiber.md.md`.
 
 If the plugin cannot write a page's Markdown copy, it logs the path, links the page's HTML route, and writes the remaining LLM files.
 
@@ -132,7 +132,7 @@ Every generated file is built from the document's title, description, and proces
 - The **description**, when present, follows as a blockquote, matching the llmstxt.org format. For where the description comes from, see [page titles and descriptions](./overview.md#page-titles-and-descriptions).
 - The **processed content** comes next, with content cleaning applied. A body paragraph that repeats the description is dropped.
 
-Links between docs use each target page's generated Markdown URL. For example, `[Child](./child.md)` in `docs/section/index.md` becomes `[Child](https://yoursite.com/docs/section/child.md)`. The plugin applies the same rewriting to `llms-full.txt` and full-content custom files. With [`useRelativeUrls`](./ordering-and-paths.md#relative-links) set to `true`, the link is `/docs/section/child.md`.
+Links between docs use each target page's generated Markdown URL. For example, `[Child](./child.md)` in `docs/section/index.md` becomes `[Child](https://yoursite.com/docs/section/child.md)`. With `generateMarkdownFiles` enabled, the plugin applies the same rewriting to `llms-full.txt` and full-content custom files. With [`useRelativeUrls`](./ordering-and-paths.md#relative-links) set to `true`, the link is `/docs/section/child.md`.
 
 If you list keys in `keepFrontMatter`, the plugin writes a YAML front matter block at the top of each file containing only those keys. `keepFrontMatter` is a `string[]` that defaults to `[]`, and it only takes effect when `generateMarkdownFiles` is enabled. Keys you don't list are dropped.
 

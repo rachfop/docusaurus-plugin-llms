@@ -27,6 +27,9 @@ description: Section index.
 [Extensionless](./child)
 [API](./api(v2).md)
 [User](./user's.md)
+[![Build status](./badge.svg)](./child.md)
+[See the [install] steps](./child.md)
+[Child query](./child.md?view=full)
 [Missing](./missing.md)
 [External](https://example.org/child.md)
 ![Diagram](./diagram.png)
@@ -44,6 +47,11 @@ description: Section index.
 - A list item whose paragraph continues below.
 
     [List paragraph](./child.md)
+
+Some wrapped paragraph text
+    continued with [Wrapped](./child.md).
+
+[^1]: ./child.md is the entry point.
 
 \`[Inline code](./child.md)\`
 
@@ -143,6 +151,26 @@ async function testRelativeDocLinks(useRelativeUrls) {
       assert.ok(
         content.includes(`[User](${prefix}/section/user's.md)`),
         `${label} resolves an apostrophe in a destination`,
+      );
+      assert.ok(
+        content.includes(`[![Build status](./badge.svg)](${prefix}/section/child.md)`),
+        `${label} rewrites a link that wraps an image`,
+      );
+      assert.ok(
+        content.includes(`[See the [install] steps](${prefix}/section/child.md)`),
+        `${label} rewrites link text with nested brackets`,
+      );
+      assert.ok(
+        content.includes(`[Child query](${prefix}/section/child.md?view=full)`),
+        `${label} preserves a query string`,
+      );
+      assert.ok(
+        content.includes(`[Wrapped](${prefix}/section/child.md)`),
+        `${label} rewrites a link on an indented paragraph continuation`,
+      );
+      assert.ok(
+        content.includes('[^1]: ./child.md is the entry point.'),
+        `${label} keeps a footnote definition unchanged`,
       );
       assert.ok(
         content.includes(`> [quoted]: ${prefix}/section/child.md`),

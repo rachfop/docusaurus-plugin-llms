@@ -36,6 +36,19 @@ import {
 } from './content';
 
 /**
+ * Whether a path names something on disk. Used to decide whether a shared
+ * copy already exists, so a prefixed version does not rewrite the root's file.
+ */
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Collapse every whitespace run (including newlines) in a title to one space,
  * so the title stays on a single markdown line.
  */
@@ -366,6 +379,8 @@ export async function generateIndividualMarkdownFiles(
     filePath: string;
     fullPath: string;
     reused: boolean;
+    /** A copy the version at the site root owns; a prefixed version leaves it alone. */
+    shared: boolean;
   }> = [];
   const { usedPaths } = registry;
   // Callers can omit the link cache; initialize it on first use.
@@ -391,6 +406,11 @@ export async function generateIndividualMarkdownFiles(
       doc.unversioned && isNonEmptyString(unversionedOutputDir) ? unversionedOutputDir : undefined;
     const docOutputDir = unversionedDir ?? outputDir;
     const docVersionPath = unversionedDir ? '' : versionPath;
+    // The route of unversioned content carries no version prefix, so its links
+    // resolve against the pages at the site root. Only the version written
+    // there owns the shared copy; a prefixed version contributes content to its
+    // own outputs without rewriting that file.
+    const shared = unversionedDir !== undefined && versionPath !== '';
 
     // A doc an earlier pass already wrote keeps that file, so the standard and
     // custom outputs link to the same page and neither overwrites the other.
@@ -402,6 +422,7 @@ export async function generateIndividualMarkdownFiles(
         filePath: assignedPath,
         fullPath: path.join(docOutputDir, assignedPath),
         reused: true,
+        shared,
       });
       continue;
     }
@@ -564,6 +585,7 @@ export async function generateIndividualMarkdownFiles(
       filePath: uniquePath,
       fullPath,
       reused: false,
+      shared,
     });
   }
 
@@ -609,6 +631,9 @@ export async function generateIndividualMarkdownFiles(
   const availablePlans = new Set<number>();
   const renderedContents = new Map<number, string>();
   const renderedDescriptions = new Map<number, string>();
+  // Plans with a copy the root version owns. They contribute content to this
+  // version's outputs and never write the shared file.
+  const skippedPlans = new Set<number>();
   // Plans whose file this call created or rewrote. Cleanup after a failure
   // only applies to these: a write that never succeeded can leave a file the
   // plugin did not produce, and removing it would delete build output or a
@@ -671,15 +696,22 @@ export async function generateIndividualMarkdownFiles(
     const markdownDoc = toMarkdownDocInfo(doc, siteUrl, planned.versionPath, planned.filePath);
     const { content, description } = rewritePlan(doc, linkTargets);
 
+    // The root version writes the shared copy; a prefixed version leaves the
+    // file it finds and only uses its own rewritten content in its outputs.
+    if (planned.shared && (await fileExists(planned.fullPath))) {
+      availablePlans.add(index);
+      skippedPlans.add(index);
+      updatedDocs.push({ ...markdownDoc, content, description });
+      continue;
+    }
+
     if (planned.reused) {
       availablePlans.add(index);
-      renderedContents.set(index, doc.content);
-      renderedDescriptions.set(index, doc.description);
       updatedDocs.push({ ...markdownDoc, content, description });
-      if (content !== doc.content || description !== doc.description) {
-        if (!(await writePlan(index, content, description))) {
-          await markFailed(index, content, description);
-        }
+      // The file came from an earlier call with possibly different targets, so
+      // its content on disk is unknown; write once instead of comparing.
+      if (!(await writePlan(index, content, description))) {
+        await markFailed(index, content, description);
       }
       continue;
     }
@@ -726,6 +758,7 @@ export async function generateIndividualMarkdownFiles(
 
       if (
         available &&
+        !skippedPlans.has(index) &&
         (renderedContents.get(index) !== content || renderedDescriptions.get(index) !== description)
       ) {
         if (!(await writePlan(index, content, description))) {
@@ -801,12 +834,6 @@ function resolveOutputFile(
   return undefined;
 }
 
-/** Which selections one generation call covers. */
-interface SelectionScope {
-  standard: boolean;
-  custom: boolean;
-}
-
 /**
  * Generate the LLM outputs for one version: the individual markdown files,
  * llms.txt, llms-full.txt, and the configured custom files.
@@ -823,49 +850,6 @@ export async function generateLLMFiles(
   context: PluginContext,
   allDocFiles: string[],
   listUnversionedDocs: boolean = true,
-): Promise<void> {
-  return generateSelectedLLMFiles(context, allDocFiles, listUnversionedDocs, {
-    standard: true,
-    custom: true,
-  });
-}
-
-/**
- * Generate only the standard LLM files (llms.txt and llms-full.txt).
- * Links to pages that this call does not generate stay as written.
- *
- * @param context - Plugin context
- * @param allDocFiles - Array of all document files
- * @param listUnversionedDocs - Whether the files list pages no version owns (blog posts); only the version that owns the standard files passes true
- */
-export async function generateStandardLLMFiles(
-  context: PluginContext,
-  allDocFiles: string[],
-  listUnversionedDocs: boolean = true,
-): Promise<void> {
-  return generateSelectedLLMFiles(context, allDocFiles, listUnversionedDocs, {
-    standard: true,
-    custom: false,
-  });
-}
-
-/**
- * Generate only the custom LLM files.
- * @param context - Plugin context
- * @param allDocFiles - Array of all document files
- */
-export async function generateCustomLLMFiles(
-  context: PluginContext,
-  allDocFiles: string[],
-): Promise<void> {
-  return generateSelectedLLMFiles(context, allDocFiles, true, { standard: false, custom: true });
-}
-
-async function generateSelectedLLMFiles(
-  context: PluginContext,
-  allDocFiles: string[],
-  listUnversionedDocs: boolean,
-  scope: SelectionScope,
 ): Promise<void> {
   const { outDir, siteUrl, docTitle, docDescription, options } = context;
   // Version-scoped output lands under a subdirectory of outDir (e.g. 'stable').
@@ -896,32 +880,30 @@ async function generateSelectedLLMFiles(
 
   // Standard selection: the pages llms.txt and llms-full.txt list.
   let standardDocs: DocInfo[] | undefined;
-  if (scope.standard) {
-    if (!generateLLMsTxt && !generateLLMsFullTxt) {
-      logger.warn('No standard LLM files configured for generation. Skipping.');
+  if (!generateLLMsTxt && !generateLLMsFullTxt) {
+    logger.warn('No standard LLM files configured for generation. Skipping.');
+  } else {
+    const processedDocs = await processFilesWithPatterns(
+      context,
+      allDocFiles,
+      [], // No specific include patterns - include all
+      [], // No additional ignore patterns beyond global ignoreFiles
+      includeOrder,
+      includeUnmatchedLast,
+    );
+
+    // Blog posts are the same content in every version, so only the version
+    // that owns the standard files lists them; the others leave them to their
+    // custom LLM files.
+    const listedDocs = listUnversionedDocs
+      ? processedDocs
+      : processedDocs.filter((doc) => !doc.unversioned);
+    logger.verbose(`Processed ${listedDocs.length} documentation files for standard LLM files`);
+
+    if (isNonEmptyArray(listedDocs)) {
+      standardDocs = listedDocs;
     } else {
-      const processedDocs = await processFilesWithPatterns(
-        context,
-        allDocFiles,
-        [], // No specific include patterns - include all
-        [], // No additional ignore patterns beyond global ignoreFiles
-        includeOrder,
-        includeUnmatchedLast,
-      );
-
-      // Blog posts are the same content in every version, so only the version
-      // that owns the standard files lists them; the others leave them to their
-      // custom LLM files.
-      const listedDocs = listUnversionedDocs
-        ? processedDocs
-        : processedDocs.filter((doc) => !doc.unversioned);
-      logger.verbose(`Processed ${listedDocs.length} documentation files for standard LLM files`);
-
-      if (isNonEmptyArray(listedDocs)) {
-        standardDocs = listedDocs;
-      } else {
-        logger.warn('No documents found matching patterns for standard LLM files. Skipping.');
-      }
+      logger.warn('No documents found matching patterns for standard LLM files. Skipping.');
     }
   }
 
@@ -932,37 +914,35 @@ async function generateSelectedLLMFiles(
     customFilePath: string;
     docs: DocInfo[];
   }> = [];
-  if (scope.custom) {
-    if (customLLMFiles.length === 0) {
-      logger.warn('No custom LLM files configured. Skipping.');
-    } else {
-      logger.info(`Generating ${customLLMFiles.length} custom LLM files...`);
-      for (const customFile of customLLMFiles) {
-        logger.verbose(
-          `Processing custom file: ${customFile.filename}, version: ${customFile.version || 'undefined'}`,
-        );
+  if (customLLMFiles.length === 0) {
+    logger.warn('No custom LLM files configured. Skipping.');
+  } else {
+    logger.info(`Generating ${customLLMFiles.length} custom LLM files...`);
+    for (const customFile of customLLMFiles) {
+      logger.verbose(
+        `Processing custom file: ${customFile.filename}, version: ${customFile.version || 'undefined'}`,
+      );
 
-        const customFilePath = resolveOutputFile(outDir, versionedOutDir, customFile.filename);
-        if (!customFilePath) continue;
+      const customFilePath = resolveOutputFile(outDir, versionedOutDir, customFile.filename);
+      if (!customFilePath) continue;
 
-        const combinedIgnores = [...ignoreFiles];
-        if (customFile.ignorePatterns) {
-          combinedIgnores.push(...customFile.ignorePatterns);
-        }
-        const customDocs = await processFilesWithPatterns(
-          context,
-          allDocFiles,
-          customFile.includePatterns,
-          combinedIgnores,
-          customFile.orderPatterns || [],
-          customFile.includeUnmatchedLast ?? true,
-        );
+      const combinedIgnores = [...ignoreFiles];
+      if (customFile.ignorePatterns) {
+        combinedIgnores.push(...customFile.ignorePatterns);
+      }
+      const customDocs = await processFilesWithPatterns(
+        context,
+        allDocFiles,
+        customFile.includePatterns,
+        combinedIgnores,
+        customFile.orderPatterns || [],
+        customFile.includeUnmatchedLast ?? true,
+      );
 
-        if (customDocs.length === 0) {
-          logger.warn(`No matching documents found for custom LLM file: ${customFile.filename}`);
-        } else {
-          pendingFiles.push({ customFile, customFilePath, docs: customDocs });
-        }
+      if (customDocs.length === 0) {
+        logger.warn(`No matching documents found for custom LLM file: ${customFile.filename}`);
+      } else {
+        pendingFiles.push({ customFile, customFilePath, docs: customDocs });
       }
     }
   }
