@@ -173,7 +173,7 @@ Each post links to the route Docusaurus builds for it:
 - A post with a front matter `slug` links to that slug under the blog route, such as `/blog/my-custom`.
 - Posts with `draft: true` are skipped.
 
-`ignoreFiles` and `includeOrder` patterns match blog posts by their site-relative path, such as `blog/2024-01-01-hello.md`. When `docsDir` lists several sections, the posts appear under a `## Blog` heading in `llms.txt`. In versions mode, posts appear in the version written at the site root only.
+`ignoreFiles` and `includeOrder` patterns match blog posts by their site-relative path, such as `blog/2024-01-01-hello.md`. When `docsDir` lists several sections, the posts appear under a `## Blog` heading in `llms.txt`. In versions mode, custom LLM files list blog posts in every version, and the posts' markdown files are written once at the site root; [multi-version output](./multi-version.md#the-versions-option) covers how `llms.txt` handles them.
 
 ## How partials are resolved
 

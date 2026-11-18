@@ -336,6 +336,7 @@ function findSectionForDoc(doc: DocInfo, docsSections?: DocsSection[]): DocsSect
  * @param docsSections - Configured docsDir sections, used to resolve each doc's own filesystem path and routeBasePath
  * @param versionPath - The version's path prefix ('stable'); outputDir is that version's subdirectory, so the prefix is stripped from URLs before mapping them to files and added back to the links
  * @param registry - Paths already assigned in outputDir by an earlier call; a doc found here reuses its file
+ * @param unversionedOutputDir - Directory for pages no version owns (blog posts); they keep their unprefixed links and are written once, at the site root
  * @returns Updated docs with new URLs pointing to generated markdown files
  */
 export async function generateIndividualMarkdownFiles(
@@ -348,6 +349,7 @@ export async function generateIndividualMarkdownFiles(
   docsSections?: DocsSection[],
   versionPath: string = '',
   registry: MarkdownPathRegistry = { usedPaths: new Set(), docPaths: new Map() },
+  unversionedOutputDir?: string,
 ): Promise<DocInfo[]> {
   const updatedDocs: DocInfo[] = [];
   const { usedPaths } = registry;
@@ -364,11 +366,20 @@ export async function generateIndividualMarkdownFiles(
   const siteBasePath = getSiteBasePath(siteUrl);
 
   for (const doc of docs) {
+    // Unversioned content (blog posts) carries no version prefix in its route,
+    // so its markdown file belongs at the site root: the version written at the
+    // root already emits it, and a prefixed version links that copy instead of
+    // writing a second one inside its own directory.
+    const unversionedDir =
+      doc.unversioned && isNonEmptyString(unversionedOutputDir) ? unversionedOutputDir : undefined;
+    const docOutputDir = unversionedDir ?? outputDir;
+    const docVersionPath = unversionedDir ? '' : versionPath;
+
     // A doc an earlier pass already wrote keeps that file, so the standard and
     // custom outputs link to the same page and neither overwrites the other.
     const assignedPath = earlierDocPaths.get(doc.path);
     if (assignedPath !== undefined) {
-      updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, versionPath, assignedPath));
+      updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, docVersionPath, assignedPath));
       continue;
     }
 
@@ -393,11 +404,11 @@ export async function generateIndividualMarkdownFiles(
 
         // A version's routes carry its path ('stable/get-started'), but
         // outputDir is already that version's subdirectory.
-        if (versionPath) {
-          if (urlPathname === versionPath) {
+        if (docVersionPath) {
+          if (urlPathname === docVersionPath) {
             urlPathname = '';
-          } else if (urlPathname.startsWith(`${versionPath}/`)) {
-            urlPathname = urlPathname.slice(versionPath.length + 1);
+          } else if (urlPathname.startsWith(`${docVersionPath}/`)) {
+            urlPathname = urlPathname.slice(docVersionPath.length + 1);
           }
         }
 
@@ -481,9 +492,9 @@ export async function generateIndividualMarkdownFiles(
     const sanitizedTitle = sanitizeForFilename(doc.title, 'untitled');
     if (!isNonEmptyString(relativePath) || relativePath === '.md') {
       relativePath = `${sanitizedTitle}.md`;
-    } else if (!isPathInside(outputDir, relativePath)) {
+    } else if (!isPathInside(docOutputDir, relativePath)) {
       logger.warn(
-        `Markdown path ${relativePath} for ${doc.path} is outside ${outputDir}; using ${sanitizedTitle}.md`,
+        `Markdown path ${relativePath} for ${doc.path} is outside ${docOutputDir}; using ${sanitizedTitle}.md`,
       );
       relativePath = `${sanitizedTitle}.md`;
     }
@@ -513,12 +524,12 @@ export async function generateIndividualMarkdownFiles(
     usedPaths.add(uniquePath.toLowerCase());
 
     // Create the full file path and validate/shorten if needed
-    let fullPath = path.join(outputDir, uniquePath);
-    fullPath = shortenPathIfNeeded(fullPath, outputDir, uniquePath);
+    let fullPath = path.join(docOutputDir, uniquePath);
+    fullPath = shortenPathIfNeeded(fullPath, docOutputDir, uniquePath);
 
     // Update uniquePath to reflect the shortened path if it was changed
-    if (fullPath !== path.join(outputDir, uniquePath)) {
-      uniquePath = path.relative(outputDir, fullPath);
+    if (fullPath !== path.join(docOutputDir, uniquePath)) {
+      uniquePath = path.relative(docOutputDir, fullPath);
     }
     registry.docPaths.set(doc.path, uniquePath);
 
@@ -568,7 +579,7 @@ export async function generateIndividualMarkdownFiles(
       throw new Error(`Failed to write file ${fullPath}: ${getErrorMessage(error)}`);
     }
 
-    updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, versionPath, uniquePath));
+    updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, docVersionPath, uniquePath));
 
     logger.verbose(`Generated markdown file: ${uniquePath}`);
   }
@@ -624,10 +635,12 @@ function resolveOutputFile(
  * Generate standard LLM files (llms.txt and llms-full.txt)
  * @param context - Plugin context
  * @param allDocFiles - Array of all document files
+ * @param listUnversionedDocs - Whether the files list pages no version owns (blog posts); only the version that owns the standard files passes true
  */
 export async function generateStandardLLMFiles(
   context: PluginContext,
   allDocFiles: string[],
+  listUnversionedDocs: boolean = true,
 ): Promise<void> {
   const { outDir, siteUrl, docTitle, docDescription, options } = context;
   // Version-scoped output lands under a subdirectory of outDir (e.g. 'stable').
@@ -669,6 +682,13 @@ export async function generateStandardLLMFiles(
     includeUnmatchedLast,
   );
 
+  // Blog posts are the same content in every version, so only the version that
+  // owns the standard files lists them; the others leave them to their custom
+  // LLM files.
+  if (!listUnversionedDocs) {
+    processedDocs = processedDocs.filter((doc) => !doc.unversioned);
+  }
+
   logger.verbose(`Processed ${processedDocs.length} documentation files for standard LLM files`);
 
   // Check if we have documents to process
@@ -690,6 +710,7 @@ export async function generateStandardLLMFiles(
       context.docsSections,
       context.outputSubdir || '',
       context.markdownPaths,
+      outDir,
     );
   }
 
@@ -809,6 +830,7 @@ export async function generateCustomLLMFiles(
           context.docsSections,
           context.outputSubdir || '',
           context.markdownPaths,
+          outDir,
         );
       }
 

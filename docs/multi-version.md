@@ -34,7 +34,7 @@ The `path` field sets both the output subdirectory under the build directory and
 
 Each version's `docsDir`, `customLLMFiles`, and `includeOrder` get the same checks as the top-level options, and an invalid value throws a configuration error when the plugin loads. If one version fails while its files are generated, the plugin logs an error naming that version and generates the remaining versions.
 
-With `includeBlog: true`, blog posts appear in the files of the version written at the site root, or of the first version when no version writes to the root.
+With `includeBlog: true`, every version's custom LLM files can list blog posts. The posts' markdown files are written once at the site root, and their links carry no version prefix, because Docusaurus serves a blog at the same routes in every version. `llms.txt` lists blog posts only for the version written at the site root, or the first version when no version writes to the root, so a prefixed version's index links only to that version's routes.
 
 ## Explicit versions
 
