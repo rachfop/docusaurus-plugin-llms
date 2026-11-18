@@ -184,10 +184,53 @@ async function testStandardFilesKeepVersionScope() {
   }
 }
 
+// Test 4: a docs section that lives in the blog directory is not a blog post
+async function testDocsInBlogDirStayVersioned() {
+  const name = 'Docs in the blog directory stay versioned when includeBlog is off';
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-llms-docs-in-blog-'));
+  const outDir = path.join(tmpDir, 'out');
+  fs.mkdirSync(outDir, { recursive: true });
+  for (const dir of ['docs', 'releases']) {
+    fs.mkdirSync(path.join(tmpDir, dir), { recursive: true });
+  }
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'get-started.md'), page('Get Started', 'Nightly.'));
+  fs.writeFileSync(path.join(tmpDir, 'releases', 'v1.md'), page('v1 release', 'v1 body.'));
+
+  try {
+    const p = plugin(
+      {
+        siteDir: tmpDir,
+        siteConfig: { title: 'T', tagline: 't', url: 'https://example.com', baseUrl: '/' },
+        outDir,
+      },
+      {
+        generateLLMsFullTxt: false,
+        blogDir: 'releases',
+        versions: [
+          { name: 'nightly', label: 'Nightly', docsDir: 'docs', path: '' },
+          { name: 'stable', label: 'Stable', docsDir: 'releases', path: 'stable' },
+        ],
+      },
+    );
+    await p.postBuild({ routesPaths: ['/', '/get-started', '/stable', '/stable/releases/v1'] });
+
+    const stable = path.join(outDir, 'stable', 'llms.txt');
+    assert.ok(fs.existsSync(stable), 'the prefixed version still writes llms.txt');
+    assert.ok(fs.readFileSync(stable, 'utf8').includes('v1 release'), 'its docs are not dropped');
+
+    pass(name);
+  } catch (err) {
+    fail(name, err.message);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 async function main() {
   await testCustomFileInEveryVersion();
   await testBlogMarkdownAtSiteRoot();
   await testStandardFilesKeepVersionScope();
+  await testDocsInBlogDirStayVersioned();
 
   console.log('\n' + '='.repeat(50));
   console.log(

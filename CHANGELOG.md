@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so a custom file whose `includePatterns` match the blog directory is written
   for versions under a path prefix as well. The posts' markdown files keep
   their unprefixed links and are written once, at the site root.
+- A docs section that points at the blog directory keeps its documents in every
+  version: only posts collected through `includeBlog` count as unversioned
+  content, so a prefixed version no longer drops them from its standard files.
 
 ## [0.6.1] - 2026-10-02
 

@@ -118,6 +118,7 @@ export interface ProcessFileOptions {
   siteDir?: string;
   sectionPath?: string;
   isBlogFile?: boolean;
+  includeBlog?: boolean;
   /**
    * The file to read the content from, when it differs from `filePath` (a
    * translated copy for the current locale). `filePath` still determines the
@@ -175,6 +176,7 @@ export async function processMarkdownFile(
     siteDir,
     sectionPath,
     isBlogFile = false,
+    includeBlog = false,
     contentFilePath = filePath,
   } = opts;
 
@@ -416,7 +418,9 @@ export async function processMarkdownFile(
     description: description || '',
     frontMatter: data,
     routeResolved: isNonEmptyString(resolvedUrl),
-    unversioned: isBlogFile,
+    // A docs section may share the blog directory; only posts the plugin was
+    // asked to read as blog content escape version ownership.
+    unversioned: isBlogFile && includeBlog,
   };
 }
 
@@ -853,6 +857,7 @@ export async function processFilesWithPatterns(
           siteDir,
           sectionPath: sectionFsPath,
           isBlogFile,
+          includeBlog: context.options.includeBlog,
           contentFilePath,
         });
 
