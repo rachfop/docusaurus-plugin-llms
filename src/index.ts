@@ -908,11 +908,14 @@ export default function docusaurusPluginLLMs(
             docsDir,
           );
           const isMultiVersion = options.versions !== undefined;
-          // In versions mode the blog belongs to the version written at the
-          // build root (or the first version when none is).
-          const blogVersion =
-            resolvedVersions.find((v) => v.pathPrefix === '') ?? resolvedVersions[0];
           const docsConfigs = translatedLocaleDir ? readDocsPluginConfigs(siteConfig) : [];
+          // The version written at the site root owns the standard files' blog
+          // listing, or the first version when none writes to the root.
+          const rootVersion =
+            resolvedVersions.find((v) => v.pathPrefix === '') ?? resolvedVersions[0];
+          const blogDirPrefix = path.join(siteDir, blogDir) + path.sep;
+          const isBlogPostFile = (file: string): boolean =>
+            includeBlog && file.startsWith(blogDirPrefix);
 
           for (const version of resolvedVersions) {
             // Each version owns route roots; other versions skip routes under
@@ -925,7 +928,11 @@ export default function docusaurusPluginLLMs(
               .filter(
                 (root) => !ownRoots.some((own) => own === root || own.startsWith(`${root}/`)),
               );
-            const versionIncludeBlog = includeBlog && (!isMultiVersion || version === blogVersion);
+            // Blog posts aren't versioned: every version can match them in its
+            // custom LLM files, but only the version written at the build root
+            // lists them in llms.txt, so a prefixed version's index keeps
+            // linking only to that version's routes.
+            const listsBlogPosts = !isMultiVersion || version === rootVersion;
             const versionContext: PluginContext = {
               ...pluginContext,
               routesPaths,
@@ -949,12 +956,12 @@ export default function docusaurusPluginLLMs(
                     translatedLocaleDir,
                     docsConfigs,
                     version.docsSections,
-                    versionIncludeBlog ? blogDir : undefined,
+                    includeBlog ? blogDir : undefined,
                   )
                 : undefined,
               options: {
                 ...pluginContext.options,
-                includeBlog: versionIncludeBlog,
+                includeBlog,
                 version: version.label,
                 customLLMFiles: version.customLLMFiles,
                 includeOrder: version.includeOrder,
@@ -976,7 +983,13 @@ export default function docusaurusPluginLLMs(
                 continue;
               }
 
-              await generateStandardLLMFiles(versionContext, allDocFiles);
+              // Only a version that lists blog posts in llms.txt passes them to
+              // the standard files; every version sees them in custom files.
+              const standardDocFiles = listsBlogPosts
+                ? allDocFiles
+                : allDocFiles.filter((file) => !isBlogPostFile(file));
+
+              await generateStandardLLMFiles(versionContext, standardDocFiles);
               await generateCustomLLMFiles(versionContext, allDocFiles);
 
               logger.info(

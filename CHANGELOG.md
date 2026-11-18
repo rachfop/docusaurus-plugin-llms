@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-17
+
+### Fixed
+
+- In a site with `versions`, blog posts reach every version's custom LLM files,
+  so a custom file whose `includePatterns` match the blog directory is written
+  for versions under a path prefix as well. The posts' markdown files keep
+  their unprefixed links and are written once, at the site root.
+
 ## [0.6.1] - 2026-10-02
 
 ### Added

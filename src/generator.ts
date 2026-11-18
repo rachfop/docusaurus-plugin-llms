@@ -51,6 +51,30 @@ function escapeLinkText(title: string): string {
 }
 
 /**
+ * True when a page's route sits under `routeBase`, ignoring the site's
+ * `baseUrl`. Blog routes are the same in every version, so a prefixed version
+ * uses this to recognise pages whose markdown file belongs at the site root.
+ */
+function isUnderRouteBase(
+  url: string,
+  siteBasePath: string,
+  routeBase: string | undefined,
+): boolean {
+  if (!isNonEmptyString(routeBase) || !isNonEmptyString(url)) return false;
+  const base = routeBase.replace(/^\/+|\/+$/g, '');
+  if (base === '') return false;
+
+  let pathname: string;
+  try {
+    pathname = decodeUrlPathSegments(new URL(url).pathname.replace(/\/+$/, ''));
+  } catch {
+    return false;
+  }
+  const route = stripSiteBasePath(pathname, siteBasePath);
+  return route === `/${base}` || route.startsWith(`/${base}/`);
+}
+
+/**
  * Clean a description for use in a TOC item
  * @param description - The original description
  * @param fromFrontMatter - Whether the description came from front matter
@@ -336,6 +360,8 @@ function findSectionForDoc(doc: DocInfo, docsSections?: DocsSection[]): DocsSect
  * @param docsSections - Configured docsDir sections, used to resolve each doc's own filesystem path and routeBasePath
  * @param versionPath - The version's path prefix ('stable'); outputDir is that version's subdirectory, so the prefix is stripped from URLs before mapping them to files and added back to the links
  * @param registry - Paths already assigned in outputDir by an earlier call; a doc found here reuses its file
+ * @param unversionedRouteBase - Route base whose pages ignore the version prefix (the blog); their files are written to `unversionedOutputDir` and keep their unprefixed links
+ * @param unversionedOutputDir - Directory for those files, normally the site root
  * @returns Updated docs with new URLs pointing to generated markdown files
  */
 export async function generateIndividualMarkdownFiles(
@@ -348,6 +374,8 @@ export async function generateIndividualMarkdownFiles(
   docsSections?: DocsSection[],
   versionPath: string = '',
   registry: MarkdownPathRegistry = { usedPaths: new Set(), docPaths: new Map() },
+  unversionedRouteBase?: string,
+  unversionedOutputDir?: string,
 ): Promise<DocInfo[]> {
   const updatedDocs: DocInfo[] = [];
   const { usedPaths } = registry;
@@ -364,11 +392,20 @@ export async function generateIndividualMarkdownFiles(
   const siteBasePath = getSiteBasePath(siteUrl);
 
   for (const doc of docs) {
+    // Blog routes carry no version prefix, so their markdown file belongs at
+    // the site root: the version written at the root already emits it, and a
+    // prefixed version should link that copy rather than write a second one
+    // inside its own directory.
+    const unversioned = isUnderRouteBase(doc.url, siteBasePath, unversionedRouteBase);
+    const docOutputDir =
+      unversioned && isNonEmptyString(unversionedOutputDir) ? unversionedOutputDir : outputDir;
+    const docVersionPath = unversioned ? '' : versionPath;
+
     // A doc an earlier pass already wrote keeps that file, so the standard and
     // custom outputs link to the same page and neither overwrites the other.
     const assignedPath = earlierDocPaths.get(doc.path);
     if (assignedPath !== undefined) {
-      updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, versionPath, assignedPath));
+      updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, docVersionPath, assignedPath));
       continue;
     }
 
@@ -393,11 +430,11 @@ export async function generateIndividualMarkdownFiles(
 
         // A version's routes carry its path ('stable/get-started'), but
         // outputDir is already that version's subdirectory.
-        if (versionPath) {
-          if (urlPathname === versionPath) {
+        if (docVersionPath) {
+          if (urlPathname === docVersionPath) {
             urlPathname = '';
-          } else if (urlPathname.startsWith(`${versionPath}/`)) {
-            urlPathname = urlPathname.slice(versionPath.length + 1);
+          } else if (urlPathname.startsWith(`${docVersionPath}/`)) {
+            urlPathname = urlPathname.slice(docVersionPath.length + 1);
           }
         }
 
@@ -481,9 +518,9 @@ export async function generateIndividualMarkdownFiles(
     const sanitizedTitle = sanitizeForFilename(doc.title, 'untitled');
     if (!isNonEmptyString(relativePath) || relativePath === '.md') {
       relativePath = `${sanitizedTitle}.md`;
-    } else if (!isPathInside(outputDir, relativePath)) {
+    } else if (!isPathInside(docOutputDir, relativePath)) {
       logger.warn(
-        `Markdown path ${relativePath} for ${doc.path} is outside ${outputDir}; using ${sanitizedTitle}.md`,
+        `Markdown path ${relativePath} for ${doc.path} is outside ${docOutputDir}; using ${sanitizedTitle}.md`,
       );
       relativePath = `${sanitizedTitle}.md`;
     }
@@ -513,12 +550,12 @@ export async function generateIndividualMarkdownFiles(
     usedPaths.add(uniquePath.toLowerCase());
 
     // Create the full file path and validate/shorten if needed
-    let fullPath = path.join(outputDir, uniquePath);
-    fullPath = shortenPathIfNeeded(fullPath, outputDir, uniquePath);
+    let fullPath = path.join(docOutputDir, uniquePath);
+    fullPath = shortenPathIfNeeded(fullPath, docOutputDir, uniquePath);
 
     // Update uniquePath to reflect the shortened path if it was changed
-    if (fullPath !== path.join(outputDir, uniquePath)) {
-      uniquePath = path.relative(outputDir, fullPath);
+    if (fullPath !== path.join(docOutputDir, uniquePath)) {
+      uniquePath = path.relative(docOutputDir, fullPath);
     }
     registry.docPaths.set(doc.path, uniquePath);
 
@@ -568,7 +605,7 @@ export async function generateIndividualMarkdownFiles(
       throw new Error(`Failed to write file ${fullPath}: ${getErrorMessage(error)}`);
     }
 
-    updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, versionPath, uniquePath));
+    updatedDocs.push(toMarkdownDocInfo(doc, siteUrl, docVersionPath, uniquePath));
 
     logger.verbose(`Generated markdown file: ${uniquePath}`);
   }
@@ -647,6 +684,8 @@ export async function generateStandardLLMFiles(
     processingBatchSize = 100,
     addMdExtension = true,
     useRelativeUrls = false,
+    includeBlog = false,
+    blogRouteBasePath = 'blog',
   } = options;
 
   if (!generateLLMsTxt && !generateLLMsFullTxt) {
@@ -690,6 +729,8 @@ export async function generateStandardLLMFiles(
       context.docsSections,
       context.outputSubdir || '',
       context.markdownPaths,
+      includeBlog ? blogRouteBasePath : undefined,
+      includeBlog ? outDir : undefined,
     );
   }
 
@@ -755,6 +796,8 @@ export async function generateCustomLLMFiles(
     processingBatchSize = 100,
     addMdExtension = true,
     useRelativeUrls = false,
+    includeBlog = false,
+    blogRouteBasePath = 'blog',
   } = options;
 
   if (customLLMFiles.length === 0) {
@@ -809,6 +852,8 @@ export async function generateCustomLLMFiles(
           context.docsSections,
           context.outputSubdir || '',
           context.markdownPaths,
+          includeBlog ? blogRouteBasePath : undefined,
+          includeBlog ? outDir : undefined,
         );
       }
 
